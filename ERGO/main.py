@@ -3,6 +3,7 @@ from home_frame import HomeFrame
 from community_frame import CommunityFrame
 from dashboard_frame import DashboardFrame
 from leaderboard_frame import LeaderboardFrame
+import os
 
 class App(tk.Tk):
     def __init__(self):
@@ -11,6 +12,9 @@ class App(tk.Tk):
         self.geometry("1024x768")  # ปรับขนาดหน้าต่าง
         self.configure(bg="white")  # สีพื้นหลังหน้าต่างหลัก
 
+        # กำหนด path สำหรับไอคอนทั้งหมด
+        self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+
         # Sidebar
         self.sidebar = tk.Frame(self, bg="#221551", width=200)
         self.sidebar.pack(side="left", fill="y")
@@ -18,12 +22,13 @@ class App(tk.Tk):
         self.frames = {}
         self.current_frame = None
 
-       # Username Display with Profile Picture
+        # Username Display with Profile Picture
         self.username_frame = tk.Frame(self.sidebar, bg="#221551", height=140)
         self.username_frame.pack(fill="x")
 
         # เพิ่มรูปโปรไฟล์
-        profile_icon = tk.PhotoImage(file="D:\project\ERGO\icon\person_icon.png")  # ใส่ path ของรูปโปรไฟล์
+        profile_icon_path = os.path.join(self.icon_dir, "person_icon.png")
+        profile_icon = tk.PhotoImage(file=profile_icon_path)
         profile_icon_label = tk.Label(self.username_frame, image=profile_icon, bg="#221551")
         profile_icon_label.image = profile_icon  # เก็บอ้างอิงเพื่อป้องกัน garbage collection
         profile_icon_label.pack(side="top", pady=10)  # ใช้ pady เพื่อจัดระยะห่างจากขอบบน
@@ -32,19 +37,20 @@ class App(tk.Tk):
         tk.Label(self.username_frame, text="Username", font=("Arial", 14), fg="white", bg="#221551").pack(side="top", pady=10)
 
         # Sidebar buttons with icons
-        self.create_sidebar_button("Home", HomeFrame, "D:\project\ERGO\icon\home_icon.png")
-        self.create_sidebar_button("Community", CommunityFrame, "D:\project\ERGO\icon\community_icon.png")
-        self.create_sidebar_button("Dashboard", DashboardFrame, "D:\project\ERGO\icon\Dashboard_icon.png")
-        self.create_sidebar_button("Leader-board", LeaderboardFrame, "D:\project\ERGO\icon\Leaderboard_icon.png")
+        self.create_sidebar_button("Home", HomeFrame, "home_icon.png")
+        self.create_sidebar_button("Community", CommunityFrame, "community_icon.png")
+        self.create_sidebar_button("Dashboard", DashboardFrame, "Dashboard_icon.png")
+        self.create_sidebar_button("Leader-board", LeaderboardFrame, "Leaderboard_icon.png")
 
         # Default frame
         self.show_frame(HomeFrame)
 
-    def create_sidebar_button(self, text, frame_class, icon_path):
+    def create_sidebar_button(self, text, frame_class, icon_name):
         button_frame = tk.Frame(self.sidebar, bg="#221551")
         button_frame.pack(fill="x", pady=2)
 
-        # ใช้ icon_path เพื่อให้แต่ละเมนูใช้ไอคอนที่แตกต่างกัน
+        # ใช้ icon_name เพื่อให้แต่ละเมนูใช้ไอคอนที่แตกต่างกัน
+        icon_path = os.path.join(self.icon_dir, icon_name)
         icon = tk.PhotoImage(file=icon_path)
         icon_label = tk.Label(button_frame, image=icon, bg="#221551")
         icon_label.image = icon  # เก็บอ้างอิงเพื่อป้องกัน garbage collection
@@ -62,7 +68,6 @@ class App(tk.Tk):
             command=lambda: self.show_frame(frame_class),
         )
         button.pack(side="left", fill="x", expand=True)
-
 
     def show_frame(self, frame_class):
         if self.current_frame:
