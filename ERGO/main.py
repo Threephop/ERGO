@@ -3,6 +3,7 @@ from home_frame import HomeFrame
 from community_frame import CommunityFrame
 from dashboard_frame import DashboardFrame
 from leaderboard_frame import LeaderboardFrame
+from setting_frame import SettingFrame
 import os
 
 class App(tk.Tk):
@@ -41,6 +42,26 @@ class App(tk.Tk):
         self.create_sidebar_button("Community", CommunityFrame, "community_icon.png")
         self.create_sidebar_button("Dashboard", DashboardFrame, "Dashboard_icon.png")
         self.create_sidebar_button("Leader-board", LeaderboardFrame, "Leaderboard_icon.png")
+
+        # Add Setting button with place()
+        # สร้างปุ่ม Setting
+        setting_icon_path = os.path.join(self.icon_dir, "Settings_icon 1.png")
+        setting_icon = tk.PhotoImage(file=setting_icon_path)
+
+        self.setting_button = tk.Button(
+            self.sidebar,
+            image=setting_icon,
+            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
+            bg="#221551",
+            fg="white",
+            font=("Arial", 12),
+            relief="flat",
+            activebackground="#6F6969",
+            activeforeground="white",
+            command=lambda: self.show_frame(SettingFrame),
+        )
+        self.setting_button.image = setting_icon  # เก็บอ้างอิงไอคอน
+        self.setting_button.place(x=30, y=650)  # กำหนดตำแหน่งเริ่มต้น (เปลี่ยน x และ y ได้ตามต้องการ)
 
         # Default frame
         self.show_frame(HomeFrame)
