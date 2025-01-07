@@ -3,7 +3,7 @@ from home_frame import HomeFrame
 from community_frame import CommunityFrame
 from dashboard_frame import DashboardFrame
 from leaderboard_frame import LeaderboardFrame
-from setting_frame import SettingFrame
+from SettingFrame import SettingFrame
 import os
 
 class App(tk.Tk):
