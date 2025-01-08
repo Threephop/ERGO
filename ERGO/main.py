@@ -13,6 +13,13 @@ class App(tk.Tk):
         self.title("ERGO PROJECT")
         self.geometry("1024x768")  # ขนาดหน้าต่าง
         self.configure(bg="white")  # สีพื้นหลังหน้าต่างหลัก
+        window_width = 1024
+        window_height = 768
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        position_top = int(screen_height / 2 - window_height / 2)
+        position_right = int(screen_width / 2 - window_width / 2)
+        self.geometry(f"{window_width}x{window_height}+{position_right}+{position_top}")
         
         self.show_popup()
 
