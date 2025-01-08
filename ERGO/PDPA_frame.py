@@ -1,4 +1,5 @@
 import tkinter as tk
+import webbrowser
 
 class PopupFrame(tk.Toplevel):
     def __init__(self, parent):
@@ -81,7 +82,8 @@ class PopupFrame(tk.Toplevel):
             "\n"
             "แอปนี้มีการจัดเก็บวิดีโอที่บันทึกโดยผู้ใช้ เพื่อการจัดเก็บและการแชร์ในกลุ่มแชทภายในแอปเท่านั้น\n"
             "วิดีโอจะถูกจัดเก็บเป็นระยะเวลา 5 วัน และจะถูกลบโดยอัตโนมัติหากเกินระยะเวลาดังกล่าว\n"
-            "คุณมีสิทธิ์ในการลบวิดีโอหรือเพิกถอนความยินยอมได้ตลอดเวลาอ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา [ลิงก์นโยบายความเป็นส่วนตัว]\n"
+            "คุณมีสิทธิ์ในการลบวิดีโอหรือเพิกถอนความยินยอมได้ตลอดเวลาอ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา "
+            "https://pttpdpa.pttplc.com/ \n"
             "กด (ยอมรับ) เพื่อยอมรับเงื่อนไขการเก็บข้อมูลส่วนบุคคล\n"
             "\n"
             "8. การติดต่อสอบถาม (Contact Information)\n"
@@ -107,6 +109,7 @@ class PopupFrame(tk.Toplevel):
         # Disable parent interaction while popup is open
         self.transient(parent)
         self.grab_set()
+
 
 # ทดสอบ PopupFrame
 if __name__ == "__main__":
