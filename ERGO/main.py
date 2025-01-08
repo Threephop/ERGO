@@ -4,6 +4,7 @@ from community_frame import CommunityFrame
 from dashboard_frame import DashboardFrame
 from leaderboard_frame import LeaderboardFrame
 from setting_frame import SettingFrame
+from PDPA_frame import PopupFrame
 import os
 
 class App(tk.Tk):
@@ -12,6 +13,8 @@ class App(tk.Tk):
         self.title("ERGO PROJECT")
         self.geometry("1024x768")  # ขนาดหน้าต่าง
         self.configure(bg="white")  # สีพื้นหลังหน้าต่างหลัก
+        
+        self.show_popup()
 
         # กำหนด path สำหรับไอคอนทั้งหมด
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
@@ -204,6 +207,9 @@ class App(tk.Tk):
             self.frames[frame_class] = frame_class(self)
         self.current_frame = self.frames[frame_class]
         self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)  # วางเนื้อหาที่เหลือในหน้าต่าง
+    
+    def show_popup(self):
+        PopupFrame(self) 
 
 if __name__ == "__main__":
     app = App()
