@@ -7,6 +7,15 @@ class PopupFrame(tk.Toplevel):
         self.geometry("800x700")
         self.configure(bg="white")
 
+        # คำนวณตำแหน่งตรงกลางจอ
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        window_width = 800
+        window_height = 700
+        position_top = int(screen_height / 2 - window_height / 2)
+        position_right = int(screen_width / 2 - window_width / 2)
+        self.geometry(f'{window_width}x{window_height}+{position_right}+{position_top}')
+
         # เนื้อหาใน Popup
         tk.Label(
             self,
@@ -104,3 +113,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()  # ซ่อนหน้าต่างหลัก
     popup = PopupFrame(root)
+    root.mainloop()

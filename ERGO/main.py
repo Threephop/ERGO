@@ -201,12 +201,24 @@ class App(tk.Tk):
         self.show_frame(HomeFrame)
 
     def show_frame(self, frame_class):
+        # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
+        if self.current_frame and isinstance(self.current_frame, frame_class):
+            return  # ไม่ต้องทำอะไร ถ้าเฟรมเดียวกัน
+        
+        # ซ่อนเฟรมปัจจุบัน
         if self.current_frame:
-            self.current_frame.pack_forget()  # ลบเฟรมเก่า
+            self.current_frame.place_forget()  # ซ่อนเฟรมเก่า
+        
+        # สร้างเฟรมใหม่หากยังไม่มี
         if frame_class not in self.frames:
             self.frames[frame_class] = frame_class(self)
+        
+        # ตั้งค่าเฟรมใหม่เป็นเฟรมปัจจุบัน
         self.current_frame = self.frames[frame_class]
-        self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)  # วางเนื้อหาที่เหลือในหน้าต่าง
+        
+        # วางเฟรมใหม่
+        self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
+
     
     def show_popup(self):
         PopupFrame(self) 
