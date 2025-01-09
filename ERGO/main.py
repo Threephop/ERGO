@@ -1,4 +1,6 @@
 import tkinter as tk
+
+from matplotlib import pyplot as plt
 from home_frame import HomeFrame
 from community_frame import CommunityFrame
 from dashboard_frame import DashboardFrame
@@ -253,7 +255,13 @@ class App(tk.Tk):
     
     def show_popup(self):
         PopupFrame(self) 
+        
+    def on_closing(self):
+        """Function to handle the window close event"""
+        plt.close()  # ปิด figure ของ matplotlib
+        self.quit()   # ปิดหน้าต่าง Tkinter
 
 if __name__ == "__main__":
     app = App()
+    app.protocol("WM_DELETE_WINDOW", app.on_closing)
     app.mainloop()
