@@ -147,7 +147,6 @@ class PopupFrame(tk.Toplevel):
 
     def check_accepted(self):
         if self.chk1.get() and self.chk2.get() and self.chk3.get() and self.chk4.get() and self.chk5.get() and self.chk6.get() and self.chk7.get() and self.chk8.get():
-            print("ทั้งหมดถูกต้อง")
             self.destroy()
         else:
             messagebox.showwarning("คำเตือน", "กรุณาอ่านและเลือกให้ครบ")
