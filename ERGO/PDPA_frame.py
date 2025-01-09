@@ -27,7 +27,7 @@ class PopupFrame(tk.Toplevel):
 
         # สร้าง Frame สำหรับ Text และ Scrollbar
         text_frame = tk.Frame(self, bg="white")
-        text_frame.pack(pady=10, padx=10, fill="both", expand=True)
+        text_frame.pack(pady=(10,100), padx=10, fill="both", expand=True)
 
         # เพิ่ม Text Widget สำหรับแสดงข้อความ
         text_widget = tk.Text(
@@ -94,17 +94,36 @@ class PopupFrame(tk.Toplevel):
         )
         text_widget.insert("1.0", long_text)
         text_widget.config(state="disabled")  # ปิดการแก้ไขข้อความ
+        
+        def open_link(event):
+            webbrowser.open("https://pttpdpa.pttplc.com/")
 
-        # ปุ่มปิด Popup
-        tk.Button(
+        link_label = tk.Label(self, text="อ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา", fg="blue", cursor="hand2", font=("Arial", 12))
+        link_label.pack()
+        link_label.bind("<Button-1>", open_link)
+
+        accept_button = tk.Button(
             self,
-            text="Close",
+            text="ตกลง",
             command=self.destroy,
             font=("Arial", 12),
-            bg="#221551",
+            bg="#787878",
             fg="white",
-            relief="flat"
-        ).pack(pady=10)
+            relief="flat",
+        )
+        accept_button.place(x=350, y=600)
+        
+        reject_button = tk.Button(
+            self,
+            text="ปฏิเสธ",
+            command=self.destroy,
+            font=("Arial", 12),
+            bg="#FF5959",
+            fg="white",
+            relief="flat",
+        )
+        reject_button.place(x=450, y=600)
+     
 
         # Disable parent interaction while popup is open
         self.transient(parent)
