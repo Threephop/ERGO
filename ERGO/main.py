@@ -7,7 +7,6 @@ from setting_frame import SettingFrame
 from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
 import os
-import tkinter as tk 
 
 class App(tk.Tk):
     def __init__(self):
@@ -15,6 +14,13 @@ class App(tk.Tk):
         self.title("ERGO PROJECT")
         self.geometry("1024x768")  # ขนาดหน้าต่าง
         self.configure(bg="white")  # สีพื้นหลังหน้าต่างหลัก
+        window_width = 1024
+        window_height = 768
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        position_top = int(screen_height / 2 - window_height / 2)
+        position_right = int(screen_width / 2 - window_width / 2)
+        self.geometry(f"{window_width}x{window_height}+{position_right}+{position_top}")
         
         self.show_popup()
 
@@ -32,7 +38,13 @@ class App(tk.Tk):
         self.username_frame = tk.Frame(self.sidebar, bg="#221551", height=200)
         self.username_frame.place(x=0, y=0, width=200)  # ใช้ place แทน pack
 
-        
+        # เพิ่มรูปโปรไฟล์
+        profile_icon_path = os.path.join(self.icon_dir, "person_icon.png")
+        profile_icon = tk.PhotoImage(file=profile_icon_path)
+        profile_icon_label = tk.Label(self.username_frame, image=profile_icon, bg="#221551")
+        profile_icon_label.image = profile_icon  # เก็บอ้างอิงเพื่อป้องกัน garbage collection
+        profile_icon_label.place(x=60, y=10)  # ปรับตำแหน่งรูปโปรไฟล์
+
         # เพิ่มข้อความ Username
         tk.Label(self.username_frame, text="Username", font=("Arial", 14), fg="white", bg="#221551").place(x=55, y=150)  # ปรับตำแหน่งข้อความ
 
@@ -216,17 +228,28 @@ class App(tk.Tk):
         self.profile_button.image = profile_icon
         self.profile_button.place(x=55, y=10)  # ปรับตำแหน่งปุ่ม
 
-
         # Default frame
         self.show_frame(HomeFrame)
 
     def show_frame(self, frame_class):
+        # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
+        if self.current_frame and isinstance(self.current_frame, frame_class):
+            return  # ไม่ต้องทำอะไร ถ้าเฟรมเดียวกัน
+        
+        # ซ่อนเฟรมปัจจุบัน
         if self.current_frame:
-            self.current_frame.pack_forget()  # ลบเฟรมเก่า
+            self.current_frame.place_forget()  # ซ่อนเฟรมเก่า
+        
+        # สร้างเฟรมใหม่หากยังไม่มี
         if frame_class not in self.frames:
             self.frames[frame_class] = frame_class(self)
+        
+        # ตั้งค่าเฟรมใหม่เป็นเฟรมปัจจุบัน
         self.current_frame = self.frames[frame_class]
-        self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)  # วางเนื้อหาที่เหลือในหน้าต่าง
+        
+        # วางเฟรมใหม่
+        self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
+
     
     def show_popup(self):
         PopupFrame(self) 
