@@ -1,9 +1,11 @@
-class DashboardFrame(tk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent)
+import tkinter as tk
+from tkinter import ttk
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-        # Controller for frame switching
-        self.controller = controller
+class DashboardFrame(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
 
         # Create chart
         self.create_chart()
