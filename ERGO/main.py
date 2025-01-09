@@ -5,7 +5,9 @@ from dashboard_frame import DashboardFrame
 from leaderboard_frame import LeaderboardFrame
 from setting_frame import SettingFrame
 from PDPA_frame import PopupFrame
+from profile_frame import ProfileFrame
 import os
+import tkinter as tk 
 
 class App(tk.Tk):
     def __init__(self):
@@ -27,18 +29,12 @@ class App(tk.Tk):
         self.current_frame = None
 
         # Username Display with Profile Picture
-        self.username_frame = tk.Frame(self.sidebar, bg="#221551", height=140)
+        self.username_frame = tk.Frame(self.sidebar, bg="#221551", height=200)
         self.username_frame.place(x=0, y=0, width=200)  # ใช้ place แทน pack
 
-        # เพิ่มรูปโปรไฟล์
-        profile_icon_path = os.path.join(self.icon_dir, "person_icon.png")
-        profile_icon = tk.PhotoImage(file=profile_icon_path)
-        profile_icon_label = tk.Label(self.username_frame, image=profile_icon, bg="#221551")
-        profile_icon_label.image = profile_icon  # เก็บอ้างอิงเพื่อป้องกัน garbage collection
-        profile_icon_label.place(x=60, y=10)  # ปรับตำแหน่งรูปโปรไฟล์
-
+        
         # เพิ่มข้อความ Username
-        tk.Label(self.username_frame, text="Username", font=("Arial", 14), fg="white", bg="#221551").place(x=60, y=100)  # ปรับตำแหน่งข้อความ
+        tk.Label(self.username_frame, text="Username", font=("Arial", 14), fg="white", bg="#221551").place(x=55, y=150)  # ปรับตำแหน่งข้อความ
 
         # สร้างปุ่ม Home
         home_icon_path = os.path.join(self.icon_dir, "home_icon.png")
@@ -195,6 +191,30 @@ class App(tk.Tk):
         )
         self.speaker_button.image = speaker_icon
         self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม Skip2
+
+        from PIL import Image, ImageTk  # เพิ่มการนำเข้า Pillow
+
+        # โหลดและปรับขนาดรูปภาพ
+        profile_icon_path = os.path.join(self.icon_dir, "profile.png")
+        profile_image = Image.open(profile_icon_path)
+        profile_image = profile_image.resize((100, 100), Image.Resampling.LANCZOS)  # ใช้ LANCZOS แทน ANTIALIAS
+        profile_icon = ImageTk.PhotoImage(profile_image)
+
+        # สร้างปุ่ม profile
+        self.profile_button = tk.Button(
+            self.sidebar,
+            image=profile_icon,
+            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
+            bg="#221551",
+            fg="white",
+            font=("Arial", 12),
+            relief="flat",
+            activebackground="#6F6969",
+            activeforeground="white",
+            command=lambda: self.show_frame(ProfileFrame),
+        )
+        self.profile_button.image = profile_icon
+        self.profile_button.place(x=55, y=10)  # ปรับตำแหน่งปุ่ม
 
 
         # Default frame
