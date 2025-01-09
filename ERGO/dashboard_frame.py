@@ -49,7 +49,3 @@ class DashboardFrame(tk.Frame):
             ttk.Label(activity_frame, text=label, font=("Arial", 12, "bold")).grid(row=0, column=i, padx=5, pady=5)
             ttk.Label(activity_frame, text=detail, font=("Arial", 12)).grid(row=1, column=i, padx=5, pady=5)
 
-    def on_closing(self):
-        """Function to handle closing of the frame"""
-        plt.close()  # ปิด figure ของ matplotlib
-        self.master.quit()  # ปิดหน้าต่าง Tkinter หลัก
