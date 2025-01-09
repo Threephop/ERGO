@@ -1,4 +1,6 @@
 import tkinter as tk
+
+from matplotlib import pyplot as plt
 from home_frame import HomeFrame
 from community_frame import CommunityFrame
 from dashboard_frame import DashboardFrame
@@ -21,7 +23,7 @@ class App(tk.Tk):
         position_top = int(screen_height / 2 - window_height / 2)
         position_right = int(screen_width / 2 - window_width / 2)
         self.geometry(f"{window_width}x{window_height}+{position_right}+{position_top}")
-        
+
         self.show_popup()
 
         # กำหนด path สำหรับไอคอนทั้งหมด
@@ -162,6 +164,7 @@ class App(tk.Tk):
             activebackground="#6F6969",
             activeforeground="white",
 
+
         )
         self.skipx1_button.image = skipx1_icon
         self.skipx1_button.place(x=45, y=700)  # ปรับตำแหน่งปุ่ม Skip1
@@ -181,6 +184,7 @@ class App(tk.Tk):
             activebackground="#6F6969",
             activeforeground="white",
 
+
         )
         self.skipx2_button.image = skipx2_icon
         self.skipx2_button.place(x=105, y=695)  # ปรับตำแหน่งปุ่ม Skip2
@@ -199,6 +203,7 @@ class App(tk.Tk):
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
+
 
         )
         self.speaker_button.image = speaker_icon
@@ -234,26 +239,21 @@ class App(tk.Tk):
     def show_frame(self, frame_class):
         # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
         if self.current_frame and isinstance(self.current_frame, frame_class):
-            return  # ไม่ต้องทำอะไร ถ้าเฟรมเดียวกัน
-        
-        # ซ่อนเฟรมปัจจุบัน
-        if self.current_frame:
-            self.current_frame.place_forget()  # ซ่อนเฟรมเก่า
-        
-        # สร้างเฟรมใหม่หากยังไม่มี
-        if frame_class not in self.frames:
-            self.frames[frame_class] = frame_class(self)
-        
-        # ตั้งค่าเฟรมใหม่เป็นเฟรมปัจจุบัน
-        self.current_frame = self.frames[frame_class]
-        
-        # วางเฟรมใหม่
-        self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
+            return  # ไม่ต้องทำอะไรเลย
 
-    
-    def show_popup(self):
-        PopupFrame(self) 
+        # ถ้าเคยสร้างเฟรมแล้ว ให้ทำลายเฟรมเก่า
+        if self.current_frame:
+            self.current_frame.destroy()
+
+        # สร้างเฟรมใหม่
+        self.current_frame = frame_class(self)
+        self.current_frame.pack(fill="both", expand=True)
+
+    def on_closing(self):
+        # ทำงานเมื่อปิดหน้าต่าง
+        self.quit()  # ใช้ quit() แทน destroy()
 
 if __name__ == "__main__":
     app = App()
+    app.protocol("WM_DELETE_WINDOW", app.on_closing)
     app.mainloop()

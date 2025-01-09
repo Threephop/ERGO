@@ -13,9 +13,6 @@ class DashboardFrame(tk.Frame):
         # Create activity details section
         self.create_activity_details()
 
-        # จับเหตุการณ์ปิดหน้าต่าง
-        self.protocol("WM_DELETE_WINDOW", self.on_closing)
-
     def create_chart(self):
         """Function to create bar chart"""
         # Sample data
@@ -53,6 +50,6 @@ class DashboardFrame(tk.Frame):
             ttk.Label(activity_frame, text=detail, font=("Arial", 12)).grid(row=1, column=i, padx=5, pady=5)
 
     def on_closing(self):
-        """Function to handle the window close event"""
+        """Function to handle closing of the frame"""
         plt.close()  # ปิด figure ของ matplotlib
-        self.quit()   # ปิดหน้าต่าง Tkinter
+        self.master.quit()  # ปิดหน้าต่าง Tkinter หลัก
