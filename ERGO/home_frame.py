@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import PhotoImage
-import subprocess  # สำหรับเปิดวิดีโอในโปรแกรมภายนอก
+import webbrowser  # สำหรับเปิดวิดีโอในเว็บเบราว์เซอร์
 
 class HomeFrame(tk.Frame):
     def __init__(self, parent):
@@ -9,11 +9,11 @@ class HomeFrame(tk.Frame):
         # Title
         tk.Label(self, text="Title", bg="#ffffff", fg="#000000", font=("Arial", 24)).pack(pady=10)
 
-        # Video Section
+        # Video Section with YouTube link
         video_data = [
             {"title": "Sample Video", 
              "image": "path_to_thumbnail.png", 
-             "path": r"C:\Users\User\Downloads\SampleVideo_1280x720_1mb.mp4",
+             "path": "https://www.youtube.com/watch?v=P5sHZRicEXg",  # YouTube link
              "description": "ตัวอย่างวิดีโอ"}
         ]
 
@@ -31,14 +31,14 @@ class HomeFrame(tk.Frame):
             video_btn.grid(row=i // 2, column=i % 2, padx=10, pady=10)
 
     def play_video(self, video):
-        # ใช้ subprocess เปิดวิดีโอในโปรแกรมเล่นวิดีโอ
-        video_path = video['path']
-        print(f"Playing video: {video['title']} at {video_path}")
-        subprocess.run(["vlc", video_path])  # แก้ "vlc" เป็นโปรแกรมเล่นวิดีโอในระบบของคุณ เช่น "C:/Program Files/VLC/vlc.exe"
+        # เปิดวิดีโอจาก YouTube โดยใช้ webbrowser
+        video_url = video['path']
+        print(f"Opening video: {video['title']} at {video_url}")
+        webbrowser.open(video_url)  # ใช้ webbrowser เปิด YouTube link
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("ERGO PROJECT")
-    root.geometry("800x600")
-    HomeFrame(root).pack(expand=True, fill="both")
-    root.mainloop()
+# if __name__ == "__main__":
+#     root = tk.Tk()
+#     root.title("ERGO PROJECT")
+#     root.geometry("800x600")
+#     HomeFrame(root).pack(expand=True, fill="both")
+#     root.mainloop()
