@@ -51,23 +51,36 @@ def logout():
 # สร้างหน้าต่างหลัก
 root = tk.Tk()
 root.title("ERGO PROJECT")
-root.geometry("600x400")
+
+# ขนาดหน้าต่าง
+window_width = 1024
+window_height = 768
+
+# คำนวณตำแหน่งเพื่อให้หน้าต่างอยู่ตรงกลางจอ
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+x_cordinate = int((screen_width / 2) - (window_width / 2))
+y_cordinate = int((screen_height / 2) - (window_height / 2))
+
+# ตั้งค่าตำแหน่งหน้าต่าง
+root.geometry(f"{window_width}x{window_height}+{x_cordinate}+{y_cordinate}")
 root.configure(bg="black")
 
 # ส่วนซ้าย (สีพื้นหลังน้ำเงิน)
 left_frame = tk.Frame(root, bg="#1B1464", width=300, height=400)
 left_frame.pack(side="left", fill="y")
 
-# ใส่โลโก้ OR (ปรับให้แสดงรูปภาพ)
+# ใส่ GODJI (ปรับให้แสดงรูปภาพ)
 try:
     or_logo_path = os.path.join(icon_dir, "GODJI Action_200113_0008.png")  # Path ของภาพ
     or_logo_image = Image.open(or_logo_path)  # เปิดไฟล์ภาพ
     or_logo_image = or_logo_image.resize((150, 150), Image.Resampling.LANCZOS)  # ปรับขนาด
     or_logo_photo = ImageTk.PhotoImage(or_logo_image)  # แปลงเป็น PhotoImage
     or_logo_label = tk.Label(left_frame, image=or_logo_photo, bg="#1B1464")
-    or_logo_label.place(x=10, y=240)
+    or_logo_label.place(x=10, y=600)
 except FileNotFoundError:
-    tk.Label(left_frame, text="OR LOGO", bg="#1B1464", fg="white", font=("Arial", 12)).place(x=10, y=10)
+    tk.Label(left_frame, text="OR LOGO", bg="#1B1464", fg="white", font=("PTT 45 Pride", 12)).place(x=10, y=10)
 
 # ส่วนขวา (สีขาว)
 right_frame = tk.Frame(root, bg="white", width=300, height=400)
@@ -77,34 +90,36 @@ right_frame.pack(side="right", fill="both", expand=True)
 try:
     water_logo_path = os.path.join(icon_dir, "about-logo.png")  # Path ของภาพ
     water_logo_image = Image.open(water_logo_path)  # เปิดไฟล์ภาพ
-    water_logo_image = water_logo_image.resize((80, 80), Image.Resampling.LANCZOS)  # ปรับขนาด
+    sizeX_logo = int(200*(1/3))
+    sizeY_logo = int(200*(1/2))
+    water_logo_image = water_logo_image.resize((sizeX_logo, sizeY_logo), Image.Resampling.LANCZOS)  # ปรับขนาด
     water_logo_photo = ImageTk.PhotoImage(water_logo_image)  # แปลงเป็น PhotoImage
     water_logo_label = tk.Label(right_frame, image=water_logo_photo, bg="white")
-    water_logo_label.pack(pady=20)
+    water_logo_label.pack(pady=(20, 150))
 except FileNotFoundError:
-    tk.Label(right_frame, text="WATER LOGO", bg="white", fg="black", font=("Arial", 12)).pack(pady=20)
+    tk.Label(right_frame, text="WATER LOGO", bg="white", fg="black", font=("PTT 45 Pride", 12)).pack(pady=20)
 
 # ข้อความ "Get Started"
-get_started_label = tk.Label(right_frame, text="Get started", bg="white", fg="black", font=("Arial", 16, "bold"))
+get_started_label = tk.Label(right_frame, text="Get started", bg="white", fg="black", font=("PTT 45 Pride", 24, "bold"))
 get_started_label.pack(pady=10)
 
 # ปุ่ม Log In
-login_button = tk.Button(right_frame, text="Log in", bg="#007BFF", fg="white", font=("Arial", 12),
+login_button = tk.Button(right_frame, text="Log in", bg="#007BFF", fg="white", font=("PTT 45 Pride", 12),
                          width=12, command=login)
 login_button.pack(pady=5)
 
 # ปุ่ม Sign Up
-signup_button = tk.Button(right_frame, text="Sign up", bg="#007BFF", fg="white", font=("Arial", 12),
+signup_button = tk.Button(right_frame, text="Sign up", bg="#007BFF", fg="white", font=("PTT 45 Pride", 12),
                           width=12, command=signup)
 signup_button.pack(pady=5)
 
 # ปุ่ม Guest
-guest_button = tk.Button(right_frame, text="Guest", bg="white", fg="black", font=("Arial", 12),
+guest_button = tk.Button(right_frame, text="Guest", bg="white", fg="black", font=("PTT 45 Pride", 12),
                          width=12, command=guest, relief="flat")
 guest_button.pack(pady=5)
 
 # ปุ่ม Log out
-logout_button = tk.Button(right_frame, text="Log out", bg="#FF0000", fg="white", font=("Arial", 12),
+logout_button = tk.Button(right_frame, text="Log out", bg="#FF0000", fg="white", font=("PTT 45 Pride", 12),
                           width=12, command=logout)
 logout_button.pack(pady=20)
 
