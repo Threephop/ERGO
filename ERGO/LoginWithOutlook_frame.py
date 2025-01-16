@@ -60,12 +60,12 @@ left_frame.pack(side="left", fill="y")
 
 # ใส่โลโก้ OR (ปรับให้แสดงรูปภาพ)
 try:
-    or_logo_path = os.path.join(icon_dir, "PTT-Logo.png")  # Path ของภาพ
+    or_logo_path = os.path.join(icon_dir, "GODJI Action_200113_0008.png")  # Path ของภาพ
     or_logo_image = Image.open(or_logo_path)  # เปิดไฟล์ภาพ
-    or_logo_image = or_logo_image.resize((100, 50), Image.Resampling.LANCZOS)  # ปรับขนาด
+    or_logo_image = or_logo_image.resize((150, 150), Image.Resampling.LANCZOS)  # ปรับขนาด
     or_logo_photo = ImageTk.PhotoImage(or_logo_image)  # แปลงเป็น PhotoImage
     or_logo_label = tk.Label(left_frame, image=or_logo_photo, bg="#1B1464")
-    or_logo_label.place(x=10, y=10)
+    or_logo_label.place(x=10, y=240)
 except FileNotFoundError:
     tk.Label(left_frame, text="OR LOGO", bg="#1B1464", fg="white", font=("Arial", 12)).place(x=10, y=10)
 
