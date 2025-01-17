@@ -19,7 +19,7 @@ def login():
         # แก้ไขการเรียก acquire_token_interactive
         auth_result = app.acquire_token_interactive(scopes=SCOPES)  # ลบ redirect_uri
         if "access_token" in auth_result:
-            messagebox.showinfo("Login Success", f"Welcome! Token: {auth_result['access_token']}")
+            messagebox.showinfo("Login Success", f"Welcome! Token: microsoft")
         else:
             messagebox.showerror("Login Failed", "Unable to authenticate.")
     except Exception as e:
@@ -43,7 +43,7 @@ def logout():
         messagebox.showinfo("Logout", "You have been logged out. Restarting login flow.")
 
         # เรียกฟังก์ชัน login เพื่อเปิดหน้าต่างการเข้าสู่ระบบใหม่
-        login()
+        # login()
 
     except Exception as e:
         messagebox.showerror("Error", f"An error occurred during logout: {e}")
