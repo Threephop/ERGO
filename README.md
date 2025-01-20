@@ -1,10 +1,12 @@
 pip install pillow
 pip install matplotlib
-pip install ffpyplayer
-pip install fastapi
-pip install uvicorn
+pip install opencv-python
+pip install opencv-python-headless --upgrade
 
-
----run Uvicorn---
-python -m uvicorn api:app --reload
+---API---
+pip install adal
 pip install azure-identity pyodbc
+pip install uvicorn
+pip install fastapi
+python -m uvicorn api:app --reload
+
