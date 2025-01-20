@@ -9,6 +9,7 @@ from setting_frame import SettingFrame
 from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
 import os
+import requests
 
 class App(tk.Tk):
     def __init__(self):
@@ -23,6 +24,11 @@ class App(tk.Tk):
         position_top = int(screen_height / 2 - window_height / 2)
         position_right = int(screen_width / 2 - window_width / 2)
         self.geometry(f"{window_width}x{window_height}+{position_right}+{position_top}")
+
+        response = requests.get("http://127.0.0.1:8000/users")
+        if response.status_code == 200:
+            data = response.json()
+            self.username = data['users'][0]
         
         self.show_popup()
 
@@ -48,7 +54,8 @@ class App(tk.Tk):
         profile_icon_label.place(x=60, y=10)  # ปรับตำแหน่งรูปโปรไฟล์
 
         # เพิ่มข้อความ Username
-        tk.Label(self.username_frame, text="Username", font=("Arial", 14), fg="white", bg="#221551").place(x=55, y=150)  # ปรับตำแหน่งข้อความ
+        tk.Label(self.username_frame, text=self.username, font=("Arial", 14), fg="white", bg="#221551").place(x=55, y=150)  # ปรับตำแหน่งข้อความ
+
 
         # สร้างปุ่ม Home
         home_icon_path = os.path.join(self.icon_dir, "home_icon.png")

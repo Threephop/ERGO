@@ -8,17 +8,17 @@ app = FastAPI()
 def get_users():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM Users_Tables")
+    cursor.execute("SELECT username FROM dbo.Users_Table")
     users = cursor.fetchall()
     conn.close()
-    return {"users": [dict(zip([column[0] for column in cursor.description], row)) for row in users]}
+    return {"users": [row[0] for row in users]}
 
 # ฟังก์ชันที่เพิ่มผู้ใช้งาน
 @app.post("/add-user")
 def add_user(username: str, email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO users (username, email) VALUES (?, ?)", (username, email))
+    cursor.execute("INSERT INTO dbo.Users_Table (username, email) VALUES (?, ?)", (username, email))
     conn.commit()
     conn.close()
     return {"message": "User added successfully"}
@@ -35,4 +35,3 @@ def get_tables():
         return {"tables": [table[0] for table in tables]}
     except Exception as e:
         return {"error": f"An error occurred: {str(e)}"}
-
