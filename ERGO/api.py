@@ -8,7 +8,7 @@ app = FastAPI()
 def get_users():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users")
+    cursor.execute("SELECT * FROM Users_Tables")
     users = cursor.fetchall()
     conn.close()
     return {"users": [dict(zip([column[0] for column in cursor.description], row)) for row in users]}
