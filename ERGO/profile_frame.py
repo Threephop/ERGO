@@ -5,7 +5,7 @@ import os
 
 class ProfileFrame(tk.Frame):
     def __init__(self, parent):
-        super().__init__(parent, bg="#2E004F")
+        super().__init__(parent, bg="white")
 
         # กำหนดไดเรกทอรีสำหรับไอคอน
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
@@ -32,7 +32,7 @@ class ProfileFrame(tk.Frame):
         canvas.place(relx=0.4, rely=0.2, anchor="center")  # ปรับตำแหน่งกลางกรอบ
 
         # ชื่อผู้ใช้
-        name_label = tk.Label(self, text="นายธีรพ ธิวะโต", font=("Arial", 16), bg="white")
+        name_label = tk.Label(self, text="นายธีภพ ธิวะโต", font=("Arial", 16), bg="white")
         name_label.place(relx=0.4, rely=0.35, anchor="center")  # ปรับตำแหน่งใต้ภาพโปรไฟล์
 
         # จำนวนการใช้งาน

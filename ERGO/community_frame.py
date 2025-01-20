@@ -13,7 +13,7 @@ class CommunityFrame(tk.Frame):
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
 
         # พื้นที่หลักสำหรับแสดงข้อความ
-        self.canvas = tk.Canvas(self, bg="white", highlightthickness=0)
+        self.canvas = tk.Canvas(self, bg="white", highlightthickness=0, width=800, height=700)
         self.scrollbar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = tk.Frame(self.canvas, bg="white")
 
@@ -29,7 +29,7 @@ class CommunityFrame(tk.Frame):
         self.scrollbar.grid(row=0, column=1, sticky="ns")
 
         # แถบล่างสำหรับป้อนข้อความและปุ่ม
-        self.bottom_bar = tk.Frame(self, bg="white", padx=5, pady=5)
+        self.bottom_bar = tk.Frame(self, bg="white", padx=100, pady=5)
         self.bottom_bar.grid(row=1, column=0, columnspan=2, sticky="ew")
 
         # ฟังก์ชันช่วยโหลดและปรับขนาดภาพ
@@ -50,20 +50,20 @@ class CommunityFrame(tk.Frame):
         self.profile_icon = load_resized_image("profile.png", (50, 50))  # โหลดไอคอนโปรไฟล์
 
         # ปุ่มกล้องด้วยไอคอน
-        self.camera_button = tk.Button(self.bottom_bar, image=self.camera_icon, command=self.open_camera, bd=0)
+        self.camera_button = tk.Button(self.bottom_bar, image=self.camera_icon, command=self.open_camera, bd=0, bg="white")
         self.camera_button.pack(side="left", padx=5, pady=5)
 
         # ปุ่มโฟลเดอร์ด้วยไอคอน
-        self.folder_button = tk.Button(self.bottom_bar, image=self.folder_icon, command=self.open_folder, bd=0)
+        self.folder_button = tk.Button(self.bottom_bar, image=self.folder_icon, command=self.open_folder, bd=0, bg="white")
         self.folder_button.pack(side="left", padx=5, pady=5)
 
         # ช่องป้อนข้อความ
         self.entry = tk.Entry(self.bottom_bar, font=("Arial", 14), bd=1)
-        self.entry.pack(side="left", padx=(5, 10), pady=5, fill="x", expand=True)
+        self.entry.pack(side="left", padx=(100, 80), pady=5, fill="x", expand=True)
 
         # ปุ่มส่งข้อความ
-        self.send_button = tk.Button(self.bottom_bar, image=self.send_icon, command=self.send_message, bd=0)
-        self.send_button.pack(side="left", padx=5, pady=5)
+        self.send_button = tk.Button(self.bottom_bar, image=self.send_icon, command=self.send_message, bd=0, bg="white")
+        self.send_button.pack(side="left", padx=1, pady=5)
 
         # ผูกปุ่ม Enter ให้ทำการส่งข้อความ
         self.entry.bind("<Return>", lambda event: self.send_message())
