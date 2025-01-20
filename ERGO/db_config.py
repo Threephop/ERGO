@@ -11,3 +11,4 @@ def get_db_connection():
         "UID=threephop.t@live.ku.th;"
     )
     return pyodbc.connect(conn_str)
+ 
