@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, ImageTk
+import webbrowser
 import os
 import cv2
 
@@ -106,7 +107,40 @@ class CommunityFrame(tk.Frame):
         bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
 
     def open_camera(self):
-        print("กล้องถูกคลิก")
+        try:
+            # เปิดการใช้งานกล้อง
+            cap = cv2.VideoCapture(0)  # 0 หมายถึงกล้องตัวแรก (default)
+            if not cap.isOpened():
+                print("ไม่สามารถเปิดกล้องได้")
+                return
+
+            # สร้างหน้าต่างแสดงภาพสดจากกล้อง
+            cv2.namedWindow("Camera")
+
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    print("ไม่สามารถอ่านข้อมูลจากกล้องได้")
+                    break
+
+                # แสดงภาพจากกล้อง
+                cv2.imshow("Camera", frame)
+
+                # กดปุ่ม 's' เพื่อถ่ายภาพ และ 'q' เพื่อออก
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('s'):  # ถ่ายภาพเมื่อกด 's'
+                    image_path = os.path.join(self.icon_dir, "captured_image.jpg")
+                    cv2.imwrite(image_path, frame)
+                    print(f"ภาพถูกบันทึกที่ {image_path}")
+                    break
+                elif key == ord('q'):  # ออกจากหน้าต่างเมื่อกด 'q'
+                    break
+
+            cap.release()
+            cv2.destroyAllWindows()
+
+        except Exception as e:
+            print(f"Error opening camera: {e}")
 
     def open_folder(self):
         filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png"), ("Video files", "*.mp4 *.avi *.mkv")])
@@ -143,52 +177,6 @@ class CommunityFrame(tk.Frame):
 
         except Exception as e:
             print(f"Error posting image: {e}")
-
-    def post_video(self, filepath):
-        try:
-            cap = cv2.VideoCapture(filepath)
-            if not cap.isOpened():
-                print("ไม่สามารถเปิดวิดีโอได้")
-                return
-
-            ret, frame = cap.read()
-            if ret:
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                image = Image.fromarray(frame)
-                image = image.resize((150, 150))  # ปรับขนาดเฟรมให้พอดีกับแชท
-                image_tk = ImageTk.PhotoImage(image)
-
-                bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
-
-                profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
-                profile_label.pack(side="left", padx=5)
-
-                video_thumbnail_label = tk.Label(bubble_frame, image=image_tk, bg="white", cursor="hand2")
-                video_thumbnail_label.image = image_tk
-                video_thumbnail_label.pack(side="left", padx=5)
-                video_thumbnail_label.bind("<Button-1>", lambda e: self.open_video(filepath))
-
-                username_label = tk.Label(bubble_frame, text="Username", font=("Arial", 10, "italic"), fg="gray", bg="white")
-                username_label.pack(anchor="w", padx=5)
-
-                bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
-
-                self.canvas.update_idletasks()
-                self.canvas.yview_moveto(1)
-
-            cap.release()
-
-        except Exception as e:
-            print(f"Error posting video: {e}")
-
-    def open_video(self, filepath):
-        try:
-            if os.name == 'nt':  # สำหรับ Windows
-                os.startfile(filepath)
-            elif os.name == 'posix':  # สำหรับ macOS หรือ Linux
-                webbrowser.open(filepath)
-        except Exception as e:
-            print(f"Error opening video: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
