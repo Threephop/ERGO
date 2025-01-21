@@ -27,7 +27,7 @@ class ProfileFrame(tk.Frame):
             raise
 
         # แสดงภาพโปรไฟล์
-        canvas = tk.Canvas(self, width=100, height=100, bg="#2E004F", highlightthickness=0)
+        canvas = tk.Canvas(self, width=100, height=100, bg="#ffffff", highlightthickness=0)
         canvas.create_image(50, 50, image=self.profile_image)
         canvas.place(relx=0.4, rely=0.2, anchor="center")  # ปรับตำแหน่งกลางกรอบ
 
