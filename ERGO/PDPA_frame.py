@@ -57,32 +57,32 @@ class PopupFrame(tk.Toplevel):
         Checkbutton(check_frame, text="1. จุดประสงค์ของการจัดเก็บข้อมูล (Purpose of Data Collection)\n\n"
             "แอปพลิเคชันจะจัดเก็บและบันทึกวิดีโอที่ผู้ใช้ถ่ายทำผ่านแอป เพื่อให้สามารถแชร์และดูซ้ำได้ในกลุ่มแชทภายในแอป\n"
             "การจัดเก็บข้อมูลนี้มีวัตถุประสงค์เพื่อสนับสนุนประสบการณ์การใช้งาน และเพิ่มประสิทธิภาพในการสื่อสารระหว่างผู้ใช้\n", 
-            variable=self.chk1, anchor="w", justify="left", font=("PTT 45 Pride", 12)).grid(row=0, sticky="w", padx=10, pady=5)
+            variable=self.chk1, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=0, sticky="w", padx=10, pady=5)
 
         Checkbutton(check_frame, text="2. การจัดเก็บและใช้ข้อมูล (Data Storage and Usage)\n"
             "ข้อมูลที่จัดเก็บประกอบด้วย วิดีโอที่ผู้ใช้บันทึกผ่านแอป รวมถึงข้อมูลวันที่และเวลาที่บันทึก\n"
             "การเก็บข้อมูลตำแหน่ง (Location) จะทำก็ต่อเมื่อได้รับความยินยอมจากผู้ใช้เท่านั้น\n", 
-            variable=self.chk2, anchor="w", justify="left", font=("PTT 45 Pride", 12)).grid(row=1, sticky="w", padx=10, pady=5)
+            variable=self.chk2, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=1, sticky="w", padx=10, pady=5)
 
         Checkbutton(check_frame, text="3. สิทธิ์ของผู้ใช้ (User Rights)\n"
             "ผู้ใช้มีสิทธิ์ในการเข้าถึง แก้ไข หรือขอลบวิดีโอที่บันทึกไว้ในระบบของแอปได้ตลอดเวลา นอกจากนี้\n"
             "ผู้ใช้สามารถเพิกถอนความยินยอมในการเก็บข้อมูลส่วนบุคคลได้ทุกเมื่อผ่านการติดต่อ\n", 
-            variable=self.chk3, anchor="w", justify="left", font=("PTT 45 Pride", 12)).grid(row=2, sticky="w", padx=10, pady=5)
+            variable=self.chk3, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=2, sticky="w", padx=10, pady=5)
 
         Checkbutton(check_frame, text="4. วิธีการจัดเก็บและระยะเวลาการเก็บข้อมูล (Data Storage and Retention Period)\n\n"
             "วิดีโอทั้งหมดที่บันทึกผ่านแอปจะถูกจัดเก็บในเซิร์ฟเวอร์ของแอปเป็นระยะเวลา 5 วัน\n"
             "หลังจากนั้นวิดีโอจะถูกลบโดยอัตโนมัติ\n", 
-            variable=self.chk4, anchor="w", justify="left", font=("PTT 45 Pride", 12)).grid(row=3, sticky="w", padx=10, pady=5)
+            variable=self.chk4, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=3, sticky="w", padx=10, pady=5)
 
         Checkbutton(check_frame, text="5. การแชร์ข้อมูลกับบุคคลที่สาม (Data Sharing with Third Parties)\n\n"
             "แอปนี้จะไม่เผยแพร่หรือแบ่งปันวิดีโอที่บันทึกโดยผู้ใช้กับบุคคลภายนอกโดยไม่ได้รับความยินยอมล่วงหน้า\n"
             "ข้อมูลจะถูกจัดเก็บไว้ในระบบเซิร์ฟเวอร์ที่ปลอดภัยและมีการเข้ารหัสเพื่อป้องกันการเข้าถึงโดยไม่ได้รับอนุญาต\n", 
-            variable=self.chk5, anchor="w", justify="left", font=("PTT 45 Pride", 12)).grid(row=4, sticky="w", padx=10, pady=5)
+            variable=self.chk5, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=4, sticky="w", padx=10, pady=5)
 
         Checkbutton(check_frame, text="6. การป้องกันความปลอดภัยของข้อมูล (Data Security)\n\n"
             "วิดีโอและข้อมูลเมตาที่จัดเก็บไว้ในระบบเซิร์ฟเวอร์ของแอปจะได้รับการเข้ารหัสเพื่อป้องกันการเข้าถึงโดยไม่ได้รับอนุญาต\n"
             "แอปนี้ใช้เทคโนโลยีป้องกันการโจมตีทางไซเบอร์และมาตรการความปลอดภัยที่ได้มาตรฐานสากล\n",
-            variable=self.chk6, anchor="w", justify="left", font=("PTT 45 Pride", 12)).grid(row=5, sticky="w", padx=10, pady=5)
+            variable=self.chk6, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=5, sticky="w", padx=10, pady=5)
 
         Checkbutton(check_frame, text="7. วิธีการขอความยินยอม (Consent Request Mechanism)\n\n"
             "แอปนี้มีการจัดเก็บวิดีโอที่บันทึกโดยผู้ใช้ เพื่อการจัดเก็บและการแชร์ในกลุ่มแชทภายในแอปเท่านั้น\n"
@@ -90,12 +90,12 @@ class PopupFrame(tk.Toplevel):
             "คุณมีสิทธิ์ในการลบวิดีโอหรือเพิกถอนความยินยอมได้ตลอดเวลา\n"
             "อ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา [ลิงก์นโยบายความเป็นส่วนตัว]\n"
             "กด (ยอมรับ) เพื่อยอมรับเงื่อนไขการเก็บข้อมูลส่วนบุคคล\n",
-            variable=self.chk7, anchor="w", justify="left", font=("PTT 45 Pride", 12)).grid(row=6, sticky="w", padx=10, pady=5)
+            variable=self.chk7, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=6, sticky="w", padx=10, pady=5)
 
         Checkbutton(check_frame, text="8. การติดต่อสอบถาม (Contact Information)\n\n"
             "หากต้องการสอบถามเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัว หรือขอใช้สิทธิ์ตาม PDPA โปรดติดต่อ\n"
             "0-3849-3720 ทีมงานของเราพร้อมให้บริการและดูแลข้อมูลส่วนบุคคลของคุณอย่างเต็มความสามารถ\n", 
-            variable=self.chk8, anchor="w", justify="left", font=("PTT 45 Pride", 12)).grid(row=7, sticky="w", padx=10, pady=5)
+            variable=self.chk8, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=7, sticky="w", padx=10, pady=5)
 
 
         # ปรับขนาดของ Canvas ให้พอดีกับจำนวน Checkboxes
