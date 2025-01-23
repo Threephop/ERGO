@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import os
 import cv2
@@ -9,6 +9,9 @@ class CommunityFrame(tk.Frame):
         super().__init__(parent)
 
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+        if not os.path.exists(self.icon_dir):
+            os.makedirs(self.icon_dir)
+
         self.canvas = tk.Canvas(self, bg="white", highlightthickness=0, width=800, height=700)
         self.scrollbar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = tk.Frame(self.canvas, bg="white")
@@ -95,12 +98,18 @@ class CommunityFrame(tk.Frame):
 
     def open_camera(self):
         try:
+            video_path = os.path.join(self.icon_dir, "recorded_video.avi")
             cap = cv2.VideoCapture(0)
             if not cap.isOpened():
-                print("ไม่สามารถเปิดกล้องได้")
+                messagebox.showerror("Error", "ไม่สามารถเปิดกล้องได้")
                 return
 
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            out = cv2.VideoWriter(video_path, fourcc, 20.0, (640, 480))
+
             cv2.namedWindow("Camera")
+            print("กด 'r' เพื่อเริ่ม/หยุดการอัดวิดีโอ, 's' เพื่อบันทึก, 'q' เพื่อออก")
+            is_recording = False
 
             while True:
                 ret, frame = cap.read()
@@ -110,20 +119,30 @@ class CommunityFrame(tk.Frame):
 
                 cv2.imshow("Camera", frame)
 
+                if is_recording:
+                    print("กำลังบันทึกเฟรม...")
+                    out.write(frame)
+
                 key = cv2.waitKey(1) & 0xFF
-                if key == ord('s'):
-                    image_path = os.path.join(self.icon_dir, "captured_image.jpg")
-                    cv2.imwrite(image_path, frame)
-                    print(f"ภาพถูกบันทึกที่ {image_path}")
-                    break
+                if key == ord('r'):
+                    is_recording = not is_recording
+                    print("เริ่มการอัดวิดีโอ" if is_recording else "หยุดการอัดวิดีโอ")
+                elif key == ord('s'):
+                    if not is_recording:
+                        print("บันทึกวิดีโอ")
+                        messagebox.showinfo("บันทึกสำเร็จ", f"วิดีโอถูกบันทึกที่ {video_path}")
+                    else:
+                        print("กรุณาหยุดการอัดวิดีโอก่อนบันทึก")
                 elif key == ord('q'):
                     break
 
             cap.release()
+            out.release()
             cv2.destroyAllWindows()
+            cv2.waitKey(1)  # เพิ่มเวลาหน่วงเล็กน้อยเพื่อให้หน้าต่างปิดอย่างสมบูรณ์
 
         except Exception as e:
-            print(f"Error opening camera: {e}")
+            messagebox.showerror("Error", f"Error opening camera: {e}")
 
     def open_folder(self):
         filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png"), ("Video files", "*.mp4 *.avi *.mkv")])
@@ -159,7 +178,7 @@ class CommunityFrame(tk.Frame):
             self.canvas.yview_moveto(1)
 
         except Exception as e:
-            print(f"Error posting image: {e}")
+            messagebox.showerror("Error", f"Error posting image: {e}")
 
     def post_video(self, filepath):
         try:
@@ -167,63 +186,40 @@ class CommunityFrame(tk.Frame):
             profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
             profile_label.pack(side="left", padx=5)
 
-            # ดึงเฟรมแรกของวิดีโอเพื่อใช้เป็นรูปตัวอย่าง
             thumbnail = self.get_video_thumbnail(filepath)
             if thumbnail:
                 video_label = tk.Label(bubble_frame, image=thumbnail, bg="white", cursor="hand2")
-                video_label.image = thumbnail  # เก็บ reference เพื่อป้องกันการเก็บขยะ
+                video_label.image = thumbnail
                 video_label.pack(side="left", padx=5)
                 video_label.bind("<Button-1>", lambda e: self.play_video(filepath))
             else:
-                video_label = tk.Label(
-                    bubble_frame,
-                    text="Unable to load video preview",
-                    font=("Arial", 14),
-                    bg="#e0e0e0",
-                    wraplength=400,
-                    justify="left",
-                    anchor="w",
-                    padx=10,
-                    pady=5,
-                    relief="ridge",
-                )
-                video_label.pack(side="left", padx=5)
+                tk.Label(bubble_frame, text="ไม่สามารถโหลดวิดีโอได้", font=("Arial", 12), bg="white").pack(side="left", padx=5)
 
-            username_label = tk.Label(
-                bubble_frame,
-                text="Username",
-                font=("Arial", 10, "italic"),
-                fg="gray",
-                bg="white",
-            )
+            username_label = tk.Label(bubble_frame, text="Username", font=("Arial", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="w", padx=5)
 
             bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
-
             self.canvas.update_idletasks()
             self.canvas.yview_moveto(1)
 
         except Exception as e:
-            print(f"Error posting video: {e}")
+            messagebox.showerror("Error", f"Error posting video: {e}")
 
     def get_video_thumbnail(self, filepath):
         try:
             cap = cv2.VideoCapture(filepath)
             if not cap.isOpened():
-                print(f"Cannot open video file: {filepath}")
                 return None
 
-            ret, frame = cap.read()  # อ่านเฟรมแรกของวิดีโอ
+            ret, frame = cap.read()
             cap.release()
 
             if ret:
-                # แปลงเฟรมเป็นรูปภาพเพื่อแสดงใน Tkinter
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 image = Image.fromarray(frame)
-                image = image.resize((150, 150), Image.Resampling.LANCZOS)  # ปรับขนาดให้เหมาะสม
+                image = image.resize((150, 150), Image.Resampling.LANCZOS)
                 return ImageTk.PhotoImage(image)
             else:
-                print("Cannot read the first frame of the video.")
                 return None
         except Exception as e:
             print(f"Error generating video thumbnail: {e}")
@@ -231,10 +227,9 @@ class CommunityFrame(tk.Frame):
 
     def play_video(self, filepath):
         try:
-            os.startfile(filepath)  # ใช้ Media Player เริ่มต้นของ Windows
-            print(f"Playing video: {filepath}")
+            os.startfile(filepath)
         except Exception as e:
-            print(f"Error playing video: {e}")
+            messagebox.showerror("Error", f"Error playing video: {e}")
 
 
 if __name__ == "__main__":
