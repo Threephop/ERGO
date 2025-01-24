@@ -4,6 +4,7 @@ from PIL import Image, ImageTk
 from msal import PublicClientApplication
 import webbrowser
 import os
+import requests
 
 # Microsoft App Configuration
 CLIENT_ID = "e05e1663-bc57-4c87-ab60-d41463b12dcb"
@@ -12,14 +13,43 @@ REDIRECT_URI = "http://localhost:3000"
 SCOPES = ["User.Read"]
 icon_dir = os.path.join(os.path.dirname(__file__), "icon")
 
+# API endpoint for adding user data to the database
+API_ENDPOINT = "http://localhost:8000/add-user"
+
+# Function to send username and email to API
+def send_user_data_to_api(username, email):
+    try:
+        response = requests.post(API_ENDPOINT, data={"username": username, "email": email})
+        if response.status_code == 200:
+            messagebox.showinfo("Success", "User data saved to database.")
+        else:
+            messagebox.showerror("Error", f"Failed to save user data: {response.text}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to connect to API: {e}")
+
 # ฟังก์ชัน Log in
 def login():
     app = PublicClientApplication(CLIENT_ID, authority=AUTHORITY)
     try:
-        # แก้ไขการเรียก acquire_token_interactive
-        auth_result = app.acquire_token_interactive(scopes=SCOPES)  # ลบ redirect_uri
+        auth_result = app.acquire_token_interactive(scopes=SCOPES)
         if "access_token" in auth_result:
-            messagebox.showinfo("Login Success", f"Welcome! Token: microsoft")
+            access_token = auth_result["access_token"]
+            headers = {"Authorization": f"Bearer {access_token}"}
+            graph_endpoint = "https://graph.microsoft.com/v1.0/me"
+
+            response = requests.get(graph_endpoint, headers=headers)
+            if response.status_code == 200:
+                user_data = response.json()
+                email = user_data.get("mail") or user_data.get("userPrincipalName")
+                username = user_data.get("displayName")
+                
+                if email and username:
+                    send_user_data_to_api(username, email)
+                    messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
+                else:
+                    messagebox.showerror("Error", "User data is incomplete.")
+            else:
+                messagebox.showerror("Error", "Failed to retrieve user info.")
         else:
             messagebox.showerror("Login Failed", "Unable to authenticate.")
     except Exception as e:
