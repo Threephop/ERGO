@@ -114,7 +114,7 @@ class PopupFrame(tk.Toplevel):
         def open_link(event):
             webbrowser.open("https://pttpdpa.pttplc.com/")
 
-        link_label = tk.Label(self, text="อ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา", fg="blue", cursor="hand2", font=("PTT 45 Pride", 12))
+        link_label = tk.Label(self, text="อ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา", fg="blue", cursor="hand2", font=("PTT 45 Pride", 12), bg="white")
         link_label.pack()
         link_label.bind("<Button-1>", open_link)
 
