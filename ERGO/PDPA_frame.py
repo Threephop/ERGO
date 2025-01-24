@@ -59,12 +59,12 @@ class PopupFrame(tk.Toplevel):
             "การจัดเก็บข้อมูลนี้มีวัตถุประสงค์เพื่อสนับสนุนประสบการณ์การใช้งาน และเพิ่มประสิทธิภาพในการสื่อสารระหว่างผู้ใช้\n", 
             variable=self.chk1, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=0, sticky="w", padx=10, pady=5)
 
-        Checkbutton(check_frame, text="2. การจัดเก็บและใช้ข้อมูล (Data Storage and Usage)\n"
+        Checkbutton(check_frame, text="2. การจัดเก็บและใช้ข้อมูล (Data Storage and Usage)\n\n"
             "ข้อมูลที่จัดเก็บประกอบด้วย วิดีโอที่ผู้ใช้บันทึกผ่านแอป รวมถึงข้อมูลวันที่และเวลาที่บันทึก\n"
             "การเก็บข้อมูลตำแหน่ง (Location) จะทำก็ต่อเมื่อได้รับความยินยอมจากผู้ใช้เท่านั้น\n", 
             variable=self.chk2, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=1, sticky="w", padx=10, pady=5)
 
-        Checkbutton(check_frame, text="3. สิทธิ์ของผู้ใช้ (User Rights)\n"
+        Checkbutton(check_frame, text="3. สิทธิ์ของผู้ใช้ (User Rights)\n\n"
             "ผู้ใช้มีสิทธิ์ในการเข้าถึง แก้ไข หรือขอลบวิดีโอที่บันทึกไว้ในระบบของแอปได้ตลอดเวลา นอกจากนี้\n"
             "ผู้ใช้สามารถเพิกถอนความยินยอมในการเก็บข้อมูลส่วนบุคคลได้ทุกเมื่อผ่านการติดต่อ\n", 
             variable=self.chk3, anchor="w", justify="left", font=("PTT 45 Pride", 12), bg="white").grid(row=2, sticky="w", padx=10, pady=5)
@@ -114,7 +114,7 @@ class PopupFrame(tk.Toplevel):
         def open_link(event):
             webbrowser.open("https://pttpdpa.pttplc.com/")
 
-        link_label = tk.Label(self, text="อ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา", fg="blue", cursor="hand2", font=("PTT 45 Pride", 12))
+        link_label = tk.Label(self, text="อ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา", fg="blue", cursor="hand2", font=("PTT 45 Pride", 12), bg="white")
         link_label.pack()
         link_label.bind("<Button-1>", open_link)
 
