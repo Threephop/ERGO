@@ -15,13 +15,29 @@ def get_users():
 
 # ฟังก์ชันที่เพิ่มผู้ใช้งาน
 @app.post("/add-user")
-def add_user(username: str, email: str):
+def add_user(username: str, email: str, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO dbo.Users_Table (username, email) VALUES (?, ?)", (username, email))
+
+    # ตรวจสอบว่าผู้ใช้มีอยู่แล้วในฐานข้อมูลหรือไม่
+    cursor.execute("SELECT COUNT(*) FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    existing_user = cursor.fetchone()[0]
+
+    if existing_user > 0:
+        # ถ้าผู้ใช้งานมีอยู่แล้ว ให้ทำการอัปเดตชื่อและเวลาล่าสุดแทน
+        cursor.execute("UPDATE dbo.Users_Table SET username = ?, create_at = ? WHERE outlook_mail = ?",
+                       (username, create_at, email))
+        message = "User data updated successfully"
+    else:
+        # ถ้าผู้ใช้งานยังไม่มี ให้ทำการเพิ่มข้อมูลใหม่
+        cursor.execute("INSERT INTO dbo.Users_Table (username, outlook_mail, create_at) VALUES (?, ?, ?)",
+                       (username, email, create_at))
+        message = "User added successfully"
+
     conn.commit()
     conn.close()
-    return {"message": "User added successfully"}
+    return {"message": message}
+
 
 # ฟังก์ชันที่ดึงรายชื่อตารางทั้งหมดในฐานข้อมูล
 @app.get("/tables")

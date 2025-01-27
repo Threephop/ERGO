@@ -5,6 +5,7 @@ from msal import PublicClientApplication
 import webbrowser
 import os
 import requests
+import datetime
 
 # Microsoft App Configuration
 CLIENT_ID = "e05e1663-bc57-4c87-ab60-d41463b12dcb"
@@ -17,15 +18,16 @@ icon_dir = os.path.join(os.path.dirname(__file__), "icon")
 API_ENDPOINT = "http://localhost:8000/add-user"
 
 # Function to send username and email to API
-def send_user_data_to_api(username, email):
+def send_user_data(username, email, created_at):
     try:
-        response = requests.post(API_ENDPOINT, data={"username": username, "email": email})
+        payload = {"username": username, "email": email, "create_at": created_at}
+        response = requests.post(API_ENDPOINT, params=payload)
         if response.status_code == 200:
-            messagebox.showinfo("Success", "User data saved to database.")
+            messagebox.showinfo("Success", "User data sent successfully.")
         else:
-            messagebox.showerror("Error", f"Failed to save user data: {response.text}")
+            messagebox.showerror("Error", f"Failed to send data: {response.text}")
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to connect to API: {e}")
+        messagebox.showerror("Error", f"Error communicating with API: {e}")
 
 # ฟังก์ชัน Log in
 def login():
@@ -42,9 +44,10 @@ def login():
                 user_data = response.json()
                 email = user_data.get("mail") or user_data.get("userPrincipalName")
                 username = user_data.get("displayName")
-                
+
                 if email and username:
-                    send_user_data_to_api(username, email)
+                    created_at = datetime.datetime.utcnow().isoformat()
+                    send_user_data(username, email, created_at)
                     messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
                 else:
                     messagebox.showerror("Error", "User data is incomplete.")
