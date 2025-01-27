@@ -3,7 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 from popup_video import show_popup  # ฟังก์ชันจาก popup_video.py
-
+import pygame  # ใช้สำหรับเล่นเสียง
 
 class SettingFrame(tk.Frame):
     def __init__(self, parent):
@@ -57,7 +57,7 @@ class SettingFrame(tk.Frame):
         tk.Label(time_frame, text="Set Time 2", font=("Arial", 16), bg="white").place(x=0, y=50, width=100, height=30)
 
         self.hour_var2 = tk.StringVar(value="15")
-        self.minute_var2 = tk.StringVar(value="30")
+        self.minute_var2 = tk.StringVar(value="00")
 
         ttk.Combobox(time_frame, textvariable=self.hour_var2, width=5, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=110, y=50, width=50, height=30)
         ttk.Combobox(time_frame, textvariable=self.minute_var2, width=5, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=50, width=50, height=30)
@@ -76,11 +76,21 @@ class SettingFrame(tk.Frame):
             while True:
                 current_time = time.strftime("%H:%M")
                 if current_time == selected_time:
+                    # เล่นเสียงแจ้งเตือน
+                    self.play_notification_sound()
                     show_popup(current_volume)
                     break
                 time.sleep(60)
 
         threading.Thread(target=check_time, daemon=True).start()
+
+    def play_notification_sound(self):
+        """เล่นเสียงแจ้งเตือน"""
+        pygame.init()
+        pygame.mixer.init()
+        pygame.mixer.music.load("D:/project/GitHub/ERGO/ERGO/sounds/notification_sound.mp3")
+        pygame.mixer.music.set_volume(self.volume.get() / 100)  # ตั้งค่า Volume ตามที่ผู้ใช้ตั้ง
+        pygame.mixer.music.play()
 
 
 if __name__ == "__main__":
