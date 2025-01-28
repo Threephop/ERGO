@@ -251,7 +251,6 @@ class App(tk.Tk):
         
         # วางเฟรมใหม่
         self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
-
     
     def show_popup(self):
         PopupFrame(self) 
@@ -260,6 +259,7 @@ class App(tk.Tk):
         """Function to handle the window close event"""
         plt.close()  # ปิด figure ของ matplotlib
         self.quit()   # ปิดหน้าต่าง Tkinter
+        
 
 if __name__ == "__main__":
     app = App()
