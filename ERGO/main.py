@@ -179,7 +179,32 @@ class App(tk.Tk):
         self.setting_button.image = setting_icon
         self.setting_button.place(x=50, y=650)  # ปรับตำแหน่งปุ่ม Setting
 
-        # สร้างปุ่ม skipx1
+        # สร้างสถานะสำหรับปุ่ม speaker
+        self.is_muted = False
+
+        # สร้างปุ่ม speaker
+        self.speaker_icon_path = os.path.join(self.icon_dir, "Speaker.png")
+        self.mute_icon_path = os.path.join(self.icon_dir, "mute.png")
+
+        self.speaker_icon = tk.PhotoImage(file=self.speaker_icon_path)
+        self.mute_icon = tk.PhotoImage(file=self.mute_icon_path)
+
+        self.speaker_button = tk.Button(
+            self.sidebar,
+            image=self.speaker_icon,
+            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
+            bg="#221551",
+            fg="white",
+            font=("Arial", 12),
+            relief="flat",
+            activebackground="#6F6969",
+            activeforeground="white",
+            command=self.toggle_mute,  # เชื่อมต่อฟังก์ชัน toggle_mute
+        )
+        self.speaker_button.image = self.speaker_icon
+        self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม speaker
+
+        # สร้างปุ่ม Skip 1
         skipx1_icon_path = os.path.join(self.icon_dir, "skipx1.png")
         skipx1_icon = tk.PhotoImage(file=skipx1_icon_path)
 
@@ -193,12 +218,11 @@ class App(tk.Tk):
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
-
         )
         self.skipx1_button.image = skipx1_icon
-        self.skipx1_button.place(x=45, y=700)  # ปรับตำแหน่งปุ่ม Skip1
+        self.skipx1_button.place(x=45, y=700)  # ปรับตำแหน่งปุ่ม Skip 1
 
-        # สร้างปุ่ม skipx2
+        # สร้างปุ่ม Skip 2
         skipx2_icon_path = os.path.join(self.icon_dir, "skipx2.png")
         skipx2_icon = tk.PhotoImage(file=skipx2_icon_path)
 
@@ -212,7 +236,6 @@ class App(tk.Tk):
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
-
         )
         self.skipx2_button.image = skipx2_icon
         self.skipx2_button.place(x=105, y=695)  # ปรับตำแหน่งปุ่ม Skip2
@@ -263,6 +286,15 @@ class App(tk.Tk):
         # Default frame
         self.show_frame(HomeFrame)
 
+    def toggle_mute(self):
+        """สลับสถานะเสียงและอัปเดตไอคอนปุ่ม"""
+        self.is_muted = not self.is_muted  # สลับสถานะ
+
+        if self.is_muted:
+            self.speaker_button.config(image=self.mute_icon)  # เปลี่ยนเป็นไอคอน mute
+        else:
+            self.speaker_button.config(image=self.speaker_icon)  # เปลี่ยนกลับเป็นไอคอน speaker
+
     def show_frame(self, frame_class):
         # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
         if self.current_frame and isinstance(self.current_frame, frame_class):
@@ -275,6 +307,10 @@ class App(tk.Tk):
         # สร้างเฟรมใหม่หากยังไม่มี
         if frame_class not in self.frames:
             if frame_class == SettingFrame:
+                self.frames[frame_class] = frame_class(self, self.get_is_muted)
+            else:
+                self.frames[frame_class] = frame_class(self)
+            if frame_class == SettingFrame:
                 # ส่ง change_language_callback ไปให้ SettingFrame
                 self.frames[frame_class] = frame_class(self, change_language_callback=self.on_language_change)
             else:
@@ -286,6 +322,10 @@ class App(tk.Tk):
         # วางเฟรมใหม่
         self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
 
+    def get_is_muted(self):
+        """คืนค่าตัวแปร is_muted"""
+        return self.is_muted
+
     def on_language_change(self, language):
         print(f"Language changed to: {language}")
         self.selected_language = language
@@ -293,7 +333,7 @@ class App(tk.Tk):
     
     def show_popup(self):
         PopupFrame(self) 
-        
+
     def on_closing(self):
         """Function to handle the window close event"""
         plt.close()  # ปิด figure ของ matplotlib
