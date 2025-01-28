@@ -1,5 +1,4 @@
 import tkinter as tk
-
 from matplotlib import pyplot as plt
 from home_frame import HomeFrame
 from community_frame import CommunityFrame
@@ -23,7 +22,7 @@ class App(tk.Tk):
         position_top = int(screen_height / 2 - window_height / 2)
         position_right = int(screen_width / 2 - window_width / 2)
         self.geometry(f"{window_width}x{window_height}+{position_right}+{position_top}")
-        
+
         self.show_popup()
 
         # กำหนด path สำหรับไอคอนทั้งหมด
@@ -149,7 +148,32 @@ class App(tk.Tk):
         self.setting_button.image = setting_icon
         self.setting_button.place(x=50, y=650)  # ปรับตำแหน่งปุ่ม Setting
 
-        # สร้างปุ่ม skipx1
+        # สร้างสถานะสำหรับปุ่ม speaker
+        self.is_muted = False
+
+        # สร้างปุ่ม speaker
+        self.speaker_icon_path = os.path.join(self.icon_dir, "Speaker.png")
+        self.mute_icon_path = os.path.join(self.icon_dir, "mute.png")
+
+        self.speaker_icon = tk.PhotoImage(file=self.speaker_icon_path)
+        self.mute_icon = tk.PhotoImage(file=self.mute_icon_path)
+
+        self.speaker_button = tk.Button(
+            self.sidebar,
+            image=self.speaker_icon,
+            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
+            bg="#221551",
+            fg="white",
+            font=("Arial", 12),
+            relief="flat",
+            activebackground="#6F6969",
+            activeforeground="white",
+            command=self.toggle_mute,  # เชื่อมต่อฟังก์ชัน toggle_mute
+        )
+        self.speaker_button.image = self.speaker_icon
+        self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม speaker
+
+        # สร้างปุ่ม Skip 1
         skipx1_icon_path = os.path.join(self.icon_dir, "skipx1.png")
         skipx1_icon = tk.PhotoImage(file=skipx1_icon_path)
 
@@ -163,12 +187,11 @@ class App(tk.Tk):
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
-
         )
         self.skipx1_button.image = skipx1_icon
-        self.skipx1_button.place(x=45, y=700)  # ปรับตำแหน่งปุ่ม Skip1
+        self.skipx1_button.place(x=45, y=700)  # ปรับตำแหน่งปุ่ม Skip 1
 
-        # สร้างปุ่ม skipx2
+        # สร้างปุ่ม Skip 2
         skipx2_icon_path = os.path.join(self.icon_dir, "skipx2.png")
         skipx2_icon = tk.PhotoImage(file=skipx2_icon_path)
 
@@ -182,56 +205,21 @@ class App(tk.Tk):
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
-
         )
         self.skipx2_button.image = skipx2_icon
-        self.skipx2_button.place(x=105, y=695)  # ปรับตำแหน่งปุ่ม Skip2
-
-        # สร้างปุ่ม speaker
-        speaker_icon_path = os.path.join(self.icon_dir, "Speaker.png")
-        speaker_icon = tk.PhotoImage(file=speaker_icon_path)
-
-        self.speaker_button = tk.Button(
-            self.sidebar,
-            image=speaker_icon,
-            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
-            bg="#221551",
-            fg="white",
-            font=("Arial", 12),
-            relief="flat",
-            activebackground="#6F6969",
-            activeforeground="white",
-
-        )
-        self.speaker_button.image = speaker_icon
-        self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม Skip2
-
-        from PIL import Image, ImageTk  # เพิ่มการนำเข้า Pillow
-
-        # โหลดและปรับขนาดรูปภาพ
-        profile_icon_path = os.path.join(self.icon_dir, "profile.png")
-        profile_image = Image.open(profile_icon_path)
-        profile_image = profile_image.resize((100, 100), Image.Resampling.LANCZOS)  # ใช้ LANCZOS แทน ANTIALIAS
-        profile_icon = ImageTk.PhotoImage(profile_image)
-
-        # สร้างปุ่ม profile
-        self.profile_button = tk.Button(
-            self.sidebar,
-            image=profile_icon,
-            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
-            bg="#221551",
-            fg="white",
-            font=("Arial", 12),
-            relief="flat",
-            activebackground="#6F6969",
-            activeforeground="white",
-            command=lambda: self.show_frame(ProfileFrame),
-        )
-        self.profile_button.image = profile_icon
-        self.profile_button.place(x=55, y=10)  # ปรับตำแหน่งปุ่ม
+        self.skipx2_button.place(x=105, y=695)  # ปรับตำแหน่งปุ่ม Skip 2
 
         # Default frame
         self.show_frame(HomeFrame)
+
+    def toggle_mute(self):
+        """สลับสถานะเสียงและอัปเดตไอคอนปุ่ม"""
+        self.is_muted = not self.is_muted  # สลับสถานะ
+
+        if self.is_muted:
+            self.speaker_button.config(image=self.mute_icon)  # เปลี่ยนเป็นไอคอน mute
+        else:
+            self.speaker_button.config(image=self.speaker_icon)  # เปลี่ยนกลับเป็นไอคอน speaker
 
     def show_frame(self, frame_class):
         # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
@@ -244,7 +232,10 @@ class App(tk.Tk):
         
         # สร้างเฟรมใหม่หากยังไม่มี
         if frame_class not in self.frames:
-            self.frames[frame_class] = frame_class(self)
+            if frame_class == SettingFrame:
+                self.frames[frame_class] = frame_class(self, self.get_is_muted)
+            else:
+                self.frames[frame_class] = frame_class(self)
         
         # ตั้งค่าเฟรมใหม่เป็นเฟรมปัจจุบัน
         self.current_frame = self.frames[frame_class]
@@ -252,10 +243,13 @@ class App(tk.Tk):
         # วางเฟรมใหม่
         self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
 
-    
+    def get_is_muted(self):
+        """คืนค่าตัวแปร is_muted"""
+        return self.is_muted
+
     def show_popup(self):
         PopupFrame(self) 
-        
+
     def on_closing(self):
         """Function to handle the window close event"""
         plt.close()  # ปิด figure ของ matplotlib

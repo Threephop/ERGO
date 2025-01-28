@@ -1,13 +1,15 @@
 import time
 import threading
+import os
 import tkinter as tk
 from tkinter import ttk
-from popup_video import show_popup  # ฟังก์ชันจาก popup_video.py
 import pygame  # ใช้สำหรับเล่นเสียง
+from popup_video import show_popup  # นำเข้า show_popup สำหรับแสดงวิดีโอ
 
 class SettingFrame(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, is_muted_callback):
         super().__init__(parent, bg="white")
+        self.is_muted_callback = is_muted_callback  # ฟังก์ชัน callback สำหรับตรวจสอบ mute
 
         # Volume control
         volume_frame = tk.Frame(self, bg="white")
@@ -78,19 +80,30 @@ class SettingFrame(tk.Frame):
                 if current_time == selected_time:
                     # เล่นเสียงแจ้งเตือน
                     self.play_notification_sound()
+
+                    # แสดง popup สำหรับเลือกวิดีโอ
                     show_popup(current_volume)
                     break
-                time.sleep(60)
+                time.sleep(1)
 
         threading.Thread(target=check_time, daemon=True).start()
 
     def play_notification_sound(self):
         """เล่นเสียงแจ้งเตือน"""
+        if self.is_muted_callback():
+            print("Muted: เสียงแจ้งเตือนถูกปิดอยู่")
+            return  # ไม่เล่นเสียงถ้า mute อยู่
+
         pygame.init()
         pygame.mixer.init()
-        pygame.mixer.music.load("D:/project/GitHub/ERGO/ERGO/sounds/notification_sound.mp3")
-        pygame.mixer.music.set_volume(self.volume.get() / 100)  # ตั้งค่า Volume ตามที่ผู้ใช้ตั้ง
-        pygame.mixer.music.play()
+
+        sound_path = os.path.join(os.path.dirname(__file__), "sounds", "notification_sound.mp3")
+        if os.path.exists(sound_path):
+            pygame.mixer.music.load(sound_path)
+            pygame.mixer.music.set_volume(self.volume.get() / 100)
+            pygame.mixer.music.play()
+        else:
+            print(f"Error: Sound file not found - {sound_path}")
 
 
 if __name__ == "__main__":
@@ -98,7 +111,8 @@ if __name__ == "__main__":
     root.title("Settings")
     root.geometry("800x400")
 
-    setting_frame = SettingFrame(root)
+    # สร้าง SettingFrame ด้วย callback เช็ค mute
+    setting_frame = SettingFrame(root, lambda: False)
     setting_frame.place(x=0, y=0, width=800, height=400)
 
     root.mainloop()
