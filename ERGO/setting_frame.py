@@ -67,6 +67,31 @@ class SettingFrame(tk.Frame):
         }
 
         self.update_language_ui("English")
+        
+        # Time control
+        time_frame = tk.Frame(self, bg="white")
+        time_frame.place(x=50, y=200, width=350, height=100)
+
+        tk.Label(time_frame, text="Set Time 1", font=("Arial", 16), bg="white").place(x=0, y=10, width=100, height=30)
+
+        self.hour_var1 = tk.StringVar(value="10")
+        self.minute_var1 = tk.StringVar(value="30")
+
+        ttk.Combobox(time_frame, textvariable=self.hour_var1, width=5, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=110, y=10, width=50, height=30)
+        ttk.Combobox(time_frame, textvariable=self.minute_var1, width=5, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=10, width=50, height=30)
+
+        tk.Button(time_frame, text="Set", command=lambda: self.set_time(self.hour_var1, self.minute_var1)).place(x=240, y=10, width=50, height=30)
+
+        # Set Time 2
+        tk.Label(time_frame, text="Set Time 2", font=("Arial", 16), bg="white").place(x=0, y=50, width=100, height=30)
+
+        self.hour_var2 = tk.StringVar(value="15")
+        self.minute_var2 = tk.StringVar(value="00")
+
+        ttk.Combobox(time_frame, textvariable=self.hour_var2, width=5, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=110, y=50, width=50, height=30)
+        ttk.Combobox(time_frame, textvariable=self.minute_var2, width=5, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=50, width=50, height=30)
+
+        tk.Button(time_frame, text="Set", command=lambda: self.set_time(self.hour_var2, self.minute_var2)).place(x=240, y=50, width=50, height=30)
 
     def update_volume_label(self, *args):
         self.volume_value_label.config(text=f"{int(self.volume.get())}%")
