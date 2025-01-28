@@ -1,5 +1,4 @@
 import tkinter as tk
-
 from matplotlib import pyplot as plt
 from home_frame import HomeFrame
 from community_frame import CommunityFrame
@@ -9,6 +8,7 @@ from setting_frame import SettingFrame
 from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
 import os
+import requests
 
 class App(tk.Tk):
     def __init__(self):
@@ -23,11 +23,41 @@ class App(tk.Tk):
         position_top = int(screen_height / 2 - window_height / 2)
         position_right = int(screen_width / 2 - window_width / 2)
         self.geometry(f"{window_width}x{window_height}+{position_right}+{position_top}")
+
+        response = requests.get("http://127.0.0.1:8000/users")
+        if response.status_code == 200:
+            data = response.json()
+            self.username = data['users'][3]
         
         self.show_popup()
 
         # กำหนด path สำหรับไอคอนทั้งหมด
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+        
+        # ฟังก์ชันที่จะได้รับค่าภาษา
+        self.selected_language = "English"
+        
+        # สร้าง SettingFrame และส่งฟังก์ชัน callback ไป
+        self.setting_frame = SettingFrame(self, self.on_language_change)
+        self.setting_frame.place(x=0, y=0, width=800, height=400)
+
+        self.translations = {
+            "English": {
+                "home": "Home",
+                "community": "Community",
+                "dashboard": "Dashboard",
+                "leaderboard": "Leaderboard",
+            },
+            "ภาษาไทย": {
+                "home": "หน้าแรก",
+                "community": "ชุมชน",
+                "dashboard": "แผงควบคุม",
+                "leaderboard": "การจัดอันดับ",
+            },
+        }
+        
+        self.frames = {}
+        self.current_frame = None
 
         # Sidebar
         self.sidebar = tk.Frame(self, bg="#221551", width=200, height=768)  # กำหนดความสูง
@@ -48,7 +78,7 @@ class App(tk.Tk):
         profile_icon_label.place(x=60, y=10)  # ปรับตำแหน่งรูปโปรไฟล์
 
         # เพิ่มข้อความ Username
-        tk.Label(self.username_frame, text="Username", font=("Arial", 14), fg="white", bg="#221551").place(x=55, y=150)  # ปรับตำแหน่งข้อความ
+        tk.Label(self.username_frame, text=self.username, font=("PTT 45 Pride", 14), fg="white", bg="#221551").place(x=55, y=150)  # ปรับตำแหน่งข้อความ
 
         # สร้างปุ่ม Home
         home_icon_path = os.path.join(self.icon_dir, "home_icon.png")
@@ -57,11 +87,11 @@ class App(tk.Tk):
         self.home_button = tk.Button(
             self.sidebar,
             image=home_icon,
-            text="Home",
+            text=self.translations[self.selected_language]["home"],
             compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
             bg="#221551",
             fg="white",
-            font=("Arial", 12),
+            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
@@ -77,11 +107,11 @@ class App(tk.Tk):
         self.community_button = tk.Button(
             self.sidebar,
             image=community_icon,
-            text="Community",
+            text=self.translations[self.selected_language]["community"],
             compound="left",
             bg="#221551",
             fg="white",
-            font=("Arial", 12),
+            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
@@ -97,11 +127,11 @@ class App(tk.Tk):
         self.dashboard_button = tk.Button(
             self.sidebar,
             image=dashboard_icon,
-            text="Dashboard",
+            text=self.translations[self.selected_language]["dashboard"],
             compound="left",
             bg="#221551",
             fg="white",
-            font=("Arial", 12),
+            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
@@ -117,11 +147,11 @@ class App(tk.Tk):
         self.leaderboard_button = tk.Button(
             self.sidebar,
             image=leaderboard_icon,
-            text="Leaderboard",
+            text=self.translations[self.selected_language]["leaderboard"],
             compound="left",
             bg="#221551",
             fg="white",
-            font=("Arial", 12),
+            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
@@ -140,7 +170,7 @@ class App(tk.Tk):
             compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
             bg="#221551",
             fg="white",
-            font=("Arial", 12),
+            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
@@ -159,7 +189,7 @@ class App(tk.Tk):
             compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
             bg="#221551",
             fg="white",
-            font=("Arial", 12),
+            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
@@ -178,7 +208,7 @@ class App(tk.Tk):
             compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
             bg="#221551",
             fg="white",
-            font=("Arial", 12),
+            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
@@ -197,7 +227,7 @@ class App(tk.Tk):
             compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
             bg="#221551",
             fg="white",
-            font=("Arial", 12),
+            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
@@ -221,7 +251,7 @@ class App(tk.Tk):
             compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
             bg="#221551",
             fg="white",
-            font=("Arial", 12),
+            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
@@ -244,7 +274,11 @@ class App(tk.Tk):
         
         # สร้างเฟรมใหม่หากยังไม่มี
         if frame_class not in self.frames:
-            self.frames[frame_class] = frame_class(self)
+            if frame_class == SettingFrame:
+                # ส่ง change_language_callback ไปให้ SettingFrame
+                self.frames[frame_class] = frame_class(self, change_language_callback=self.on_language_change)
+            else:
+                self.frames[frame_class] = frame_class(self)
         
         # ตั้งค่าเฟรมใหม่เป็นเฟรมปัจจุบัน
         self.current_frame = self.frames[frame_class]
@@ -252,6 +286,10 @@ class App(tk.Tk):
         # วางเฟรมใหม่
         self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
 
+    def on_language_change(self, language):
+        print(f"Language changed to: {language}")
+        self.selected_language = language
+        self.update_language(language)
     
     def show_popup(self):
         PopupFrame(self) 
@@ -260,6 +298,14 @@ class App(tk.Tk):
         """Function to handle the window close event"""
         plt.close()  # ปิด figure ของ matplotlib
         self.quit()   # ปิดหน้าต่าง Tkinter
+        
+    def update_language(self, language):
+        self.selected_language = language
+        self.home_button.config(text=self.translations[self.selected_language]["home"])
+        self.community_button.config(text=self.translations[self.selected_language]["community"])
+        self.dashboard_button.config(text=self.translations[self.selected_language]["dashboard"])
+        self.leaderboard_button.config(text=self.translations[self.selected_language]["leaderboard"])
+
 
 if __name__ == "__main__":
     app = App()

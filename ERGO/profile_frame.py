@@ -27,7 +27,7 @@ class ProfileFrame(tk.Frame):
             raise
 
         # แสดงภาพโปรไฟล์
-        canvas = tk.Canvas(self, width=100, height=100, bg="#2E004F", highlightthickness=0)
+        canvas = tk.Canvas(self, width=100, height=100, bg="#ffffff", highlightthickness=0)
         canvas.create_image(50, 50, image=self.profile_image)
         canvas.place(relx=0.4, rely=0.2, anchor="center")  # ปรับตำแหน่งกลางกรอบ
 
@@ -43,7 +43,7 @@ class ProfileFrame(tk.Frame):
         count_label.place(relx=0.4, rely=0.55, anchor="center")  # ปรับตำแหน่งใต้จำนวนครั้ง
 
         # ปุ่มออกจากระบบ
-        logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#2E004F", fg="red", borderwidth=0, command=self.logout)
+        logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#ffffff", fg="red", borderwidth=0, command=self.logout)
         logout_button.place(relx=0.8, rely=0.05, anchor="ne")  # ปรับตำแหน่งมุมขวาบน
 
     def logout(self):
