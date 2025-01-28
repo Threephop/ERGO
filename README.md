@@ -1,6 +1,6 @@
 pip install pillow
 pip install matplotlib
-pip install opencv-python
+pip install pygamepip install opencv-python
 pip install opencv-python-headless --upgrade
 pip install pygame
 
