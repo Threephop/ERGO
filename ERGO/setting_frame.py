@@ -77,7 +77,6 @@ class SettingFrame(tk.Frame):
         if translations:
             self.volume_label.config(text=translations.get("volume", "Volume"))
             self.language_label.config(text=translations.get("language", "Language"))
-            
 
 # Example usage in main.py
 if __name__ == "__main__":

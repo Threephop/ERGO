@@ -1,5 +1,4 @@
 import tkinter as tk
-
 from matplotlib import pyplot as plt
 from home_frame import HomeFrame
 from community_frame import CommunityFrame
@@ -35,11 +34,11 @@ class App(tk.Tk):
         # กำหนด path สำหรับไอคอนทั้งหมด
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
         
-       # ฟังก์ชันที่จะได้รับค่าภาษา
+        # ฟังก์ชันที่จะได้รับค่าภาษา
         self.selected_language = "English"
         
         # สร้าง SettingFrame และส่งฟังก์ชัน callback ไป
-        self.setting_frame = SettingFrame(self, self.update_language)
+        self.setting_frame = SettingFrame(self, self.on_language_change)
         self.setting_frame.place(x=0, y=0, width=800, height=400)
 
         self.translations = {
@@ -80,7 +79,6 @@ class App(tk.Tk):
 
         # เพิ่มข้อความ Username
         tk.Label(self.username_frame, text=self.username, font=("PTT 45 Pride", 14), fg="white", bg="#221551").place(x=55, y=150)  # ปรับตำแหน่งข้อความ
-
 
         # สร้างปุ่ม Home
         home_icon_path = os.path.join(self.icon_dir, "home_icon.png")
@@ -276,7 +274,11 @@ class App(tk.Tk):
         
         # สร้างเฟรมใหม่หากยังไม่มี
         if frame_class not in self.frames:
-            self.frames[frame_class] = frame_class(self)
+            if frame_class == SettingFrame:
+                # ส่ง change_language_callback ไปให้ SettingFrame
+                self.frames[frame_class] = frame_class(self, change_language_callback=self.on_language_change)
+            else:
+                self.frames[frame_class] = frame_class(self)
         
         # ตั้งค่าเฟรมใหม่เป็นเฟรมปัจจุบัน
         self.current_frame = self.frames[frame_class]
@@ -284,6 +286,10 @@ class App(tk.Tk):
         # วางเฟรมใหม่
         self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
 
+    def on_language_change(self, language):
+        print(f"Language changed to: {language}")
+        self.selected_language = language
+        self.update_language(language)
     
     def show_popup(self):
         PopupFrame(self) 
