@@ -17,13 +17,11 @@ class SettingFrame(tk.Frame):
         # Volume control
         volume_frame = tk.Frame(self, bg="white")
         volume_frame.place(x=50, y=50, width=350, height=50)
-        volume_frame.place(x=50, y=50, width=350, height=50)
 
         self.volume_label = tk.Label(volume_frame, text="Volume", font=("PTT 45 Pride", 16), bg="white")
         self.volume_label.place(x=0, y=10, width=100, height=30)
 
         self.volume = tk.DoubleVar(value=50)  # Default value is 50
-        self.volume = tk.DoubleVar(value=50)
         self.volume_scale = tk.Scale(
             volume_frame,
             from_=0,
@@ -35,16 +33,11 @@ class SettingFrame(tk.Frame):
             highlightthickness=0,
             troughcolor="lightgray",
             activebackground="blue"
-            volume_frame, from_=0, to=100, orient="horizontal",
-            length=200, variable=self.volume, bg="white",
-            highlightthickness=0, troughcolor="lightgray", activebackground="blue"
         )
         self.volume_scale.place(x=100, y=0, width=200, height=50)
 
         self.volume_value_label = tk.Label(volume_frame, text=f"{int(self.volume.get())}%", font=("PTT 45 Pride", 12), bg="white")
         self.volume_value_label.place(x=300, y=10, width=50, height=30)
-        self.volume_label = tk.Label(volume_frame, text=f"{int(self.volume.get())}%", font=("Arial", 12), bg="white")
-        self.volume_label.place(x=300, y=10, width=50, height=30)
 
         self.volume.trace("w", self.update_volume_label)
 
@@ -91,7 +84,6 @@ class SettingFrame(tk.Frame):
             self.volume_label.config(text=translations.get("volume", "Volume"))
             self.language_label.config(text=translations.get("language", "Language"))
 
-# Example usage in main.py
     def set_time(self, hour_var, minute_var):
         selected_time = f"{hour_var.get()}:{minute_var.get()}"
         current_volume = int(self.volume.get())
@@ -133,13 +125,15 @@ if __name__ == "__main__":
     def on_language_change(language):
         print(f"Language changed to: {language}")
 
+    def is_muted():
+        return False  # ตัวอย่าง callback สำหรับตรวจสอบ mute
+
     root = tk.Tk()
     root.title("Settings")
     root.geometry("800x400")
 
-    setting_frame = SettingFrame(root, change_language_callback=on_language_change)
-    # สร้าง SettingFrame ด้วย callback เช็ค mute
-    setting_frame = SettingFrame(root, lambda: False)
+    # สร้าง SettingFrame ด้วย callback ทั้งสอง
+    setting_frame = SettingFrame(root, is_muted_callback=is_muted, change_language_callback=on_language_change)
     setting_frame.place(x=0, y=0, width=800, height=400)
 
     root.mainloop()

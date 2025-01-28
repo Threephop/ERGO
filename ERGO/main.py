@@ -38,7 +38,7 @@ class App(tk.Tk):
         self.selected_language = "English"
         
         # สร้าง SettingFrame และส่งฟังก์ชัน callback ไป
-        self.setting_frame = SettingFrame(self, self.on_language_change)
+        self.setting_frame = SettingFrame(self, self.get_is_muted, self.on_language_change)
         self.setting_frame.place(x=0, y=0, width=800, height=400)
 
         self.translations = {
@@ -307,12 +307,14 @@ class App(tk.Tk):
         # สร้างเฟรมใหม่หากยังไม่มี
         if frame_class not in self.frames:
             if frame_class == SettingFrame:
-                self.frames[frame_class] = frame_class(self, self.get_is_muted)
+                self.frames[frame_class] = frame_class(self, self.get_is_muted, self.on_language_change)
+
             else:
                 self.frames[frame_class] = frame_class(self)
             if frame_class == SettingFrame:
                 # ส่ง change_language_callback ไปให้ SettingFrame
-                self.frames[frame_class] = frame_class(self, change_language_callback=self.on_language_change)
+                self.frames[frame_class] = frame_class(self, self.get_is_muted, self.on_language_change)
+
             else:
                 self.frames[frame_class] = frame_class(self)
         
