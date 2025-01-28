@@ -43,7 +43,7 @@ class ProfileFrame(tk.Frame):
         count_label.place(relx=0.4, rely=0.55, anchor="center")  # ปรับตำแหน่งใต้จำนวนครั้ง
 
         # ปุ่มออกจากระบบ
-        logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#2E004F", fg="red", borderwidth=0, command=self.logout)
+        logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#ffffff", fg="red", borderwidth=0, command=self.logout)
         logout_button.place(relx=0.8, rely=0.05, anchor="ne")  # ปรับตำแหน่งมุมขวาบน
 
     def logout(self):

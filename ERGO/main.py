@@ -28,7 +28,7 @@ class App(tk.Tk):
         response = requests.get("http://127.0.0.1:8000/users")
         if response.status_code == 200:
             data = response.json()
-            self.username = data['users'][0]
+            self.username = data['users'][3]
         
         self.show_popup()
 
