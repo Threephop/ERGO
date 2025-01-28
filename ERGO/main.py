@@ -189,6 +189,8 @@ class App(tk.Tk):
         self.speaker_icon = tk.PhotoImage(file=self.speaker_icon_path)
         self.mute_icon = tk.PhotoImage(file=self.mute_icon_path)
 
+        # ลบการสร้างปุ่ม speaker ซ้ำ
+        # ปุ่มนี้ได้ถูกสร้างไว้ในตอนแรกแล้ว
         self.speaker_button = tk.Button(
             self.sidebar,
             image=self.speaker_icon,
@@ -239,24 +241,6 @@ class App(tk.Tk):
         )
         self.skipx2_button.image = skipx2_icon
         self.skipx2_button.place(x=105, y=695)  # ปรับตำแหน่งปุ่ม Skip2
-
-        # สร้างปุ่ม speaker
-        speaker_icon_path = os.path.join(self.icon_dir, "Speaker.png")
-        speaker_icon = tk.PhotoImage(file=speaker_icon_path)
-
-        self.speaker_button = tk.Button(
-            self.sidebar,
-            image=speaker_icon,
-            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
-            bg="#221551",
-            fg="white",
-            font=("PTT 45 Pride", 12),
-            relief="flat",
-            activebackground="#6F6969",
-            activeforeground="white",
-
-        )
-        self.speaker_button.image = speaker_icon
         self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม Skip2
 
         from PIL import Image, ImageTk  # เพิ่มการนำเข้า Pillow
@@ -314,7 +298,6 @@ class App(tk.Tk):
             if frame_class == SettingFrame:
                 # ส่ง change_language_callback ไปให้ SettingFrame
                 self.frames[frame_class] = frame_class(self, self.get_is_muted, self.on_language_change)
-
             else:
                 self.frames[frame_class] = frame_class(self)
         
