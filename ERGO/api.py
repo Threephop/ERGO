@@ -51,3 +51,35 @@ def get_tables():
         return {"tables": [table[0] for table in tables]}
     except Exception as e:
         return {"error": f"An error occurred: {str(e)}"}
+    
+# ฟังก์ชันสำหรับส่งข้อความเข้า community
+@app.post("/post-message")
+def post_message(content: str, create_at: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # เพิ่มข้อความใหม่เข้า database
+        cursor.execute(
+            "INSERT INTO dbo.CommunityPosts_Table (content, create_at) VALUES (?, ?)",
+            (content, create_at)
+        )
+        conn.commit()
+        return {"message": "Message posted successfully"}
+    
+    except Exception as e:
+        conn.rollback()
+        return {"error": f"Failed to post message: {str(e)}"}
+    
+    finally:
+        conn.close()
+
+# ฟังก์ชันดึงข้อความทั้งหมดจาก community
+@app.get("/get-messages")
+def get_messages():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT content, create_at FROM dbo.CommunityPosts_Table ORDER BY create_at")
+    messages = cursor.fetchall()
+    conn.close()
+    return {"messages": [{"content": row[0], "create_at": row[1]} for row in messages]}
