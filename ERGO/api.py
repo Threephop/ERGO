@@ -83,3 +83,32 @@ def get_messages():
     messages = cursor.fetchall()
     conn.close()
     return {"messages": [{"content": row[0], "create_at": row[1]} for row in messages]}
+
+@app.get("/showstat")
+def get_usage_stats():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # JOIN UsageStats_Table กับ Users_Table เพื่อดึง username
+    cursor.execute("""
+        SELECT us.stat_id, u.username, us.hours_used, us.kcal_burned, us.like_count_id
+        FROM dbo.UsageStats_Table us
+        INNER JOIN dbo.Users_Table u ON us.user_id = u.user_id
+    """)
+
+    stats = cursor.fetchall()
+    conn.close()
+
+    # แปลงข้อมูลเป็น JSON
+    return {
+        "stats": [
+            {
+                "stat_id": row[0],
+                "username": row[1],
+                "hours_used": row[2] if row[2] is not None else 0,
+                "kcal_burned": row[3] if row[3] is not None else 0,
+                "like_count_id": row[4]
+            } 
+            for row in stats
+        ]
+    }
