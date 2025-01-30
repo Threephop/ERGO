@@ -3,6 +3,8 @@ from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import os
 import cv2
+import requests 
+from datetime import datetime 
 
 class CommunityFrame(tk.Frame):
     def __init__(self, parent):
@@ -57,14 +59,48 @@ class CommunityFrame(tk.Frame):
         self.send_button.pack(side="left", padx=1, pady=5)
 
         self.entry.bind("<Return>", lambda event: self.send_message())
+        self.load_messages()  # เรียกโหลดข้อความเก่าเมื่อเริ่มต้น
+        
+    def load_messages(self):
+        try:
+            response = requests.get("http://localhost:8000/get-messages")
+            if response.status_code == 200:
+                messages = response.json().get("messages", [])
+                for msg in messages:
+                    # ใช้ "Username" เป็นค่าเริ่มต้น หากไม่มีข้อมูลผู้ใช้ใน database
+                    self.add_message_bubble("Username", msg["content"])
+        except Exception as e:
+            print("เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
 
     def send_message(self):
         message = self.entry.get().strip()
         if message:
+            # เพิ่มข้อความใน UI
             self.add_message_bubble("Username", message)
             self.entry.delete(0, "end")
             self.canvas.update_idletasks()
             self.canvas.yview_moveto(1)
+
+            # ส่งข้อมูลไปยัง API
+            try:
+                create_at = datetime.now().isoformat()  # สร้างเวลาปัจจุบัน
+                response = requests.post(
+                    "http://localhost:8000/post-message",
+                    params={
+                        "content": message,
+                        "create_at": create_at
+                    }
+                )
+                
+                # ตรวจสอบสถานะการตอบกลับ
+                if response.status_code == 200:
+                    print("ส่งข้อความสำเร็จ!")
+                else:
+                    print("เกิดข้อผิดพลาด:", response.json())
+                    
+            except Exception as e:
+                print("เชื่อมต่อ API ไม่สำเร็จ:", e)
+
 
     def add_message_bubble(self, username, message):
         bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)

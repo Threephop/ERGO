@@ -51,3 +51,64 @@ def get_tables():
         return {"tables": [table[0] for table in tables]}
     except Exception as e:
         return {"error": f"An error occurred: {str(e)}"}
+    
+# ฟังก์ชันสำหรับส่งข้อความเข้า community
+@app.post("/post-message")
+def post_message(content: str, create_at: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # เพิ่มข้อความใหม่เข้า database
+        cursor.execute(
+            "INSERT INTO dbo.CommunityPosts_Table (content, create_at) VALUES (?, ?)",
+            (content, create_at)
+        )
+        conn.commit()
+        return {"message": "Message posted successfully"}
+    
+    except Exception as e:
+        conn.rollback()
+        return {"error": f"Failed to post message: {str(e)}"}
+    
+    finally:
+        conn.close()
+
+# ฟังก์ชันดึงข้อความทั้งหมดจาก community
+@app.get("/get-messages")
+def get_messages():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT content, create_at FROM dbo.CommunityPosts_Table ORDER BY create_at")
+    messages = cursor.fetchall()
+    conn.close()
+    return {"messages": [{"content": row[0], "create_at": row[1]} for row in messages]}
+
+@app.get("/showstat")
+def get_usage_stats():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # JOIN UsageStats_Table กับ Users_Table เพื่อดึง username
+    cursor.execute("""
+        SELECT us.stat_id, u.username, us.hours_used, us.kcal_burned, us.like_count_id
+        FROM dbo.UsageStats_Table us
+        INNER JOIN dbo.Users_Table u ON us.user_id = u.user_id
+    """)
+
+    stats = cursor.fetchall()
+    conn.close()
+
+    # แปลงข้อมูลเป็น JSON
+    return {
+        "stats": [
+            {
+                "stat_id": row[0],
+                "username": row[1],
+                "hours_used": row[2] if row[2] is not None else 0,
+                "kcal_burned": row[3] if row[3] is not None else 0,
+                "like_count_id": row[4]
+            } 
+            for row in stats
+        ]
+    }
