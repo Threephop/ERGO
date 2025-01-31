@@ -101,20 +101,23 @@ class LeaderboardFrame(tk.Frame):
             stats = data.get("stats", [])
 
             if tab_name == "Calorie":
-                most_calorie = max(stats, key=lambda x: x["kcal_burned"]) if stats else None
-                calorie_text = most_calorie["username"] if most_calorie else "N/A"
-                self.calorie_label.config(text=f"Most Calories Burned: {calorie_text}")
-                self.display_users(self.calorie_list_frame, stats)
+                sorted_stats = sorted(stats, key=lambda x: x["kcal_burned"], reverse=True)  # เรียงจากมากไปน้อย
+                top_user = sorted_stats[0]["username"] if sorted_stats else "N/A"
+                self.calorie_label.config(text=f"Most Calories Burned: {top_user}")
+                self.display_users(self.calorie_list_frame, sorted_stats)
+
             elif tab_name == "Active":
-                most_active = max(stats, key=lambda x: x["hours_used"]) if stats else None
-                active_text = most_active["username"] if most_active else "N/A"
-                self.active_label.config(text=f"Most Active Hours: {active_text}")
-                self.display_users(self.active_list_frame, stats)
+                sorted_stats = sorted(stats, key=lambda x: x["hours_used"], reverse=True)  # เรียงจากมากไปน้อย
+                top_user = sorted_stats[0]["username"] if sorted_stats else "N/A"
+                self.active_label.config(text=f"Most Active Hours: {top_user}")
+                self.display_users(self.active_list_frame, sorted_stats)
+
             elif tab_name == "Popular":
-                most_likes = max(stats, key=lambda x: x["like_count_id"]) if stats else None
-                popular_text = most_likes["username"] if most_likes else "N/A"
-                self.popular_label.config(text=f"Most Popular User: {popular_text}")
-                self.display_users(self.popular_list_frame, stats)
+                sorted_stats = sorted(stats, key=lambda x: x["like_count_id"], reverse=True)  # เรียงจากมากไปน้อย
+                top_user = sorted_stats[0]["username"] if sorted_stats else "N/A"
+                self.popular_label.config(text=f"Most Popular User: {top_user}")
+                self.display_users(self.popular_list_frame, sorted_stats)
+
 
     def display_users(self, frame, stats):
         for widget in frame.winfo_children():
