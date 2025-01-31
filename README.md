@@ -1,8 +1,10 @@
 pip install pillow
 pip install matplotlib
-pip install pygamepip install opencv-python
+pip install opencv-python
 pip install opencv-python-headless --upgrade
 pip install pygame==2.1.3  
+pip3 install ffpyplayer
+
 
 ---API---
 pip install adal
