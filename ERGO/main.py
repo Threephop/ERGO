@@ -7,6 +7,7 @@ from leaderboard_frame import LeaderboardFrame
 from setting_frame import SettingFrame
 from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
+import textwrap
 import os
 import requests
 
@@ -76,9 +77,30 @@ class App(tk.Tk):
         profile_icon_label = tk.Label(self.username_frame, image=profile_icon, bg="#221551")
         profile_icon_label.image = profile_icon  # เก็บอ้างอิงเพื่อป้องกัน garbage collection
         profile_icon_label.place(x=60, y=10)  # ปรับตำแหน่งรูปโปรไฟล์
+        
+        # ฟังก์ชันตัดคำตามช่องว่าง
+        def wrap_text(text, width):
+            words = text.split(" ")
+            lines = []
+            current_line = ""
 
-        # เพิ่มข้อความ Username
-        tk.Label(self.username_frame, text=self.username, font=("PTT 45 Pride", 14), fg="white", bg="#221551").place(x=55, y=150)  # ปรับตำแหน่งข้อความ
+            for word in words:
+                if len(current_line) + len(word) + 1 <= width:
+                    current_line += " " + word if current_line else word
+                else:
+                    lines.append(current_line)
+                    current_line = word
+
+            if current_line:
+                lines.append(current_line)
+
+            return "\n".join(lines)
+
+        wrapped_username = wrap_text(self.username, 15)
+
+        # แสดงข้อความ Username พร้อมตัดคำ
+        tk.Label(self.username_frame, text=wrapped_username, font=("PTT 45 Pride", 14), fg="white", bg="#221551", wraplength=180, justify="center").place(x=10, y=150)
+
 
         # สร้างปุ่ม Home
         home_icon_path = os.path.join(self.icon_dir, "home_icon.png")
