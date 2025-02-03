@@ -1,10 +1,13 @@
 import cv2
 from tkinter import messagebox
+import os
+
+video_dir = os.path.join(os.path.dirname(__file__), "video")
 
 # รายการวิดีโอที่กำหนดไว้
 video_list = {
-    "วิดีโอ 1": "C:\\Users\\User\\Downloads\\VideoTest\\sample-mp4-files-sample_640x360.mp4",
-    "วิดีโอ 2": "C:\\Users\\User\\Downloads\\VideoTest\\SampleVideo_1280x720_1mb.mp4",
+    "วิดีโอ 1": os.path.join(video_dir, "video1.mp4"),
+    "วิดีโอ 2": os.path.join(video_dir, "video2.mp4"),
 }
 
 # ตัวแปรควบคุมสถานะการเล่นวิดีโอ
