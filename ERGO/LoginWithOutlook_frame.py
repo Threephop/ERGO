@@ -2,10 +2,12 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 from msal import PublicClientApplication
+from profile_frame import ProfileFrame
 import webbrowser
 import os
 import requests
 import datetime
+import subprocess
 
 # Microsoft App Configuration
 CLIENT_ID = "e05e1663-bc57-4c87-ab60-d41463b12dcb"
@@ -13,6 +15,8 @@ AUTHORITY = "https://login.microsoftonline.com/8c1832ea-a96d-413e-bf7d-9fe4d608e
 REDIRECT_URI = "http://localhost:3000"
 SCOPES = ["User.Read"]
 icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+file_dir = os.path.join(os.path.dirname(__file__))
+mainPY = os.path.join(file_dir, "main.py")
 
 # API endpoint for adding user data to the database
 API_ENDPOINT = "http://localhost:8000/add-user"
@@ -49,6 +53,11 @@ def login():
                     created_at = datetime.datetime.utcnow().isoformat()
                     send_user_data(username, email, created_at)
                     messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
+                    # profile_frame = ProfileFrame(root)
+                    # profile_frame.pack(fill="both", expand=True)
+                    # # ใช้ after() เพื่อเปิด main.py หลังจากซ่อนหน้าต่าง
+                    root.after(100, lambda: subprocess.Popen(["python", mainPY], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP))
+                    root.withdraw()  # ซ่อนหน้าต่างหลักแทนที่จะ destroy
                 else:
                     messagebox.showerror("Error", "User data is incomplete.")
             else:
