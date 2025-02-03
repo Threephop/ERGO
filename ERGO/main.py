@@ -7,7 +7,6 @@ from leaderboard_frame import LeaderboardFrame
 from setting_frame import SettingFrame
 from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
-import textwrap
 import os
 import requests
 
