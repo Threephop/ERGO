@@ -8,10 +8,32 @@ app = FastAPI()
 def get_users():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT username FROM dbo.Users_Table")
+
+    # ค้นหาผู้ใช้ทั้งหมด
+    cursor.execute("SELECT outlook_mail, username FROM dbo.Users_Table")
     users = cursor.fetchall()
+
     conn.close()
-    return {"users": [row[0] for row in users]}
+
+    # สร้าง list ของ dictionary
+    users_list = [{"email": user[0], "username": user[1]} for user in users]
+
+    return {"users": users_list}
+
+@app.get("/get_user_id/{email}")
+def get_user_id(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 🔹 ค้นหา user_id โดยใช้ email
+    cursor.execute("SELECT user_id FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+    
+    conn.close()
+    
+    if user:
+        return {"user_id": user[0]}  # ส่ง user_id กลับไป
+    return {"error": "User not found"}
 
 # ฟังก์ชันที่เพิ่มผู้ใช้งาน
 @app.post("/add-user")

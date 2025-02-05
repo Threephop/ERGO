@@ -9,9 +9,10 @@ from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
 import os
 import requests
+import sys
 
 class App(tk.Tk):
-    def __init__(self):
+    def __init__(self, user_email):
         super().__init__()
         self.title("ERGO PROJECT")
         self.geometry("1024x768")  # ขนาดหน้าต่าง
@@ -23,11 +24,46 @@ class App(tk.Tk):
         position_top = int(screen_height / 2 - window_height / 2)
         position_right = int(screen_width / 2 - window_width / 2)
         self.geometry(f"{window_width}x{window_height}+{position_right}+{position_top}")
+        
 
+        # response = requests.get("http://127.0.0.1:8000/users")
+        # if response.status_code == 200:
+        #     data = response.json()
+        #     self.username = data['users'][3]
+        
+        self.user_email = user_email
+        
+        # 🔹 ดึงรายชื่อ users จาก API
         response = requests.get("http://127.0.0.1:8000/users")
         if response.status_code == 200:
-            data = response.json()
-            self.username = data['users'][3]
+            try:
+                data = response.json()
+
+                # พิมพ์ข้อมูลที่ได้รับจาก API
+                print("Users list from API:", data)
+
+                # ตรวจสอบว่า 'users' มีอยู่ และเป็น list
+                users_list = data.get('users', [])
+                if isinstance(users_list, list):
+                    # 🔹 ค้นหา user ตาม email
+                    user_data = next((user for user in users_list if user.get("email") == self.user_email), None)
+
+                    if user_data:
+                        self.username = user_data.get("username", "Unknown User")
+                    else:
+                        self.username = "Unknown User"
+
+                    print(f"🔹 Username: {self.username}")
+                else:
+                    print("⚠️ Error: 'users' is not a list!")
+                    self.username = "Unknown User"
+            except ValueError as e:
+                print(f"⚠️ Error: Failed to parse response as JSON - {e}")
+                self.username = "Unknown User"
+        else:
+            print(f"⚠️ API Error: {response.status_code}")
+            self.username = "Unknown User"
+            
         
         self.show_popup()
 
@@ -352,8 +388,10 @@ class App(tk.Tk):
         self.dashboard_button.config(text=self.translations[self.selected_language]["dashboard"])
         self.leaderboard_button.config(text=self.translations[self.selected_language]["leaderboard"])
 
-
 if __name__ == "__main__":
-    app = App()
-    app.protocol("WM_DELETE_WINDOW", app.on_closing)
-    app.mainloop()
+    if len(sys.argv) > 1:
+        user_email = sys.argv[1]  # ✅ ดึง email จาก arguments
+        app = App(user_email)
+        app.mainloop()
+    else:
+        print("Error: No user email provided.")

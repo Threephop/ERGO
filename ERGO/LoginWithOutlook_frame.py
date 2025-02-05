@@ -33,6 +33,16 @@ def send_user_data(username, email, created_at):
     except Exception as e:
         messagebox.showerror("Error", f"Error communicating with API: {e}")
 
+def get_user_id_from_db(email):
+    url = f"http://127.0.0.1:8000/get_user_id/{email}"  # เรียก API ที่เขียนใน FastAPI
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        return data.get("user_id")
+    
+    return None  # ถ้าไม่เจอ user_id
+
 # ฟังก์ชัน Log in
 def login():
     app = PublicClientApplication(CLIENT_ID, authority=AUTHORITY)
@@ -46,18 +56,23 @@ def login():
             response = requests.get(graph_endpoint, headers=headers)
             if response.status_code == 200:
                 user_data = response.json()
-                email = user_data.get("mail") or user_data.get("userPrincipalName")
+                email = user_data.get("mail") or user_data.get("userPrincipalName")  # ดึงอีเมลที่ใช้ล็อกอิน
                 username = user_data.get("displayName")
 
                 if email and username:
                     created_at = datetime.datetime.utcnow().isoformat()
-                    send_user_data(username, email, created_at)
-                    messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
-                    # profile_frame = ProfileFrame(root)
-                    # profile_frame.pack(fill="both", expand=True)
-                    # # ใช้ after() เพื่อเปิด main.py หลังจากซ่อนหน้าต่าง
-                    root.after(100, lambda: subprocess.Popen(["python", mainPY], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP))
-                    root.withdraw()  # ซ่อนหน้าต่างหลักแทนที่จะ destroy
+
+                    user_id = get_user_id_from_db(email)  # 🔹 ค้นหา user_id ด้วย email
+
+                    if user_id:
+                        send_user_data(username, email, created_at)
+                        messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
+
+                        # ✅ ส่ง email ไป main.py แทน user_id
+                        root.after(100, lambda: subprocess.Popen(["python", mainPY, email], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP))
+                        root.withdraw()
+                    else:
+                        messagebox.showerror("Error", "User ID not found in the database.")
                 else:
                     messagebox.showerror("Error", "User data is incomplete.")
             else:
