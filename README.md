@@ -16,3 +16,7 @@ python -m uvicorn api:app --reload
 ---STOP API---
 Ctrl + C in terminal
 
+---Manual---
+1. pip install ...
+2. Run API
+3. Run python LoginWithOutlook_frame.py
