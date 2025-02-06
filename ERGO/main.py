@@ -7,6 +7,8 @@ from leaderboard_frame import LeaderboardFrame
 from setting_frame import SettingFrame
 from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
+from decimal import Decimal
+import time
 import os
 import requests
 import sys
@@ -24,7 +26,12 @@ class App(tk.Tk):
         position_top = int(screen_height / 2 - window_height / 2)
         position_right = int(screen_width / 2 - window_width / 2)
         self.geometry(f"{window_width}x{window_height}+{position_right}+{position_top}")
+        self.start_time = None
+        self.app_time = Decimal("0.00")
         
+        self.start_timer()  # เริ่มจับเวลาเมื่อเปิดแอป
+        # ดักจับ event ปิดแอป
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # response = requests.get("http://127.0.0.1:8000/users")
         # if response.status_code == 200:
@@ -378,6 +385,7 @@ class App(tk.Tk):
 
     def on_closing(self):
         """Function to handle the window close event"""
+        self.stop_timer()  # หยุดจับเวลา 
         plt.close()  # ปิด figure ของ matplotlib
         self.quit()   # ปิดหน้าต่าง Tkinter
         
@@ -387,6 +395,20 @@ class App(tk.Tk):
         self.community_button.config(text=self.translations[self.selected_language]["community"])
         self.dashboard_button.config(text=self.translations[self.selected_language]["dashboard"])
         self.leaderboard_button.config(text=self.translations[self.selected_language]["leaderboard"])
+
+    def start_timer(self):
+        """เริ่มจับเวลาเมื่อเปิดแอป"""
+        self.start_time = time.time()
+        print("Started app timer.")
+
+    def stop_timer(self):
+        """หยุดจับเวลาเมื่อปิดแอปและบันทึกเวลาใช้งาน"""
+        if self.start_time is not None:
+            elapsed_time = time.time() - self.start_time
+            self.app_time = Decimal(f"{elapsed_time:.2f}")
+            print(f"App closed. Total usage time: {self.app_time} seconds")
+        else:
+            print("Timer was not started.")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
