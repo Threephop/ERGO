@@ -27,19 +27,20 @@ class DashboardFrame(tk.Frame):
         fig, ax = plt.subplots(figsize=(12, 4))
         ax.bar(days, active_hours, color="#1f6eb0", width=0.4)
 
-        # Set ticks for x-axis
-        ax.set_xticks(range(len(days)))  # ใช้ range เพื่อกำหนดตำแหน่งของ ticks
-
         # Apply font, labels without italic
         ax.set_xlabel("Week", fontsize=12)
         ax.set_ylabel("Active (hours)", fontsize=12)
         ax.set_title("Activity Over the Week", fontsize=14)
-        ax.set_xticklabels(days, rotation=30, ha="right", fontsize=12)
+
+        # Set ticks for x-axis and make sure the labels are not tilted
+        ax.set_xticks(range(len(days)))  # Use range for tick positions
+        ax.set_xticklabels(days, rotation=0, ha="center", fontsize=12)  # Removed rotation and set alignment
 
         # Embed chart into Tkinter
         canvas = FigureCanvasTkAgg(fig, master=chart_frame)
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(fill="both", expand=True)
+
 
 
     def create_activity_details(self):
