@@ -111,11 +111,14 @@ def get_usage_stats():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # JOIN UsageStats_Table กับ Users_Table เพื่อดึง username
+    # ใช้ LEFT JOIN เพื่อดึง user ทั้งหมด แม้ว่าจะไม่มีข้อมูลใน UsageStats_Table
     cursor.execute("""
-        SELECT us.stat_id, u.username, us.hours_used, us.kcal_burned, us.like_count_id
-        FROM dbo.UsageStats_Table us
-        INNER JOIN dbo.Users_Table u ON us.user_id = u.user_id
+        SELECT u.user_id, u.username, 
+               COALESCE(us.hours_used, 0) AS hours_used, 
+               COALESCE(us.kcal_burned, 0) AS kcal_burned, 
+               COALESCE(us.like_count_id, 0) AS like_count_id
+        FROM dbo.Users_Table u
+        LEFT JOIN dbo.UsageStats_Table us ON u.user_id = us.user_id
     """)
 
     stats = cursor.fetchall()
@@ -125,15 +128,16 @@ def get_usage_stats():
     return {
         "stats": [
             {
-                "stat_id": row[0],
+                "user_id": row[0],
                 "username": row[1],
-                "hours_used": row[2] if row[2] is not None else 0,
-                "kcal_burned": row[3] if row[3] is not None else 0,
+                "hours_used": row[2],
+                "kcal_burned": row[3],
                 "like_count_id": row[4]
             } 
             for row in stats
         ]
     }
+
 
 # API รับค่าจากแอปและอัปเดต hours_used ใน UsageStats_Table
 @app.get("/update_app_time/")
