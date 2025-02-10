@@ -62,17 +62,28 @@ def login():
                 if email and username:
                     created_at = datetime.datetime.utcnow().isoformat()
 
-                    user_id = get_user_id_from_db(email)  # 🔹 ค้นหา user_id ด้วย email
+                    # 🔹 เรียก API `/add-user` เพื่อเพิ่มผู้ใช้ก่อน
+                    add_user_response = requests.post(
+                        "http://127.0.0.1:8000/add-user",
+                        params={"username": username, "email": email, "create_at": created_at}
+                    )
 
-                    if user_id:
-                        send_user_data(username, email, created_at)
-                        messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
+                    if add_user_response.status_code == 200:
+                        print("✅ User added successfully!")
 
-                        # ✅ ส่ง email ไป main.py แทน user_id
-                        root.after(100, lambda: subprocess.Popen(["python", mainPY, email], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP))
-                        root.withdraw()
+                        # 🔹 ค้นหา user_id หลังจากเพิ่มข้อมูล
+                        user_id = get_user_id_from_db(email)  
+
+                        if user_id:
+                            messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
+
+                            # ✅ ส่ง email ไป main.py แทน user_id
+                            root.after(100, lambda: subprocess.Popen(["python", mainPY, email], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP))
+                            root.withdraw()
+                        else:
+                            messagebox.showerror("Error", "User ID not found in the database after adding.")
                     else:
-                        messagebox.showerror("Error", "User ID not found in the database.")
+                        messagebox.showerror("Error", "Failed to add user.")
                 else:
                     messagebox.showerror("Error", "User data is incomplete.")
             else:
