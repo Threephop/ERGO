@@ -343,6 +343,40 @@ class App(tk.Tk):
         else:
             self.speaker_button.config(image=self.speaker_icon)  # เปลี่ยนกลับเป็นไอคอน speaker
 
+    def load_sidebar_profile_image(self):
+        """ โหลดรูปโปรไฟล์ Sidebar และอัปเดตปุ่ม """
+        profile_icon_path = os.path.join(self.icon_dir, "profile.png")
+        if not os.path.exists(profile_icon_path):
+            profile_icon_path = os.path.join(self.icon_dir, "default_profile.png")
+
+        profile_image = Image.open(profile_icon_path)
+        profile_image = profile_image.resize((100, 100), Image.Resampling.LANCZOS)
+        profile_icon = ImageTk.PhotoImage(profile_image)
+
+        if self.profile_button:
+            self.profile_button.config(image=profile_icon)
+            self.profile_button.image = profile_icon
+        else:
+            self.profile_button = tk.Button(
+                self.sidebar,
+                image=profile_icon,
+                compound="left",
+                bg="#221551",
+                fg="white",
+                font=("Arial", 12),
+                relief="flat",
+                activebackground="#6F6969",
+                activeforeground="white",
+                command=lambda: self.show_frame(ProfileFrame),
+            )
+            self.profile_button.image = profile_icon
+            self.profile_button.place(x=55, y=10)
+
+
+    def update_sidebar_profile(self, new_image_path):
+        """ Callback ฟังก์ชันที่ถูกเรียกเมื่อรูปโปรไฟล์เปลี่ยน """
+        self.load_sidebar_profile_image()
+
     def show_frame(self, frame_class):
         # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
         if self.current_frame and isinstance(self.current_frame, frame_class):
