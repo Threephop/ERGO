@@ -7,11 +7,14 @@ from leaderboard_frame import LeaderboardFrame
 from setting_frame import SettingFrame
 from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
+from decimal import Decimal
+import time
 import os
 import requests
+import sys
 
 class App(tk.Tk):
-    def __init__(self):
+    def __init__(self, user_email):
         super().__init__()
         self.title("ERGO PROJECT")
         self.geometry("1024x768")  # ขนาดหน้าต่าง
@@ -23,11 +26,51 @@ class App(tk.Tk):
         position_top = int(screen_height / 2 - window_height / 2)
         position_right = int(screen_width / 2 - window_width / 2)
         self.geometry(f"{window_width}x{window_height}+{position_right}+{position_top}")
+        self.start_time = None
+        self.app_time = Decimal("0.00")
+        
+        self.start_timer()  # เริ่มจับเวลาเมื่อเปิดแอป
+        # ดักจับ event ปิดแอป
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        # response = requests.get("http://127.0.0.1:8000/users")
+        # if response.status_code == 200:
+        #     data = response.json()
+        #     self.username = data['users'][3]
+        
+        self.user_email = user_email
+        
+        # 🔹 ดึงรายชื่อ users จาก API
         response = requests.get("http://127.0.0.1:8000/users")
         if response.status_code == 200:
-            data = response.json()
-            self.username = data['users'][3]
+            try:
+                data = response.json()
+
+                # พิมพ์ข้อมูลที่ได้รับจาก API
+                print("Users list from API:", data)
+
+                # ตรวจสอบว่า 'users' มีอยู่ และเป็น list
+                users_list = data.get('users', [])
+                if isinstance(users_list, list):
+                    # 🔹 ค้นหา user ตาม email
+                    user_data = next((user for user in users_list if user.get("email") == self.user_email), None)
+
+                    if user_data:
+                        self.username = user_data.get("username", "Unknown User")
+                    else:
+                        self.username = "Unknown User"
+
+                    print(f"🔹 Username: {self.username}")
+                else:
+                    print("⚠️ Error: 'users' is not a list!")
+                    self.username = "Unknown User"
+            except ValueError as e:
+                print(f"⚠️ Error: Failed to parse response as JSON - {e}")
+                self.username = "Unknown User"
+        else:
+            print(f"⚠️ API Error: {response.status_code}")
+            self.username = "Unknown User"
+            
         
         self.show_popup()
 
@@ -76,9 +119,30 @@ class App(tk.Tk):
         profile_icon_label = tk.Label(self.username_frame, image=profile_icon, bg="#221551")
         profile_icon_label.image = profile_icon  # เก็บอ้างอิงเพื่อป้องกัน garbage collection
         profile_icon_label.place(x=60, y=10)  # ปรับตำแหน่งรูปโปรไฟล์
+        
+        # ฟังก์ชันตัดคำตามช่องว่าง
+        def wrap_text(text, width):
+            words = text.split(" ")
+            lines = []
+            current_line = ""
 
-        # เพิ่มข้อความ Username
-        tk.Label(self.username_frame, text=self.username, font=("PTT 45 Pride", 14), fg="white", bg="#221551").place(x=55, y=150)  # ปรับตำแหน่งข้อความ
+            for word in words:
+                if len(current_line) + len(word) + 1 <= width:
+                    current_line += " " + word if current_line else word
+                else:
+                    lines.append(current_line)
+                    current_line = word
+
+            if current_line:
+                lines.append(current_line)
+
+            return "\n".join(lines)
+
+        wrapped_username = wrap_text(self.username, 15)
+
+        # แสดงข้อความ Username พร้อมตัดคำ
+        tk.Label(self.username_frame, text=wrapped_username, font=("PTT 45 Pride", 14), fg="white", bg="#221551", wraplength=180, justify="center").place(x=10, y=150)
+
 
         # สร้างปุ่ม Home
         home_icon_path = os.path.join(self.icon_dir, "home_icon.png")
@@ -321,6 +385,7 @@ class App(tk.Tk):
 
     def on_closing(self):
         """Function to handle the window close event"""
+        self.stop_timer()  # หยุดจับเวลา 
         plt.close()  # ปิด figure ของ matplotlib
         self.quit()   # ปิดหน้าต่าง Tkinter
         
@@ -331,8 +396,41 @@ class App(tk.Tk):
         self.dashboard_button.config(text=self.translations[self.selected_language]["dashboard"])
         self.leaderboard_button.config(text=self.translations[self.selected_language]["leaderboard"])
 
+    def start_timer(self):
+        """เริ่มจับเวลาเมื่อเปิดแอป"""
+        self.start_time = time.time()
+        print("Started app timer.")
+
+    def stop_timer(self):
+        """หยุดจับเวลาเมื่อปิดแอปและบันทึกเวลาใช้งาน"""
+        if self.start_time is not None:
+            elapsed_time = time.time() - self.start_time
+            self.app_time = Decimal(f"{elapsed_time:.2f}")
+            self.send_app_time()
+            print(f"App closed. Total usage time: {self.app_time} seconds")
+        else:
+            print("Timer was not started.")
+            
+    def send_app_time(self):
+        """ส่งค่าการใช้งานแอปไปยัง API"""
+        api_url = "http://127.0.0.1:8000/update_app_time/"
+        params = {
+            "email": self.user_email,
+            "app_time": float(self.app_time)  # แปลงเป็น float ก่อนส่ง
+        }
+        try:
+            response = requests.get(api_url, params=params)
+            if response.status_code == 200:
+                print("✅ App time updated successfully:", response.json())
+            else:
+                print("❌ Failed to update app time:", response.json())
+        except Exception as e:
+            print(f"❌ Error sending data: {e}")
 
 if __name__ == "__main__":
-    app = App()
-    app.protocol("WM_DELETE_WINDOW", app.on_closing)
-    app.mainloop()
+    if len(sys.argv) > 1:
+        user_email = sys.argv[1]  # ✅ ดึง email จาก arguments
+        app = App(user_email)
+        app.mainloop()
+    else:
+        print("Error: No user email provided.")

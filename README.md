@@ -1,8 +1,10 @@
 pip install pillow
 pip install matplotlib
-pip install pygamepip install opencv-python
+pip install opencv-python
 pip install opencv-python-headless --upgrade
 pip install pygame==2.1.3  
+pip3 install ffpyplayer
+
 
 ---API---
 pip install adal
@@ -14,3 +16,7 @@ python -m uvicorn api:app --reload
 ---STOP API---
 Ctrl + C in terminal
 
+---Manual---
+1. pip install ...
+2. Run API
+3. Run python LoginWithOutlook_frame.py

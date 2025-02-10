@@ -2,10 +2,12 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 from msal import PublicClientApplication
+from profile_frame import ProfileFrame
 import webbrowser
 import os
 import requests
 import datetime
+import subprocess
 
 # Microsoft App Configuration
 CLIENT_ID = "e05e1663-bc57-4c87-ab60-d41463b12dcb"
@@ -13,6 +15,8 @@ AUTHORITY = "https://login.microsoftonline.com/8c1832ea-a96d-413e-bf7d-9fe4d608e
 REDIRECT_URI = "http://localhost:3000"
 SCOPES = ["User.Read"]
 icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+file_dir = os.path.join(os.path.dirname(__file__))
+mainPY = os.path.join(file_dir, "main.py")
 
 # API endpoint for adding user data to the database
 API_ENDPOINT = "http://localhost:8000/add-user"
@@ -29,6 +33,16 @@ def send_user_data(username, email, created_at):
     except Exception as e:
         messagebox.showerror("Error", f"Error communicating with API: {e}")
 
+def get_user_id_from_db(email):
+    url = f"http://127.0.0.1:8000/get_user_id/{email}"  # เรียก API ที่เขียนใน FastAPI
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        return data.get("user_id")
+    
+    return None  # ถ้าไม่เจอ user_id
+
 # ฟังก์ชัน Log in
 def login():
     app = PublicClientApplication(CLIENT_ID, authority=AUTHORITY)
@@ -42,13 +56,34 @@ def login():
             response = requests.get(graph_endpoint, headers=headers)
             if response.status_code == 200:
                 user_data = response.json()
-                email = user_data.get("mail") or user_data.get("userPrincipalName")
+                email = user_data.get("mail") or user_data.get("userPrincipalName")  # ดึงอีเมลที่ใช้ล็อกอิน
                 username = user_data.get("displayName")
 
                 if email and username:
                     created_at = datetime.datetime.utcnow().isoformat()
-                    send_user_data(username, email, created_at)
-                    messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
+
+                    # 🔹 เรียก API `/add-user` เพื่อเพิ่มผู้ใช้ก่อน
+                    add_user_response = requests.post(
+                        "http://127.0.0.1:8000/add-user",
+                        params={"username": username, "email": email, "create_at": created_at}
+                    )
+
+                    if add_user_response.status_code == 200:
+                        print("✅ User added successfully!")
+
+                        # 🔹 ค้นหา user_id หลังจากเพิ่มข้อมูล
+                        user_id = get_user_id_from_db(email)  
+
+                        if user_id:
+                            messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
+
+                            # ✅ ส่ง email ไป main.py แทน user_id
+                            root.after(100, lambda: subprocess.Popen(["python", mainPY, email], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP))
+                            root.withdraw()
+                        else:
+                            messagebox.showerror("Error", "User ID not found in the database after adding.")
+                    else:
+                        messagebox.showerror("Error", "Failed to add user.")
                 else:
                     messagebox.showerror("Error", "User data is incomplete.")
             else:

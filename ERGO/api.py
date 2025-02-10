@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
 
 app = FastAPI()
@@ -8,10 +8,32 @@ app = FastAPI()
 def get_users():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT username FROM dbo.Users_Table")
+
+    # ค้นหาผู้ใช้ทั้งหมด
+    cursor.execute("SELECT outlook_mail, username FROM dbo.Users_Table")
     users = cursor.fetchall()
+
     conn.close()
-    return {"users": [row[0] for row in users]}
+
+    # สร้าง list ของ dictionary
+    users_list = [{"email": user[0], "username": user[1]} for user in users]
+
+    return {"users": users_list}
+
+@app.get("/get_user_id/{email}")
+def get_user_id(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 🔹 ค้นหา user_id โดยใช้ email
+    cursor.execute("SELECT user_id FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+    
+    conn.close()
+    
+    if user:
+        return {"user_id": user[0]}  # ส่ง user_id กลับไป
+    return {"error": "User not found"}
 
 # ฟังก์ชันที่เพิ่มผู้ใช้งาน
 @app.post("/add-user")
@@ -112,3 +134,39 @@ def get_usage_stats():
             for row in stats
         ]
     }
+
+# API รับค่าจากแอปและอัปเดต hours_used ใน UsageStats_Table
+@app.get("/update_app_time/")
+def update_app_time(email: str, app_time: float):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 🔹 ค้นหา user_id จาก Users_Table
+    cursor.execute("SELECT user_id FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_id = user[0]
+    
+    # 🔹 ดึงค่าปัจจุบันของ hours_used จาก UsageStats_Table
+    cursor.execute("SELECT hours_used FROM dbo.UsageStats_Table WHERE user_id = ?", (user_id,))
+    current_hours = cursor.fetchone()
+    
+    if current_hours and current_hours[0] is not None:
+        new_hours = float(current_hours[0]) + (app_time / 3600)  # แปลงวินาทีเป็นชั่วโมงแล้วบวกเพิ่ม
+    else:
+        new_hours = app_time / 3600  # ถ้ายังไม่มีค่า ให้ใช้ค่าใหม่เลย
+    
+    # 🔹 อัปเดตค่า hours_used ใน UsageStats_Table
+    cursor.execute(
+        "UPDATE dbo.UsageStats_Table SET hours_used = ? WHERE user_id = ?", 
+        (new_hours, user_id)
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "App time updated successfully", "new_hours_used": new_hours}
