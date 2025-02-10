@@ -345,36 +345,36 @@ class App(tk.Tk):
 
     def load_sidebar_profile_image(self):
         """ โหลดรูปโปรไฟล์ Sidebar และอัปเดตปุ่ม """
+
         profile_icon_path = os.path.join(self.icon_dir, "profile.png")
         if not os.path.exists(profile_icon_path):
             profile_icon_path = os.path.join(self.icon_dir, "default_profile.png")
-
         profile_image = Image.open(profile_icon_path)
         profile_image = profile_image.resize((100, 100), Image.Resampling.LANCZOS)
         profile_icon = ImageTk.PhotoImage(profile_image)
-
         if self.profile_button:
             self.profile_button.config(image=profile_icon)
             self.profile_button.image = profile_icon
+    
         else:
             self.profile_button = tk.Button(
-                self.sidebar,
-                image=profile_icon,
-                compound="left",
-                bg="#221551",
-                fg="white",
-                font=("Arial", 12),
-                relief="flat",
-                activebackground="#6F6969",
-                activeforeground="white",
-                command=lambda: self.show_frame(ProfileFrame),
-            )
-            self.profile_button.image = profile_icon
-            self.profile_button.place(x=55, y=10)
+            self.sidebar,
+            image=profile_icon,
+            compound="left",
+            bg="#221551",
+            fg="white",
+            font=("Arial", 12),
+            relief="flat",
+            activebackground="#6F6969",
+            activeforeground="white",
+            command=lambda: self.show_frame(ProfileFrame),
+        )
+        self.profile_button.place(x=55, y=10)
+        self.profile_button.image = profile_icon
 
-
+    
     def update_sidebar_profile(self, new_image_path):
-        """ Callback ฟังก์ชันที่ถูกเรียกเมื่อรูปโปรไฟล์เปลี่ยน """
+        """ Callback เมื่อรูปโปรไฟล์เปลี่ยน """
         self.load_sidebar_profile_image()
 
     def show_frame(self, frame_class):
@@ -460,6 +460,7 @@ class App(tk.Tk):
                 print("❌ Failed to update app time:", response.json())
         except Exception as e:
             print(f"❌ Error sending data: {e}")
+    
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
