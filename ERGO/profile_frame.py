@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog
 from PIL import Image, ImageTk
 import os
 
@@ -22,8 +22,10 @@ class ProfileFrame(tk.Frame):
         self.canvas.tag_bind("profile_pic", "<Button-1>", self.change_profile_picture)  # คลิกเปลี่ยนรูป
 
         # ชื่อผู้ใช้
-        self.name_label = tk.Label(self, text="นายธีภพ ธิวะโต", font=("Arial", 16), bg="white")
+        self.username = "นายธีภพ ธิวะโต"  # ค่าชื่อเริ่มต้น
+        self.name_label = tk.Label(self, text=self.username, font=("Arial", 16), bg="white", cursor="hand2")
         self.name_label.place(relx=0.4, rely=0.35, anchor="center")
+        self.name_label.bind("<Button-1>", self.change_name)  # คลิกที่ชื่อเพื่อเปลี่ยนชื่อ
 
         # ปุ่มออกจากระบบ
         self.logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#2E004F", fg="red",
@@ -66,6 +68,13 @@ class ProfileFrame(tk.Frame):
                 
             except Exception as e:
                 messagebox.showerror("Error", f"ไม่สามารถบันทึกหรือโหลดรูปภาพได้: {e}")
+
+    def change_name(self, event=None):
+        """ ให้ผู้ใช้เปลี่ยนชื่อผ่าน dialog box """
+        new_name = simpledialog.askstring("เปลี่ยนชื่อ", "กรุณากรอกชื่อใหม่:", initialvalue=self.username)
+        if new_name:
+            self.username = new_name
+            self.name_label.config(text=self.username)  # อัปเดต Label ทันที
 
     def logout(self):
         print("คลิกออกจากระบบ")
