@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from datetime import datetime
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
 
 app = FastAPI()
@@ -154,7 +155,10 @@ def update_app_time(email: str, app_time: float):
         raise HTTPException(status_code=404, detail="User not found")
 
     user_id = user[0]
-    
+
+    # 🔹 ดึงชื่อวันปัจจุบัน
+    today_day = datetime.today().strftime('%A').lower()  # เช่น 'monday', 'tuesday', ...
+
     # 🔹 ดึงค่าปัจจุบันของ hours_used จาก UsageStats_Table
     cursor.execute("SELECT hours_used FROM dbo.UsageStats_Table WHERE user_id = ?", (user_id,))
     current_hours = cursor.fetchone()
@@ -169,11 +173,35 @@ def update_app_time(email: str, app_time: float):
         "UPDATE dbo.UsageStats_Table SET hours_used = ? WHERE user_id = ?", 
         (new_hours, user_id)
     )
+
+    # 🔹 ตรวจสอบว่ามีข้อมูลใน Dashboard_Table ของวันนั้นหรือไม่
+    cursor.execute(
+        f"SELECT {today_day} FROM dbo.Dashboard_Table WHERE user_id = ?", 
+        (user_id,)
+    )
+    dashboard_hours = cursor.fetchone()
+
+    if dashboard_hours and dashboard_hours[0] is not None:
+        # 🔹 ถ้ามี ให้บวกเพิ่ม
+        updated_dashboard_hours = float(dashboard_hours[0]) + (app_time / 3600)
+        cursor.execute(
+            f"UPDATE dbo.Dashboard_Table SET {today_day} = ? WHERE user_id = ?",
+            (updated_dashboard_hours, user_id)
+        )
+    else:
+        # 🔹 ถ้ายังไม่มี ให้เพิ่มข้อมูลใหม่
+        cursor.execute(
+            f"UPDATE dbo.Dashboard_Table SET {today_day} = ? WHERE user_id = ?",
+            (app_time / 3600, user_id)
+        )
     
     conn.commit()
     conn.close()
     
-    return {"message": "App time updated successfully", "new_hours_used": new_hours}
+    return {
+        "message": "App time updated successfully",
+        "new_hours_used": new_hours
+    }
 
 @app.get("/get_usage_stats/{user_id}")
 def get_usage_stats(user_id: int):
