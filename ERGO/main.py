@@ -381,30 +381,29 @@ class App(tk.Tk):
     def show_frame(self, frame_class):
         # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
         if self.current_frame and isinstance(self.current_frame, frame_class):
-            return  # ไม่ต้องทำอะไร ถ้าเฟรมเดียวกัน
-        
+            return  # ไม่ต้องเปลี่ยนถ้าเป็นเฟรมเดิม
+
         # ซ่อนเฟรมปัจจุบัน
         if self.current_frame:
-            self.current_frame.place_forget()  # ซ่อนเฟรมเก่า
-        
+            self.current_frame.place_forget()
+
         # สร้างเฟรมใหม่หากยังไม่มี
         if frame_class not in self.frames:
             if frame_class == SettingFrame:
                 self.frames[frame_class] = frame_class(self, self.get_is_muted, self.on_language_change)
 
+            elif frame_class == DashboardFrame:
+                self.frames[frame_class] = frame_class(self, self.user_email)  # ✅ ส่ง email ไปให้ DashboardFrame
+
             else:
                 self.frames[frame_class] = frame_class(self)
-            if frame_class == SettingFrame:
-                # ส่ง change_language_callback ไปให้ SettingFrame
-                self.frames[frame_class] = frame_class(self, self.get_is_muted, self.on_language_change)
-            else:
-                self.frames[frame_class] = frame_class(self)
-        
+
         # ตั้งค่าเฟรมใหม่เป็นเฟรมปัจจุบัน
         self.current_frame = self.frames[frame_class]
-        
+
         # วางเฟรมใหม่
         self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
+
 
     def get_is_muted(self):
         """คืนค่าตัวแปร is_muted"""

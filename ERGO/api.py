@@ -174,3 +174,33 @@ def update_app_time(email: str, app_time: float):
     conn.close()
     
     return {"message": "App time updated successfully", "new_hours_used": new_hours}
+
+@app.get("/get_usage_stats/{user_id}")
+def get_usage_stats(user_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ดึงข้อมูลชั่วโมงที่ใช้งานจาก Dashboard_Table ตาม user_id
+    cursor.execute(
+        """
+        SELECT monday, tuesday, wednesday, thursday, friday, saturday, sunday
+        FROM dbo.Dashboard_Table
+        WHERE user_id = ?
+        """, (user_id,)
+    )
+    
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return {
+            "Monday": row[0],
+            "Tuesday": row[1],
+            "Wednesday": row[2],
+            "Thursday": row[3],
+            "Friday": row[4],
+            "Saturday": row[5],
+            "Sunday": row[6]
+        }
+    else:
+        raise HTTPException(status_code=404, detail="User data not found")
