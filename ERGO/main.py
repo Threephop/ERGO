@@ -114,16 +114,6 @@ class App(tk.Tk):
         self.username_frame = tk.Frame(self.sidebar, bg="#221551", height=200)
         self.username_frame.place(x=0, y=0, width=200)  # ใช้ place แทน pack
 
-        # Label ที่จะใช้แสดงข้อความ "MENU" เมื่อหน้าต่างเล็ก
-        self.menu_label = tk.Label(self.sidebar, text="M\nE\nN\nU", bg="#221551", fg="white", font=("Arial", 20))
-        self.menu_label.place(x=20, y=220)
-
-        # ซ่อน label "MENU" เมื่อเริ่ม
-        self.menu_label.place_forget()
-
-        # Binding the window resize event to a function
-        self.bind("<Configure>", self.on_resize)
-        
         # เพิ่มรูปโปรไฟล์
         profile_icon_path = os.path.join(self.icon_dir, "person_icon.png")
         profile_icon = tk.PhotoImage(file=profile_icon_path)
@@ -439,24 +429,6 @@ class App(tk.Tk):
         self.community_button.config(text=self.translations[self.selected_language]["community"])
         self.dashboard_button.config(text=self.translations[self.selected_language]["dashboard"])
         self.leaderboard_button.config(text=self.translations[self.selected_language]["leaderboard"])
-        
-    def on_resize(self, event):
-        # เมื่อความกว้างของหน้าต่างน้อยกว่า 600 พิกเซล
-        if event.width < 600:
-            # ย่อ sidebar ในแกน x
-            self.sidebar.config(width=60)  # ย่อ sidebar ให้แคบลง
-            self.menu_label.place(x=20, y=220)  # แสดงข้อความ "MENU"
-            
-            # ซ่อนปุ่มเมนู
-            self.profile_button.place_forget()
-            
-        else:
-            # ขยาย sidebar กลับไปที่ขนาดเดิม
-            self.sidebar.config(width=200)
-            self.menu_label.place_forget()  # ซ่อนข้อความ "MENU"
-            
-            # แสดงปุ่มเมนู
-            self.profile_button.place(x=20, y=220)
 
     def start_timer(self):
         """เริ่มจับเวลาเมื่อเปิดแอป"""
