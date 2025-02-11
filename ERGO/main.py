@@ -436,7 +436,7 @@ class App(tk.Tk):
         
     def on_resize(self, event):
         # ใช้ self.winfo_width() เพื่อรับค่าความกว้างปัจจุบันของหน้าต่าง
-        if self.winfo_width() < 600:
+        if self.winfo_width() < 700:
             # ย่อ sidebar ในแกน x
             self.sidebar.config(width=60)  # ย่อ sidebar ให้แคบลง
             self.menu_label.place(x=20, y=220)  # แสดงข้อความ "MENU"
