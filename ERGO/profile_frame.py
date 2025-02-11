@@ -1,6 +1,6 @@
 import tkinter as tk
-from tkinter import PhotoImage
-from PIL import Image, ImageTk  # นำเข้าโมดูลที่จำเป็นสำหรับการปรับขนาดภาพ
+from tkinter import filedialog, messagebox, simpledialog
+from PIL import Image, ImageTk
 import os
 
 class ProfileFrame(tk.Frame):
@@ -9,46 +9,75 @@ class ProfileFrame(tk.Frame):
 
         # กำหนดไดเรกทอรีสำหรับไอคอน
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+        self.default_profile_path = os.path.join(self.icon_dir, "profile.png")
 
-        # โหลดภาพโปรไฟล์
-        try:
-            profile_image_path = os.path.join(self.icon_dir, "profile.png")
-            if not os.path.exists(profile_image_path):
-                raise FileNotFoundError(f"ไม่พบไฟล์ภาพโปรไฟล์ที่: {profile_image_path}")
-            
-            # เปิดภาพด้วย PIL
-            image = Image.open(profile_image_path)
-            
-            # ปรับขนาดภาพให้พอดีกับขนาดของ Canvas โดยใช้วิธีการใหม่
-            image = image.resize((100, 100), Image.Resampling.LANCZOS)
-            self.profile_image = ImageTk.PhotoImage(image)
-        except Exception as e:
-            print(f"เกิดข้อผิดพลาดในการโหลด profile.png: {e}")
-            raise
+        # โหลดภาพโปรไฟล์เริ่มต้น
+        self.profile_image = None
+        self.load_profile_image(self.default_profile_path)
 
-        # แสดงภาพโปรไฟล์
-        canvas = tk.Canvas(self, width=100, height=100, bg="#2E004F", highlightthickness=0)
-        canvas.create_image(50, 50, image=self.profile_image)
-        canvas.place(relx=0.4, rely=0.2, anchor="center")  # ปรับตำแหน่งกลางกรอบ
+        # Canvas แสดงภาพโปรไฟล์ (คลิกเพื่อเปลี่ยน)
+        self.canvas = tk.Canvas(self, width=100, height=100, bg="#2E004F", highlightthickness=0)
+        self.profile_pic = self.canvas.create_image(50, 50, image=self.profile_image, tags="profile_pic")
+        self.canvas.place(relx=0.4, rely=0.2, anchor="center")
+        self.canvas.tag_bind("profile_pic", "<Button-1>", self.change_profile_picture)  # คลิกเปลี่ยนรูป
 
         # ชื่อผู้ใช้
-        name_label = tk.Label(self, text="นายธีภพ ธิวะโต", font=("Arial", 16), bg="white")
-        name_label.place(relx=0.4, rely=0.35, anchor="center")  # ปรับตำแหน่งใต้ภาพโปรไฟล์
-
-        # จำนวนการใช้งาน
-        usage_label = tk.Label(self, text="จำนวนครั้งที่ใช้งาน", font=("Arial", 14), bg="white")
-        usage_label.place(relx=0.4, rely=0.45, anchor="center")  # ปรับตำแหน่งใต้ชื่อ
-
-        count_label = tk.Label(self, text="1", font=("Arial", 30), bg="white")
-        count_label.place(relx=0.4, rely=0.55, anchor="center")  # ปรับตำแหน่งใต้จำนวนครั้ง
+        self.username = "นายธีภพ ธิวะโต"  # ค่าชื่อเริ่มต้น
+        self.name_label = tk.Label(self, text=self.username, font=("Arial", 16), bg="white", cursor="hand2")
+        self.name_label.place(relx=0.4, rely=0.35, anchor="center")
+        self.name_label.bind("<Button-1>", self.change_name)  # คลิกที่ชื่อเพื่อเปลี่ยนชื่อ
 
         # ปุ่มออกจากระบบ
-        logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#2E004F", fg="red", borderwidth=0, command=self.logout)
-        logout_button.place(relx=0.8, rely=0.05, anchor="ne")  # ปรับตำแหน่งมุมขวาบน
+        self.logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#2E004F", fg="red",
+                                       borderwidth=0, command=self.logout)
+        self.logout_button.place(relx=0.8, rely=0.05, anchor="ne")
+
+    def load_profile_image(self, image_path):
+        """ โหลดและปรับขนาดภาพโปรไฟล์ """
+        try:
+            if not os.path.exists(image_path):
+                image_path = self.default_profile_path  # ใช้ค่าเริ่มต้นถ้าไม่มีไฟล์
+
+            image = Image.open(image_path)
+            image = image.resize((100, 100), Image.Resampling.LANCZOS)
+            self.profile_image = ImageTk.PhotoImage(image)
+
+        except Exception as e:
+            print(f"เกิดข้อผิดพลาดในการโหลดภาพ: {e}")
+            messagebox.showerror("Error", "ไม่สามารถโหลดรูปภาพได้")
+
+    def change_profile_picture(self, event=None):
+        """ ให้ผู้ใช้เลือกภาพใหม่ และอัปเดตโปรไฟล์ทันที """
+        file_path = filedialog.askopenfilename(
+            title="เลือกภาพโปรไฟล์",
+            filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif;*.bmp")]
+        )
+
+        if file_path:
+            try:
+                # บันทึกภาพใหม่แทนที่ profile.png
+                image = Image.open(file_path)
+                image = image.resize((100, 100), Image.Resampling.LANCZOS)
+                image.save(self.default_profile_path)
+
+                # โหลดภาพใหม่ที่บันทึกแล้ว
+                self.load_profile_image(self.default_profile_path)
+
+                # อัปเดตภาพใน Canvas
+                self.canvas.itemconfig(self.profile_pic, image=self.profile_image)
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"ไม่สามารถบันทึกหรือโหลดรูปภาพได้: {e}")
+
+    def change_name(self, event=None):
+        """ ให้ผู้ใช้เปลี่ยนชื่อผ่าน dialog box """
+        new_name = simpledialog.askstring("เปลี่ยนชื่อ", "กรุณากรอกชื่อใหม่:", initialvalue=self.username)
+        if new_name:
+            self.username = new_name
+            self.name_label.config(text=self.username)  # อัปเดต Label ทันที
 
     def logout(self):
         print("คลิกออกจากระบบ")
-
 
 if __name__ == "__main__":
     root = tk.Tk()
