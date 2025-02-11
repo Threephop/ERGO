@@ -26,6 +26,9 @@ class App(tk.Tk):
         
         self.show_popup()
 
+        self.setting_frame = SettingFrame(self)
+        self.setting_frame.place(x=200, y=0, relwidth=1, relheight=1)
+
         # กำหนด path สำหรับไอคอนทั้งหมด
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
 
