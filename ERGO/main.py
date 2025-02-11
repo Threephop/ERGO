@@ -105,7 +105,7 @@ class App(tk.Tk):
 
         # Sidebar
         self.sidebar = tk.Frame(self, bg="#221551", width=200, height=768)  # กำหนดความสูง
-        self.sidebar.place(x=0, y=0)  # ใช้ place ให้ Sidebar อยู่ทางซ้ายสุด
+        self.sidebar.pack(side="left", fill="y")  # แพ็ค sidebar ทางด้านซ้าย
 
         self.frames = {}
         self.current_frame = None
@@ -114,12 +114,16 @@ class App(tk.Tk):
         self.username_frame = tk.Frame(self.sidebar, bg="#221551", height=200)
         self.username_frame.place(x=0, y=0, width=200)  # ใช้ place แทน pack
 
-        # เพิ่มรูปโปรไฟล์
-        profile_icon_path = os.path.join(self.icon_dir, "person_icon.png")
-        profile_icon = tk.PhotoImage(file=profile_icon_path)
-        profile_icon_label = tk.Label(self.username_frame, image=profile_icon, bg="#221551")
-        profile_icon_label.image = profile_icon  # เก็บอ้างอิงเพื่อป้องกัน garbage collection
-        profile_icon_label.place(x=60, y=10)  # ปรับตำแหน่งรูปโปรไฟล์
+        # Label ที่จะใช้แสดงข้อความ "MENU" เมื่อหน้าต่างเล็ก
+        self.menu_label = tk.Label(self.sidebar, text="M\nE\nN\nU", bg="#221551", fg="white", font=("Arial", 20))
+        self.menu_label.place(x=20, y=220)
+
+        # ซ่อน label "MENU" เมื่อเริ่ม
+        self.menu_label.place_forget()
+
+        # Binding the window resize event to a function
+        self.bind("<Configure>", self.on_resize)
+        
         
         # ฟังก์ชันตัดคำตามช่องว่าง
         def wrap_text(text, width):
@@ -378,14 +382,14 @@ class App(tk.Tk):
         """ Callback เมื่อรูปโปรไฟล์เปลี่ยน """
         self.load_sidebar_profile_image()
 
-    def show_frame(self, frame_class):
+    def show_frame(self, frame_class): 
         # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
         if self.current_frame and isinstance(self.current_frame, frame_class):
             return  # ไม่ต้องเปลี่ยนถ้าเป็นเฟรมเดิม
 
         # ซ่อนเฟรมปัจจุบัน
         if self.current_frame:
-            self.current_frame.place_forget()
+            self.current_frame.pack_forget()  # ใช้ pack_forget เพื่อซ่อนเฟรมเดิม
 
         # สร้างเฟรมใหม่หากยังไม่มี
         if frame_class not in self.frames:
@@ -393,7 +397,7 @@ class App(tk.Tk):
                 self.frames[frame_class] = frame_class(self, self.get_is_muted, self.on_language_change)
 
             elif frame_class == DashboardFrame:
-                self.frames[frame_class] = frame_class(self, self.user_email)  # ✅ ส่ง email ไปให้ DashboardFrame
+                self.frames[frame_class] = frame_class(self, self.user_email)  # ส่ง email ไปให้ DashboardFrame
 
             else:
                 self.frames[frame_class] = frame_class(self)
@@ -402,7 +406,7 @@ class App(tk.Tk):
         self.current_frame = self.frames[frame_class]
 
         # วางเฟรมใหม่
-        self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
+        self.current_frame.pack(fill=tk.BOTH, expand=True)  # fill=tk.BOTH จะทำให้เฟรมขยายทั้งในแนวนอนและแนวตั้ง
 
 
     def get_is_muted(self):
@@ -429,6 +433,42 @@ class App(tk.Tk):
         self.community_button.config(text=self.translations[self.selected_language]["community"])
         self.dashboard_button.config(text=self.translations[self.selected_language]["dashboard"])
         self.leaderboard_button.config(text=self.translations[self.selected_language]["leaderboard"])
+        
+    def on_resize(self, event):
+        # ใช้ self.winfo_width() เพื่อรับค่าความกว้างปัจจุบันของหน้าต่าง
+        if self.winfo_width() < 700:
+            # ย่อ sidebar ในแกน x
+            self.sidebar.config(width=60)  # ย่อ sidebar ให้แคบลง
+            self.menu_label.place(x=20, y=220)  # แสดงข้อความ "MENU"
+            
+            # ซ่อนปุ่มเมนู
+            self.username_frame.place_forget()
+            self.profile_button.place_forget()
+            self.home_button.place_forget()
+            self.community_button.place_forget()
+            self.dashboard_button.place_forget()
+            self.leaderboard_button.place_forget()
+            self.setting_button.place_forget()
+            self.speaker_button.place_forget()
+            self.skipx1_button.place_forget()
+            self.skipx2_button.place_forget()
+            
+        else:
+            # ขยาย sidebar กลับไปที่ขนาดเดิม
+            self.sidebar.config(width=200)
+            self.menu_label.place_forget()  # ซ่อนข้อความ "MENU"
+            
+            # แสดงปุ่มเมนู
+            self.profile_button.place(x=20, y=20)
+            self.username_frame.place(x=0, y=0, width=200) 
+            self.home_button.place(x=30, y=250)
+            self.community_button.place(x=30, y=350)
+            self.dashboard_button.place(x=30, y=450)
+            self.leaderboard_button.place(x=30, y=550)
+            self.setting_button.place(x=50, y=650)
+            self.speaker_button.place(x=104, y=641)
+            self.skipx1_button.place(x=45, y=700)
+            self.skipx2_button.place(x=105, y=695)
 
     def start_timer(self):
         """เริ่มจับเวลาเมื่อเปิดแอป"""
