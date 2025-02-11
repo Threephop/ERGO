@@ -60,7 +60,7 @@ class DashboardFrame(tk.Frame):
 
         # Chart Frame
         chart_frame = ttk.LabelFrame(self, text="Statistics", padding=(10, 10))
-        chart_frame.place(x=10, y=10, relwidth=0.8, relheight=0.5)
+        chart_frame.place(x=5, y=10, relwidth=0.8, relheight=0.6)
 
         # Create chart
         fig, ax = plt.subplots(figsize=(12, 4))
@@ -73,7 +73,7 @@ class DashboardFrame(tk.Frame):
 
         # Set ticks for x-axis
         ax.set_xticks(range(len(days)))
-        ax.set_xticklabels(days, rotation=0, ha="center", fontsize=12)
+        ax.set_xticklabels(days, rotation=0, ha="center", fontsize=9)
 
         # แสดงตัวเลขบนแท่งกราฟ
         for bar in bars:
