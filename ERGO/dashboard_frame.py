@@ -64,7 +64,7 @@ class DashboardFrame(tk.Frame):
 
         # Create chart
         fig, ax = plt.subplots(figsize=(12, 4))
-        ax.bar(days, active_hours, color="#1f6eb0", width=0.4)
+        bars = ax.bar(days, active_hours, color="#1f6eb0", width=0.4)
 
         # Apply font, labels without italic
         ax.set_xlabel("Week", fontsize=12)
@@ -75,10 +75,16 @@ class DashboardFrame(tk.Frame):
         ax.set_xticks(range(len(days)))
         ax.set_xticklabels(days, rotation=0, ha="center", fontsize=12)
 
+        # แสดงตัวเลขบนแท่งกราฟ
+        for bar in bars:
+            yval = bar.get_height()  # ความสูงของแท่ง (จำนวนชั่วโมง)
+            ax.text(bar.get_x() + bar.get_width() / 2, yval, round(yval, 2), ha="center", va="bottom", fontsize=10)
+
         # Embed chart into Tkinter
         canvas = FigureCanvasTkAgg(fig, master=chart_frame)
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(fill="both", expand=True)
+
 
 
 
