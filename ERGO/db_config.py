@@ -26,13 +26,26 @@
 
 
 # db_config.py database in my computer
+# import pyodbc
+
+# def get_db_connection():
+#     conn_str = (
+#         "DRIVER={ODBC Driver 17 for SQL Server};"
+#         "SERVER=THREEPHOP\MSSQLSERVER01;"
+#         "DATABASE=ERGO;"
+#         "Trusted_Connection=yes;"  # ใช้ Windows Authentication (แนะนำสำหรับเครื่อง local)
+#     )
+#     return pyodbc.connect(conn_str)
+
+# db_config.py database in ERGOSERVER
 import pyodbc
 
 def get_db_connection():
     conn_str = (
         "DRIVER={ODBC Driver 17 for SQL Server};"
-        "SERVER=THREEPHOP\MSSQLSERVER01;"
-        "DATABASE=ERGO;"
-        "Trusted_Connection=yes;"  # ใช้ Windows Authentication (แนะนำสำหรับเครื่อง local)
+        "SERVER=ergoservers.database.windows.net;"
+        "DATABASE=ERGODATABASE;"
+        "Authentication=ActiveDirectoryInteractive;"  # หรือ ActiveDirectoryPassword สำหรับการยืนยันตัวตน
+        "UID=threephop.t@live.ku.th;"
     )
     return pyodbc.connect(conn_str)
