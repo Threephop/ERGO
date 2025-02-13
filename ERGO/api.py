@@ -167,6 +167,11 @@ def update_app_time(email: str, app_time: float):
         new_hours = float(current_hours[0]) + (app_time / 3600)  # แปลงวินาทีเป็นชั่วโมงแล้วบวกเพิ่ม
     else:
         new_hours = app_time / 3600  # ถ้ายังไม่มีค่า ให้ใช้ค่าใหม่เลย
+        # 🔹 ถ้าไม่มีข้อมูล ให้ทำการ insert ข้อมูลใหม่ลงใน UsageStats_Table
+        cursor.execute(
+            "INSERT INTO dbo.UsageStats_Table (user_id, hours_used) VALUES (?, ?)",
+            (user_id, new_hours)
+        )
     
     # 🔹 อัปเดตค่า hours_used ใน UsageStats_Table
     cursor.execute(
@@ -194,6 +199,11 @@ def update_app_time(email: str, app_time: float):
             f"UPDATE dbo.Dashboard_Table SET {today_day} = ? WHERE user_id = ?",
             (app_time / 3600, user_id)
         )
+        # 🔹 ถ้าไม่มีข้อมูลใน Dashboard_Table สำหรับ user_id นี้ ให้ insert ข้อมูลใหม่
+        cursor.execute(
+            f"INSERT INTO dbo.Dashboard_Table (user_id, {today_day}) VALUES (?, ?)",
+            (user_id, app_time / 3600)
+        )
     
     conn.commit()
     conn.close()
@@ -202,6 +212,7 @@ def update_app_time(email: str, app_time: float):
         "message": "App time updated successfully",
         "new_hours_used": new_hours
     }
+
 
 @app.get("/get_usage_stats/{user_id}")
 def get_usage_stats(user_id: int):
@@ -218,9 +229,9 @@ def get_usage_stats(user_id: int):
     )
     
     row = cursor.fetchone()
-    conn.close()
 
     if row:
+        conn.close()
         return {
             "Monday": row[0],
             "Tuesday": row[1],
@@ -231,4 +242,37 @@ def get_usage_stats(user_id: int):
             "Sunday": row[6]
         }
     else:
-        raise HTTPException(status_code=404, detail="User data not found")
+        # ถ้าไม่พบข้อมูลใน Dashboard_Table, ให้ทำการ INSERT ข้อมูลใหม่
+        # ดึงชื่อวันปัจจุบัน
+        today_day = datetime.today().strftime('%A').lower()  # เช่น 'monday', 'tuesday', ...
+        
+        # ในกรณีที่ไม่มีข้อมูลใน Dashboard_Table ให้เพิ่มข้อมูลเริ่มต้นเป็น 0
+        cursor.execute(
+            """
+            INSERT INTO dbo.Dashboard_Table (user_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday)
+            VALUES (?, 0, 0, 0, 0, 0, 0, 0)
+            """, (user_id,)
+        )
+        conn.commit()
+
+        # หลังจาก insert ข้อมูล, ดึงข้อมูลมาแสดง
+        cursor.execute(
+            """
+            SELECT monday, tuesday, wednesday, thursday, friday, saturday, sunday
+            FROM dbo.Dashboard_Table
+            WHERE user_id = ?
+            """, (user_id,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        
+        return {
+            "Monday": row[0],
+            "Tuesday": row[1],
+            "Wednesday": row[2],
+            "Thursday": row[3],
+            "Friday": row[4],
+            "Saturday": row[5],
+            "Sunday": row[6]
+        }
+
