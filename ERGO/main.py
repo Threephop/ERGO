@@ -8,6 +8,7 @@ from setting_frame import SettingFrame
 from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
 import os
+import threading
 
 class App(tk.Tk):
     def __init__(self):
@@ -173,9 +174,11 @@ class App(tk.Tk):
         self.speaker_button.image = self.speaker_icon
         self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม speaker
 
-        # สร้างปุ่ม Skip 1
+         # สร้างปุ่ม Skip 1
         skipx1_icon_path = os.path.join(self.icon_dir, "skipx1.png")
         skipx1_icon = tk.PhotoImage(file=skipx1_icon_path)
+
+        self.stop_timer1 = threading.Event()
 
         self.skipx1_button = tk.Button(
             self.sidebar,
@@ -187,13 +190,19 @@ class App(tk.Tk):
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
+            command=self.stop_set_time_1,
         )
         self.skipx1_button.image = skipx1_icon
         self.skipx1_button.place(x=45, y=700)  # ปรับตำแหน่งปุ่ม Skip 1
 
+        # Default frame
+        self.show_frame(HomeFrame)
+
         # สร้างปุ่ม Skip 2
         skipx2_icon_path = os.path.join(self.icon_dir, "skipx2.png")
         skipx2_icon = tk.PhotoImage(file=skipx2_icon_path)
+
+        self.stop_timer2 = threading.Event()
 
         self.skipx2_button = tk.Button(
             self.sidebar,
@@ -205,9 +214,21 @@ class App(tk.Tk):
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
+            command=self.stop_set_time_1_and_2,
         )
         self.skipx2_button.image = skipx2_icon
         self.skipx2_button.place(x=105, y=695)  # ปรับตำแหน่งปุ่ม Skip 2
+
+    def stop_set_time_1(self):
+        """หยุดการทำงานของ Set Time 1 ใน setting.py"""
+        self.stop_timer1.set()
+        print("Set Time 1 has been stopped.")
+
+    def stop_set_time_1_and_2(self):
+        """หยุดการทำงานของ Set Time 1 และ Set Time 2 ใน setting.py"""
+        self.stop_timer1.set()
+        self.stop_timer2.set()
+        print("Set Time 1 and Set Time 2 have been stopped.")
 
         # Default frame
         self.show_frame(HomeFrame)
@@ -222,31 +243,32 @@ class App(tk.Tk):
             self.speaker_button.config(image=self.speaker_icon)  # เปลี่ยนกลับเป็นไอคอน speaker
 
     def show_frame(self, frame_class):
-        # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
         if self.current_frame and isinstance(self.current_frame, frame_class):
-            return  # ไม่ต้องทำอะไร ถ้าเฟรมเดียวกัน
-        
-        # ซ่อนเฟรมปัจจุบัน
+            return
+
         if self.current_frame:
-            self.current_frame.place_forget()  # ซ่อนเฟรมเก่า
-        
-        # สร้างเฟรมใหม่หากยังไม่มี
+            self.current_frame.place_forget()
+
         if frame_class not in self.frames:
             if frame_class == SettingFrame:
-                self.frames[frame_class] = frame_class(self, self.get_is_muted)
+                self.frames[frame_class] = frame_class(self, self.get_stop_timer1, self.get_stop_timer2)
             else:
                 self.frames[frame_class] = frame_class(self)
-        
-        # ตั้งค่าเฟรมใหม่เป็นเฟรมปัจจุบัน
+
         self.current_frame = self.frames[frame_class]
-        
-        # วางเฟรมใหม่
         self.current_frame.place(x=200, y=0, relwidth=1, relheight=1)
+
 
     def get_is_muted(self):
         """คืนค่าตัวแปร is_muted"""
         return self.is_muted
 
+    def get_stop_timer1(self):
+        return self.stop_timer1
+    
+    def get_stop_timer2(self):
+        return self.stop_timer2
+    
     def show_popup(self):
         PopupFrame(self) 
 

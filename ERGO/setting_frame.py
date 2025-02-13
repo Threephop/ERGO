@@ -7,9 +7,10 @@ import pygame  # ใช้สำหรับเล่นเสียง
 from popup_video import show_popup  # นำเข้า show_popup สำหรับแสดงวิดีโอ
 
 class SettingFrame(tk.Frame):
-    def __init__(self, parent, is_muted_callback):
+    def __init__(self, parent, stop_timer1_callback, stop_timer2_callback):
         super().__init__(parent, bg="white")
-        self.is_muted_callback = is_muted_callback  # ฟังก์ชัน callback สำหรับตรวจสอบ mute
+        self.stop_timer1_callback = stop_timer1_callback  # รับตัวแปร stop_timer1
+        self.stop_timer2_callback = stop_timer2_callback  # รับตัวแปร stop_timer2
 
         # Volume control
         volume_frame = tk.Frame(self, bg="white")
@@ -40,7 +41,7 @@ class SettingFrame(tk.Frame):
         self.language_dropdown = ttk.Combobox(language_frame, textvariable=self.language_var, font=("Arial", 12), state="readonly")
         self.language_dropdown["values"] = ("English", "ภาษาไทย")
         self.language_dropdown.place(x=110, y=10, width=150, height=30)
-
+        
         # Time control
         time_frame = tk.Frame(self, bg="white")
         time_frame.place(x=50, y=200, width=350, height=100)
@@ -53,7 +54,7 @@ class SettingFrame(tk.Frame):
         ttk.Combobox(time_frame, textvariable=self.hour_var1, width=5, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=110, y=10, width=50, height=30)
         ttk.Combobox(time_frame, textvariable=self.minute_var1, width=5, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=10, width=50, height=30)
 
-        tk.Button(time_frame, text="Set", command=lambda: self.set_time(self.hour_var1, self.minute_var1)).place(x=240, y=10, width=50, height=30)
+        tk.Button(time_frame, text="Set", command=self.set_time_1).place(x=240, y=10, width=50, height=30)
 
         # Set Time 2
         tk.Label(time_frame, text="Set Time 2", font=("Arial", 16), bg="white").place(x=0, y=50, width=100, height=30)
@@ -64,24 +65,37 @@ class SettingFrame(tk.Frame):
         ttk.Combobox(time_frame, textvariable=self.hour_var2, width=5, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=110, y=50, width=50, height=30)
         ttk.Combobox(time_frame, textvariable=self.minute_var2, width=5, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=50, width=50, height=30)
 
-        tk.Button(time_frame, text="Set", command=lambda: self.set_time(self.hour_var2, self.minute_var2)).place(x=240, y=50, width=50, height=30)
+        tk.Button(time_frame, text="Set", command=self.set_time_2).place(x=240, y=50, width=50, height=30)
 
     def update_volume_label(self, *args):
         self.volume_label.config(text=f"{int(self.volume.get())}%")
 
-    def set_time(self, hour_var, minute_var):
-        selected_time = f"{hour_var.get()}:{minute_var.get()}"
+    def set_time_1(self):
+        selected_time = f"{self.hour_var1.get()}:{self.minute_var1.get()}"
         current_volume = int(self.volume.get())
-        print(f"Time set to: {selected_time}, Volume: {current_volume}%")
+        print(f"Set Time 1 to: {selected_time}, Volume: {current_volume}%")
 
         def check_time():
-            while True:
+            while not self.stop_timer1_callback().is_set():  # ใช้ stop_timer1 เท่านั้น
                 current_time = time.strftime("%H:%M")
                 if current_time == selected_time:
-                    # เล่นเสียงแจ้งเตือน
                     self.play_notification_sound()
+                    show_popup(current_volume)
+                    break
+                time.sleep(1)
 
-                    # แสดง popup สำหรับเลือกวิดีโอ
+        threading.Thread(target=check_time, daemon=True).start()
+
+    def set_time_2(self):
+        selected_time = f"{self.hour_var2.get()}:{self.minute_var2.get()}"
+        current_volume = int(self.volume.get())
+        print(f"Set Time 2 to: {selected_time}, Volume: {current_volume}%")
+
+        def check_time():
+            while not self.stop_timer2_callback().is_set():  # ใช้ stop_timer2 เท่านั้น
+                current_time = time.strftime("%H:%M")
+                if current_time == selected_time:
+                    self.play_notification_sound()
                     show_popup(current_volume)
                     break
                 time.sleep(1)
@@ -90,10 +104,6 @@ class SettingFrame(tk.Frame):
 
     def play_notification_sound(self):
         """เล่นเสียงแจ้งเตือน"""
-        if self.is_muted_callback():
-            print("Muted: เสียงแจ้งเตือนถูกปิดอยู่")
-            return  # ไม่เล่นเสียงถ้า mute อยู่
-
         pygame.init()
         pygame.mixer.init()
 
