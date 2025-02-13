@@ -7,9 +7,13 @@ import requests
 from datetime import datetime 
 
 class CommunityFrame(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, user_email):
         super().__init__(parent)
-
+        
+        self.api_base_url = "http://127.0.0.1:8000"
+        self.user_email = user_email
+        self.user_id = self.fetch_user_id(user_email)
+        
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
         if not os.path.exists(self.icon_dir):
             os.makedirs(self.icon_dir)
@@ -66,6 +70,36 @@ class CommunityFrame(tk.Frame):
 
         self.entry.bind("<Return>", lambda event: self.send_message())
         self.load_messages()
+        
+        response = requests.get("http://127.0.0.1:8000/users")
+        if response.status_code == 200:
+            try:
+                data = response.json()
+
+                # พิมพ์ข้อมูลที่ได้รับจาก API
+                print("Users list from API:", data)
+
+                # ตรวจสอบว่า 'users' มีอยู่ และเป็น list
+                users_list = data.get('users', [])
+                if isinstance(users_list, list):
+                    # 🔹 ค้นหา user ตาม email
+                    user_data = next((user for user in users_list if user.get("email") == self.user_email), None)
+
+                    if user_data:
+                        self.username = user_data.get("username", "Unknown User")
+                    else:
+                        self.username = "Unknown User"
+
+                    print(f"🔹 Username: {self.username}")
+                else:
+                    print("⚠️ Error: 'users' is not a list!")
+                    self.username = "Unknown User"
+            except ValueError as e:
+                print(f"⚠️ Error: Failed to parse response as JSON - {e}")
+                self.username = "Unknown User"
+        else:
+            print(f"⚠️ API Error: {response.status_code}")
+            self.username = "Unknown User"
 
     def add_placeholder(self, event=None):
         """แสดงข้อความ 'พิมพ์ข้อความ' ถ้า input ว่าง"""
@@ -95,35 +129,54 @@ class CommunityFrame(tk.Frame):
             if response.status_code == 200:
                 messages = response.json().get("messages", [])
                 for msg in messages:
-                    # ใช้ "Username" เป็นค่าเริ่มต้น หากไม่มีข้อมูลผู้ใช้ใน database
-                    self.add_message_bubble("Username", msg["content"])
+                    username = msg.get("username", "Unknown")  # ใช้ค่า username จริง
+                    self.add_message_bubble(username, msg["content"])  # แสดงชื่อผู้ใช้จริง
         except Exception as e:
             print("เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
+
+            
+    def fetch_user_id(self, user_email):
+        """ดึง user_id จาก API"""
+        url = f"{self.api_base_url}/get_user_id/{user_email}"
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                if "user_id" in data:
+                    return data["user_id"]
+            print("Error fetching user_id:", response.json().get("error", "Unknown error"))
+        except Exception as e:
+            print("Exception:", e)
+        return None  # ถ้าหาไม่เจอให้ return None
+            
     def cancel_single_message(self, bubble_frame):
         """ ลบเฉพาะข้อความหรือสื่อใน bubble_frame นั้นๆ """
         bubble_frame.destroy()
+        
 
     def send_message(self):
         message = self.entry.get().strip()
         if message and message != self.placeholder_text:
-            self.add_message_bubble("Username", message)
+            self.add_message_bubble(self.username, message)
             self.entry.delete(0, "end")
-            self.add_placeholder()  # แสดง Placeholder ใหม่หากไม่มีข้อความ
+            self.add_placeholder()
             self.canvas.update_idletasks()
             self.canvas.yview_moveto(1)
 
-            # ส่งข้อมูลไปยัง API
+            # ตรวจสอบว่าค่าถูกส่งไป API หรือไม่
+            print(f"Sending user_id: {self.user_id}, content: {message}")
+
             try:
-                create_at = datetime.now().isoformat()  # สร้างเวลาปัจจุบัน
+                create_at = datetime.now().isoformat()
                 response = requests.post(
                     "http://localhost:8000/post-message",
                     params={
+                        "user_id": self.user_id,  
                         "content": message,
                         "create_at": create_at
                     }
                 )
                 
-                # ตรวจสอบสถานะการตอบกลับ
                 if response.status_code == 200:
                     print("ส่งข้อความสำเร็จ!")
                 else:
@@ -131,6 +184,7 @@ class CommunityFrame(tk.Frame):
                     
             except Exception as e:
                 print("เชื่อมต่อ API ไม่สำเร็จ:", e)
+
 
 
     def add_message_bubble(self, username, message):

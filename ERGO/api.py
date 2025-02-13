@@ -77,15 +77,15 @@ def get_tables():
     
 # ฟังก์ชันสำหรับส่งข้อความเข้า community
 @app.post("/post-message")
-def post_message(content: str, create_at: str):
+def post_message(user_id: int, content: str, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # เพิ่มข้อความใหม่เข้า database
+        # บันทึกเฉพาะ user_id และ content
         cursor.execute(
-            "INSERT INTO dbo.CommunityPosts_Table (content, create_at) VALUES (?, ?)",
-            (content, create_at)
+            "INSERT INTO dbo.CommunityPosts_Table (user_id, content, create_at) VALUES (?, ?, ?)",
+            (user_id, content, create_at)
         )
         conn.commit()
         return {"message": "Message posted successfully"}
@@ -96,6 +96,7 @@ def post_message(content: str, create_at: str):
     
     finally:
         conn.close()
+
 
 # ฟังก์ชันดึงข้อความทั้งหมดจาก community
 @app.get("/get-messages")
