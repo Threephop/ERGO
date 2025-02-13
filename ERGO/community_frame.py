@@ -129,7 +129,7 @@ class CommunityFrame(tk.Frame):
             if response.status_code == 200:
                 messages = response.json().get("messages", [])
                 for msg in messages:
-                    username = msg.get("username", "Unknown")  # ใช้ค่า username จริง
+                    username = msg.get("username", "Unknown")  # ใช้ค่า username ที่ได้จาก API
                     self.add_message_bubble(username, msg["content"])  # แสดงชื่อผู้ใช้จริง
         except Exception as e:
             print("เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)

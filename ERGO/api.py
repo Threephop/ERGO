@@ -103,10 +103,21 @@ def post_message(user_id: int, content: str, create_at: str):
 def get_messages():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT content, create_at FROM dbo.CommunityPosts_Table ORDER BY create_at")
+
+    # ปรับปรุงคำสั่ง SQL เพื่อดึงข้อมูลจากทั้ง CommunityPosts_Table และ Users_Table
+    cursor.execute("""
+        SELECT c.content, c.create_at, u.username
+        FROM dbo.CommunityPosts_Table c
+        JOIN dbo.Users_Table u ON c.user_id = u.user_id
+        ORDER BY c.create_at
+    """)
+
     messages = cursor.fetchall()
     conn.close()
-    return {"messages": [{"content": row[0], "create_at": row[1]} for row in messages]}
+
+    # ส่งข้อมูลที่มีทั้ง content, create_at และ username
+    return {"messages": [{"content": row[0], "create_at": row[1], "username": row[2]} for row in messages]}
+
 
 @app.get("/showstat")
 def get_usage_stats():
