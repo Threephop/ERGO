@@ -65,6 +65,7 @@ class CommunityFrame(tk.Frame):
         self.send_button.pack(side="right", padx=10, pady=5)
 
         self.entry.bind("<Return>", lambda event: self.send_message())
+        self.load_messages()
 
     def add_placeholder(self, event=None):
         """แสดงข้อความ 'พิมพ์ข้อความ' ถ้า input ว่าง"""
@@ -87,26 +88,6 @@ class CommunityFrame(tk.Frame):
         except Exception as e:
             print(f"Error loading {file_name}: {e}")
             return None
-
-        self.camera_icon = load_resized_image("camera.png", (45, 40))
-        self.folder_icon = load_resized_image("folder.png", (50, 47))
-        self.send_icon = load_resized_image("send.png", (30, 30))
-        self.profile_icon = load_resized_image("profile.png", (50, 50))
-
-        self.camera_button = tk.Button(self.bottom_bar, image=self.camera_icon, command=self.open_camera, bd=0, bg="white")
-        self.camera_button.pack(side="left", padx=5, pady=5)
-
-        self.folder_button = tk.Button(self.bottom_bar, image=self.folder_icon, command=self.open_folder, bd=0, bg="white")
-        self.folder_button.pack(side="left", padx=5, pady=5)
-
-        self.entry = tk.Entry(self.bottom_bar, font=("Arial", 14), bd=1)
-        self.entry.pack(side="left", padx=(100, 80), pady=5, fill="x", expand=True)
-
-        self.send_button = tk.Button(self.bottom_bar, image=self.send_icon, command=self.send_message, bd=0, bg="white")
-        self.send_button.pack(side="left", padx=1, pady=5)
-
-        self.entry.bind("<Return>", lambda event: self.send_message())
-        self.load_messages()  # เรียกโหลดข้อความเก่าเมื่อเริ่มต้น
         
     def load_messages(self):
         try:
