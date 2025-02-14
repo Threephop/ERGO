@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Form
 from datetime import datetime
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
+import sqlite3
 
 app = FastAPI()
 
@@ -43,14 +44,13 @@ def add_user(username: str, email: str, create_at: str):
     cursor = conn.cursor()
 
     # ตรวจสอบว่าผู้ใช้มีอยู่แล้วในฐานข้อมูลหรือไม่
-    cursor.execute("SELECT COUNT(*) FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
-    existing_user = cursor.fetchone()[0]
+    cursor.execute("SELECT username FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    existing_user = cursor.fetchone()
 
-    if existing_user > 0:
-        # ถ้าผู้ใช้งานมีอยู่แล้ว ให้ทำการอัปเดตชื่อและเวลาล่าสุดแทน
-        cursor.execute("UPDATE dbo.Users_Table SET username = ?, create_at = ? WHERE outlook_mail = ?",
-                       (username, create_at, email))
-        message = "User data updated successfully"
+    if existing_user:
+        # อัปเดตเฉพาะ create_at
+        cursor.execute("UPDATE dbo.Users_Table SET create_at = ? WHERE outlook_mail = ?", (create_at, email))
+        message = "User login time updated successfully"
     else:
         # ถ้าผู้ใช้งานยังไม่มี ให้ทำการเพิ่มข้อมูลใหม่
         cursor.execute("INSERT INTO dbo.Users_Table (username, outlook_mail, create_at) VALUES (?, ?, ?)",
@@ -60,8 +60,7 @@ def add_user(username: str, email: str, create_at: str):
     conn.commit()
     conn.close()
     return {"message": message}
-
-
+    
 # ฟังก์ชันที่ดึงรายชื่อตารางทั้งหมดในฐานข้อมูล
 @app.get("/tables")
 def get_tables():
@@ -276,3 +275,30 @@ def get_usage_stats(user_id: int):
             "Sunday": row[6]
         }
 
+
+# 🔄 ฟังก์ชันสำหรับอัปเดตชื่อผู้ใช้ (รับค่าเป็น Form Data)
+@app.post("/update_username/")
+def update_username(
+    user_id: int = Form(...),  # รับค่า user_id จาก Form Data
+    new_username: str = Form(...)  # รับค่า new_username จาก Form Data
+):
+
+    if not new_username:
+        raise HTTPException(status_code=400, detail="New username cannot be empty")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ตรวจสอบว่ามี user_id ในฐานข้อมูลหรือไม่
+    cursor.execute("SELECT * FROM dbo.Users_Table WHERE user_id = ?", (user_id,))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # อัปเดต username
+    cursor.execute("UPDATE dbo.Users_Table SET username = ? WHERE user_id = ?", (new_username, user_id))
+    conn.commit()
+    conn.close()
+
+    return {"message": "Username updated successfully", "user_id": user_id, "new_username": new_username}
