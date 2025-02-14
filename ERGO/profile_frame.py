@@ -2,9 +2,10 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 from PIL import Image, ImageTk
 import os
+import requests
 
 class ProfileFrame(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent,user_email):
         super().__init__(parent, bg="white")
 
         # กำหนดไดเรกทอรีสำหรับไอคอน
@@ -16,22 +17,55 @@ class ProfileFrame(tk.Frame):
         self.load_profile_image(self.default_profile_path)
 
         # Canvas แสดงภาพโปรไฟล์ (คลิกเพื่อเปลี่ยน)
-        self.canvas = tk.Canvas(self, width=100, height=100, bg="#2E004F", highlightthickness=0)
+        self.canvas = tk.Canvas(self, width=100, height=100, bg="#ffffff", highlightthickness=0)
         self.profile_pic = self.canvas.create_image(50, 50, image=self.profile_image, tags="profile_pic")
         self.canvas.place(relx=0.4, rely=0.2, anchor="center")
         self.canvas.tag_bind("profile_pic", "<Button-1>", self.change_profile_picture)  # คลิกเปลี่ยนรูป
 
+        self.user_email = user_email
+        
+        # 🔹 ดึงรายชื่อ users จาก API
+        response = requests.get("http://127.0.0.1:8000/users")
+        if response.status_code == 200:
+            try:
+                data = response.json()
+
+                # พิมพ์ข้อมูลที่ได้รับจาก API
+                print("Users list from API:", data)
+
+                # ตรวจสอบว่า 'users' มีอยู่ และเป็น list
+                users_list = data.get('users', [])
+                if isinstance(users_list, list):
+                    # 🔹 ค้นหา user ตาม email
+                    user_data = next((user for user in users_list if user.get("email") == self.user_email), None)
+
+                    if user_data:
+                        self.username = user_data.get("username", "Unknown User")
+                    else:
+                        self.username = "Unknown User"
+
+                    print(f"🔹 Username: {self.username}")
+                else:
+                    print("⚠️ Error: 'users' is not a list!")
+                    self.username = "Unknown User"
+            except ValueError as e:
+                print(f"⚠️ Error: Failed to parse response as JSON - {e}")
+                self.username = "Unknown User"
+        else:
+            print(f"⚠️ API Error: {response.status_code}")
+            self.username = "Unknown User"
+
         # ชื่อผู้ใช้
-        self.username = "นายธีภพ ธิวะโต"  # ค่าชื่อเริ่มต้น
         self.name_label = tk.Label(self, text=self.username, font=("Arial", 16), bg="white", cursor="hand2")
         self.name_label.place(relx=0.4, rely=0.35, anchor="center")
         self.name_label.bind("<Button-1>", self.change_name)  # คลิกที่ชื่อเพื่อเปลี่ยนชื่อ
 
         # ปุ่มออกจากระบบ
-        self.logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#2E004F", fg="red",
+        self.logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#ff0000", fg="white",
                                        borderwidth=0, command=self.logout)
         self.logout_button.place(relx=0.8, rely=0.05, anchor="ne")
 
+    
     def load_profile_image(self, image_path):
         """ โหลดและปรับขนาดภาพโปรไฟล์ """
         try:
@@ -75,7 +109,7 @@ class ProfileFrame(tk.Frame):
         if new_name:
             self.username = new_name
             self.name_label.config(text=self.username)  # อัปเดต Label ทันที
-
+    
     def logout(self):
         print("คลิกออกจากระบบ")
 

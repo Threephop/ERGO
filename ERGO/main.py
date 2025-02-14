@@ -399,6 +399,9 @@ class App(tk.Tk):
             elif frame_class == DashboardFrame:
                 self.frames[frame_class] = frame_class(self, self.user_email)  # ส่ง email ไปให้ DashboardFrame
 
+            elif frame_class == ProfileFrame:
+                self.frames[frame_class] = frame_class(self, self.user_email)  # ส่ง email ไปให้ ProfileFrame    
+
             else:
                 self.frames[frame_class] = frame_class(self)
 
