@@ -16,7 +16,7 @@ class ProfileFrame(tk.Frame):
         self.load_profile_image(self.default_profile_path)
 
         # Canvas แสดงภาพโปรไฟล์ (คลิกเพื่อเปลี่ยน)
-        self.canvas = tk.Canvas(self, width=100, height=100, bg="#2E004F", highlightthickness=0)
+        self.canvas = tk.Canvas(self, width=100, height=100, bg="#ffffff", highlightthickness=0)
         self.profile_pic = self.canvas.create_image(50, 50, image=self.profile_image, tags="profile_pic")
         self.canvas.place(relx=0.4, rely=0.2, anchor="center")
         self.canvas.tag_bind("profile_pic", "<Button-1>", self.change_profile_picture)  # คลิกเปลี่ยนรูป
@@ -28,7 +28,7 @@ class ProfileFrame(tk.Frame):
         self.name_label.bind("<Button-1>", self.change_name)  # คลิกที่ชื่อเพื่อเปลี่ยนชื่อ
 
         # ปุ่มออกจากระบบ
-        self.logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#2E004F", fg="red",
+        self.logout_button = tk.Button(self, text="Logout", font=("Arial", 12), bg="#ff0000", fg="white",
                                        borderwidth=0, command=self.logout)
         self.logout_button.place(relx=0.8, rely=0.05, anchor="ne")
 
