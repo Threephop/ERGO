@@ -130,9 +130,14 @@ class CommunityFrame(tk.Frame):
                 messages = response.json().get("messages", [])
                 for msg in messages:
                     username = msg.get("username", "Unknown")  # ใช้ค่า username ที่ได้จาก API
-                    self.add_message_bubble(username, msg["content"])  # แสดงชื่อผู้ใช้จริง
+                    post_id = msg.get("post_id")
+                    content = msg.get("content")
+                    self.add_message_bubble(post_id, username, content)  # ส่ง post_id, username, และ message
+            else:
+                print("เกิดข้อผิดพลาด:", response.json())
         except Exception as e:
             print("เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
+
 
             
     def fetch_user_id(self, user_email):
@@ -157,13 +162,13 @@ class CommunityFrame(tk.Frame):
     def send_message(self):
         message = self.entry.get().strip()
         if message and message != self.placeholder_text:
-            self.add_message_bubble(self.username, message)
+            # ลบข้อความในช่องพิมพ์และอัปเดต UI
             self.entry.delete(0, "end")
             self.add_placeholder()
             self.canvas.update_idletasks()
             self.canvas.yview_moveto(1)
 
-            # ตรวจสอบว่าค่าถูกส่งไป API หรือไม่
+            # ตรวจสอบค่าที่ส่งไป API
             print(f"Sending user_id: {self.user_id}, content: {message}")
 
             try:
@@ -171,27 +176,37 @@ class CommunityFrame(tk.Frame):
                 response = requests.post(
                     "http://localhost:8000/post-message",
                     params={
-                        "user_id": self.user_id,  
+                        "user_id": self.user_id,
                         "content": message,
                         "create_at": create_at
                     }
                 )
-                
+
                 if response.status_code == 200:
-                    print("ส่งข้อความสำเร็จ!")
+                    data = response.json()
+                    post_id = data.get("post_id")
+                    if post_id:
+                        print("ส่งข้อความสำเร็จ! post_id:", post_id)
+                        # คุณสามารถเรียก add_message_bubble โดยส่ง post_id ที่ถูกต้องได้
+                        self.add_message_bubble(post_id, self.username, message)
+                    else:
+                        print("ไม่สามารถดึง post_id ได้จากการตอบกลับ")
                 else:
                     print("เกิดข้อผิดพลาด:", response.json())
-                    
+                        
             except Exception as e:
                 print("เชื่อมต่อ API ไม่สำเร็จ:", e)
 
 
 
-    def add_message_bubble(self, username, message):
+    def add_message_bubble(self, post_id, username, message):
         bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
+        
+        # แสดงรูปโปรไฟล์
         profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
         profile_label.pack(side="left", padx=5)
-
+        
+        # แสดงข้อความ
         text_bubble = tk.Label(
             bubble_frame,
             text=message,
@@ -205,7 +220,8 @@ class CommunityFrame(tk.Frame):
             relief="ridge",
         )
         text_bubble.pack(side="left", padx=5)
-
+        
+        # แสดงชื่อผู้ใช้
         username_label = tk.Label(
             bubble_frame,
             text=username,
@@ -214,12 +230,21 @@ class CommunityFrame(tk.Frame):
             bg="white",
         )
         username_label.pack(anchor="w", padx=5)
-
-        # ปุ่มยกเลิกการส่ง จะไปอยู่ด้านล่างตรงกลาง
-        cancel_button = tk.Button(bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("Arial", 12), bd=0, bg="white", command=lambda: self.cancel_single_message(bubble_frame))
-        cancel_button.pack(side="bottom", pady=5, anchor="center")  # เปลี่ยนจาก "right" เป็น "bottom" และใช้ anchor="center"
-
+        
+        # ปุ่มยกเลิกการส่ง โดยส่ง bubble_frame และ post_id ไปยังฟังก์ชัน cancel_single_message
+        cancel_button = tk.Button(
+            bubble_frame, 
+            text="ยกเลิกการส่ง", 
+            fg="red", 
+            font=("Arial", 12), 
+            bd=0, 
+            bg="white", 
+            command=lambda: self.cancel_single_message(bubble_frame, post_id)
+        )
+        cancel_button.pack(side="bottom", pady=5, anchor="center")
+        
         bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
+
 
     def post_video(self, filepath):
         try:

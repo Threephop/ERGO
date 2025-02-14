@@ -63,32 +63,21 @@ def add_user(username: str, email: str, create_at: str):
 
 
 # ฟังก์ชันที่ดึงรายชื่อตารางทั้งหมดในฐานข้อมูล
-@app.get("/tables")
-def get_tables():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE'")
-        tables = cursor.fetchall()
-        conn.close()
-        return {"tables": [table[0] for table in tables]}
-    except Exception as e:
-        return {"error": f"An error occurred: {str(e)}"}
-    
-# ฟังก์ชันสำหรับส่งข้อความเข้า community
 @app.post("/post-message")
 def post_message(user_id: int, content: str, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
     try:
-        # บันทึกเฉพาะ user_id และ content
-        cursor.execute(
-            "INSERT INTO dbo.CommunityPosts_Table (user_id, content, create_at) VALUES (?, ?, ?)",
-            (user_id, content, create_at)
-        )
+        # ใช้ OUTPUT INSERTED.post_id เพื่อดึงค่า post_id ที่ถูกสร้างขึ้น
+        query = """
+            INSERT INTO dbo.CommunityPosts_Table (user_id, content, create_at)
+            OUTPUT INSERTED.post_id
+            VALUES (?, ?, ?)
+        """
+        cursor.execute(query, (user_id, content, create_at))
+        post_id = cursor.fetchone()[0]
         conn.commit()
-        return {"message": "Message posted successfully"}
+        return {"message": "Message posted successfully", "post_id": int(post_id)}
     
     except Exception as e:
         conn.rollback()
@@ -98,25 +87,29 @@ def post_message(user_id: int, content: str, create_at: str):
         conn.close()
 
 
+
 # ฟังก์ชันดึงข้อความทั้งหมดจาก community
 @app.get("/get-messages")
 def get_messages():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ปรับปรุงคำสั่ง SQL เพื่อดึงข้อมูลจากทั้ง CommunityPosts_Table และ Users_Table
+    # ปรับปรุงคำสั่ง SQL เพื่อดึงข้อมูล post_id, content, create_at และ username
     cursor.execute("""
-        SELECT c.content, c.create_at, u.username
+        SELECT c.post_id, c.content, c.create_at, u.username
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
         ORDER BY c.create_at
     """)
-
     messages = cursor.fetchall()
     conn.close()
 
-    # ส่งข้อมูลที่มีทั้ง content, create_at และ username
-    return {"messages": [{"content": row[0], "create_at": row[1], "username": row[2]} for row in messages]}
+    # ส่งข้อมูลที่มี post_id, content, create_at และ username
+    return {"messages": [
+        {"post_id": row[0], "content": row[1], "create_at": row[2], "username": row[3]}
+        for row in messages
+    ]}
+
 
 
 @app.get("/showstat")
