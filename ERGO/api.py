@@ -237,20 +237,16 @@ def get_usage_stats(user_id: int):
     if row:
         conn.close()
         return {
-            "Monday": row[0],
-            "Tuesday": row[1],
-            "Wednesday": row[2],
-            "Thursday": row[3],
-            "Friday": row[4],
-            "Saturday": row[5],
-            "Sunday": row[6]
+            "Monday": row[0] if row[0] is not None else 0,
+            "Tuesday": row[1] if row[1] is not None else 0,
+            "Wednesday": row[2] if row[2] is not None else 0,
+            "Thursday": row[3] if row[3] is not None else 0,
+            "Friday": row[4] if row[4] is not None else 0,
+            "Saturday": row[5] if row[5] is not None else 0,
+            "Sunday": row[6] if row[6] is not None else 0
         }
     else:
         # ถ้าไม่พบข้อมูลใน Dashboard_Table, ให้ทำการ INSERT ข้อมูลใหม่
-        # ดึงชื่อวันปัจจุบัน
-        today_day = datetime.today().strftime('%A').lower()  # เช่น 'monday', 'tuesday', ...
-        
-        # ในกรณีที่ไม่มีข้อมูลใน Dashboard_Table ให้เพิ่มข้อมูลเริ่มต้นเป็น 0
         cursor.execute(
             """
             INSERT INTO dbo.Dashboard_Table (user_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday)
