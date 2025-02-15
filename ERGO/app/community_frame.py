@@ -3,8 +3,11 @@ from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import os
 import cv2
-import requests 
+import requests
+import socketio
 from datetime import datetime 
+
+sio = socketio.Client()
 
 class CommunityFrame(tk.Frame):
     def __init__(self, parent, user_email):
@@ -70,6 +73,10 @@ class CommunityFrame(tk.Frame):
 
         self.entry.bind("<Return>", lambda event: self.send_message())
         self.load_messages()
+        # Socket.IO connection
+        sio.connect('http://127.0.0.1:8000')  # Connect to the server
+        # Listen for incoming messages
+        sio.on('new_message', self.receive_message)
         
         response = requests.get("http://127.0.0.1:8000/users")
         if response.status_code == 200:
@@ -216,17 +223,23 @@ class CommunityFrame(tk.Frame):
         # แสดง popup ยืนยันการลบ
         self.show_confirm_popup("ยืนยันการลบ", "คุณต้องการลบข้อความนี้หรือไม่?", on_ok, on_cancel)
 
+    def receive_message(self, data):
+        """Receive new message from the server and display it"""
+        print(f"Received new message: {data}")
+        post_id = data.get("post_id")
+        username = data.get("username")
+        message = data.get("content")
+        if post_id and username and message:
+            self.add_message_bubble(post_id, username, message)
         
     def send_message(self):
         message = self.entry.get().strip()
         if message and message != self.placeholder_text:
-            # ลบข้อความในช่องพิมพ์และอัปเดต UI
             self.entry.delete(0, "end")
             self.add_placeholder()
             self.canvas.update_idletasks()
             self.canvas.yview_moveto(1)
 
-            # ตรวจสอบค่าที่ส่งไป API
             print(f"Sending user_id: {self.user_id}, content: {message}")
 
             try:
@@ -245,13 +258,14 @@ class CommunityFrame(tk.Frame):
                     post_id = data.get("post_id")
                     if post_id:
                         print("ส่งข้อความสำเร็จ! post_id:", post_id)
-                        # คุณสามารถเรียก add_message_bubble โดยส่ง post_id ที่ถูกต้องได้
+                        # Emit the message to the server through Socket.IO
+                        sio.emit('new_message', {"post_id": post_id, "username": self.username, "content": message})
                         self.add_message_bubble(post_id, self.username, message)
                     else:
                         print("ไม่สามารถดึง post_id ได้จากการตอบกลับ")
                 else:
                     print("เกิดข้อผิดพลาด:", response.json())
-                        
+
             except Exception as e:
                 print("เชื่อมต่อ API ไม่สำเร็จ:", e)
 
