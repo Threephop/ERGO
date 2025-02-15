@@ -2,8 +2,11 @@ from fastapi import FastAPI, HTTPException, Form, Request
 from datetime import datetime
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
 import sqlite3
+import socketio
 
 app = FastAPI()
+sio = socketio.AsyncServer(async_mode="asgi")
+socket_app = socketio.ASGIApp(sio, app)
 
 # ฟังก์ชันที่ดึงข้อมูลผู้ใช้งาน
 @app.get("/users")
@@ -63,19 +66,19 @@ def add_user(username: str, email: str, create_at: str):
     
 # ฟังก์ชันที่ดึงรายชื่อตารางทั้งหมดในฐานข้อมูล
 @app.post("/post-message")
-def post_message(user_id: int, content: str, create_at: str):
+async def post_message(user_id: int, content: str, create_at: str):
+    # บันทึกข้อความลง Database ตามเดิม
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # ใช้ OUTPUT INSERTED.post_id เพื่อดึงค่า post_id ที่ถูกสร้างขึ้น
-        query = """
-            INSERT INTO dbo.CommunityPosts_Table (user_id, content, create_at)
-            OUTPUT INSERTED.post_id
-            VALUES (?, ?, ?)
-        """
+        query = """INSERT INTO dbo.CommunityPosts_Table (user_id, content, create_at) OUTPUT INSERTED.post_id VALUES (?, ?, ?)"""
         cursor.execute(query, (user_id, content, create_at))
         post_id = cursor.fetchone()[0]
         conn.commit()
+
+        # ส่งข้อความไปยัง Clients ผ่าน WebSocket
+        await sio.emit("new_message", {"post_id": post_id, "user_id": user_id, "content": content, "create_at": create_at})
+
         return {"message": "Message posted successfully", "post_id": int(post_id)}
     
     except Exception as e:
@@ -86,14 +89,12 @@ def post_message(user_id: int, content: str, create_at: str):
         conn.close()
 
 
-
 # ฟังก์ชันดึงข้อความทั้งหมดจาก community
 @app.get("/get-messages")
 def get_messages():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ปรับปรุงคำสั่ง SQL เพื่อดึงข้อมูล post_id, content, create_at และ username
     cursor.execute("""
         SELECT c.post_id, c.content, c.create_at, u.username
         FROM dbo.CommunityPosts_Table c
@@ -103,37 +104,60 @@ def get_messages():
     messages = cursor.fetchall()
     conn.close()
 
-    # ส่งข้อมูลที่มี post_id, content, create_at และ username
     return {"messages": [
         {"post_id": row[0], "content": row[1], "create_at": row[2], "username": row[3]}
         for row in messages
     ]}
 
+@sio.event
+async def connect(sid, environ):
+    print(f"Client {sid} connected")
+
+    # 🔥 **เมื่อมีคนเข้าใหม่ ให้ส่งข้อความทั้งหมดให้ทันที**
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT c.post_id, c.content, c.create_at, u.username
+        FROM dbo.CommunityPosts_Table c
+        JOIN dbo.Users_Table u ON c.user_id = u.user_id
+        ORDER BY c.create_at
+    """)
+    messages = cursor.fetchall()
+    conn.close()
+
+    await sio.emit("load_messages", {
+        "messages": [
+            {"post_id": row[0], "content": row[1], "create_at": row[2], "username": row[3]}
+            for row in messages
+        ]
+    }, room=sid)
+
+#ลบข้อความ
 @app.delete("/delete-message/{post_id}")
 async def delete_message(post_id: int, request: Request):
-    # รับข้อมูล JSON ที่ส่งมาจาก client (คาดว่า {"user_id": <user_id>})
     data = await request.json()
     user_id = data.get("user_id")
-    
-    # เชื่อมต่อฐานข้อมูล
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        # ตรวจสอบว่ามีข้อความที่มี post_id ดังกล่าวหรือไม่
+        # ตรวจสอบว่ามีข้อความที่ต้องการลบหรือไม่
         cursor.execute("SELECT user_id FROM dbo.CommunityPosts_Table WHERE post_id = ?", (post_id,))
         row = cursor.fetchone()
         
         if not row:
             raise HTTPException(status_code=404, detail="Message not found")
         
-        # ตรวจสอบว่าข้อความนั้นเป็นของผู้ใช้ที่ร้องขอลบหรือไม่
         if row[0] != user_id:
             raise HTTPException(status_code=403, detail="Unauthorized to delete this message")
-        
-        # ลบข้อความจากฐานข้อมูล
+
+        # ลบข้อความออกจากฐานข้อมูล
         cursor.execute("DELETE FROM dbo.CommunityPosts_Table WHERE post_id = ?", (post_id,))
         conn.commit()
+
+        # 🔥 **ส่งอัปเดตไปยัง Client ทุกคนว่าข้อความถูกลบ**
+        await sio.emit("delete_message", {"post_id": post_id})
 
         return {"message": "Message deleted successfully"}
     
@@ -336,3 +360,13 @@ def update_username(
     conn.close()
 
     return {"message": "Username updated successfully", "user_id": user_id, "new_username": new_username}
+
+@sio.event
+async def connect(sid, environ):
+    print(f"Client {sid} connected")
+
+@sio.event
+async def disconnect(sid):
+    print(f"Client {sid} disconnected")
+
+app.mount("/", socket_app)

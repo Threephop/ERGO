@@ -11,6 +11,8 @@ pip install adal
 pip install azure-identity pyodbc
 pip install uvicorn
 pip install fastapi
+pip install fastapi[all] python-socketio
+
 ---RUN API---
 python -m uvicorn api:app --reload
 ---STOP API---
