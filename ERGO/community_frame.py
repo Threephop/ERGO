@@ -55,7 +55,7 @@ class CommunityFrame(tk.Frame):
         self.entry_frame = tk.Frame(self.bottom_bar, bg="#D9D9D9", bd=0)  # พื้นหลังของช่องพิมพ์
         self.entry_frame.pack(side="left", padx=(10, 10), pady=5, fill="x", expand=True)
 
-        self.entry = tk.Entry(self.entry_frame, font=("Arial", 14), bd=0, fg="gray", bg="#D9D9D9")
+        self.entry = tk.Entry(self.entry_frame, font=("PTT 45 Pride", 14), bd=0, fg="gray", bg="#D9D9D9")
         self.entry.pack(ipady=8, fill="x", padx=10, pady=2)  # ขอบมนและพื้นที่ภายใน
 
         self.add_placeholder()  # แสดง Placeholder เริ่มต้น
@@ -123,6 +123,45 @@ class CommunityFrame(tk.Frame):
             print(f"Error loading {file_name}: {e}")
             return None
         
+    def show_confirm_popup(self, title, message, ok_callback, cancel_callback):
+        # สร้าง Toplevel window สำหรับ popup
+        popup = tk.Toplevel(self)
+        popup.title(title)
+        popup.geometry("350x150")  # กำหนดขนาด popup
+        popup.resizable(False, False)
+        popup.configure(bg="white")
+        # ทำให้ popup เป็น modal (ไม่ให้คลิกที่ window อื่นได้)
+        popup.grab_set()
+        
+        # สร้าง Label แสดงข้อความใน popup
+        label = tk.Label(popup, text=message, font=("PTT 45 Pride", 12), bg="white")
+        label.pack(pady=20)
+        
+        # สร้าง frame สำหรับปุ่ม
+        btn_frame = tk.Frame(popup, bg="white")
+        btn_frame.pack(pady=10)
+        
+        # สร้างปุ่ม "ตกลง" และ "ยกเลิก" ด้วยการปรับแต่งตามที่ต้องการ
+        ok_button = tk.Button(
+            btn_frame, text="ตกลง", font=("PTT 45 Pride", 12, "bold"),
+            bg="#4CAF50", fg="white", width=10,
+            command=lambda: [ok_callback(), popup.destroy()]
+        )
+        ok_button.pack(side="left", padx=10)
+        
+        cancel_button = tk.Button(
+            btn_frame, text="ยกเลิก", font=("PTT 45 Pride", 12, "bold"),
+            bg="#f44336", fg="white", width=10,
+            command=lambda: [cancel_callback(), popup.destroy()]
+        )
+        cancel_button.pack(side="left", padx=10)
+        
+        # ตั้งค่าให้ popup อยู่ตรงกลางหน้าจอ parent
+        self.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() // 2) - (350 // 2) + 200
+        y = self.winfo_y() + (self.winfo_height() // 2) - (150 // 2)
+        popup.geometry(f"+{x}+{y}")
+        
     def load_messages(self):
         try:
             response = requests.get("http://localhost:8000/get-messages")
@@ -155,22 +194,28 @@ class CommunityFrame(tk.Frame):
         return None  # ถ้าหาไม่เจอให้ return None
             
     def cancel_single_message(self, bubble_frame, post_id):
-        """ลบเฉพาะข้อความหรือสื่อใน bubble_frame นั้นๆ และเรียก API เพื่อลบข้อความจากฐานข้อมูลด้วย post_id"""
-        bubble_frame.destroy()  # ลบออกจาก UI
+        # ฟังก์ชัน callback เมื่อผู้ใช้กดยืนยันการลบ
+        def on_ok():
+            try:
+                response = requests.delete(
+                    f"http://localhost:8000/delete-message/{post_id}",
+                    json={"user_id": self.user_id}  # ส่ง user_id ไปด้วยเพื่อยืนยันสิทธิ์ในการลบ
+                )
+                if response.status_code == 200:
+                    print("ลบข้อความสำเร็จ!")
+                    bubble_frame.destroy()  # ลบ UI หลังจากลบข้อมูลในฐานข้อมูลสำเร็จ
+                else:
+                    print("เกิดข้อผิดพลาด:", response.json())
+            except Exception as e:
+                print("เชื่อมต่อ API ไม่สำเร็จ:", e)
+        
+        # ฟังก์ชัน callback เมื่อผู้ใช้กดยกเลิกการลบ
+        def on_cancel():
+            print("ยกเลิกการลบข้อความ")
+        
+        # แสดง popup ยืนยันการลบ
+        self.show_confirm_popup("ยืนยันการลบ", "คุณต้องการลบข้อความนี้หรือไม่?", on_ok, on_cancel)
 
-        try:
-            response = requests.delete(
-                f"http://localhost:8000/delete-message/{post_id}",
-                json={"user_id": self.user_id}  # ส่ง user_id ไปด้วยเพื่อยืนยันสิทธิ์ในการลบ
-            )
-
-            if response.status_code == 200:
-                print("ลบข้อความสำเร็จ!")
-            else:
-                print("เกิดข้อผิดพลาด:", response.json())
-
-        except Exception as e:
-            print("เชื่อมต่อ API ไม่สำเร็จ:", e)
         
     def send_message(self):
         message = self.entry.get().strip()
@@ -223,7 +268,7 @@ class CommunityFrame(tk.Frame):
         text_bubble = tk.Label(
             bubble_frame,
             text=message,
-            font=("Arial", 14),
+            font=("PTT 45 Pride", 14),
             bg="#e0e0e0",
             wraplength=400,
             justify="left",
@@ -238,7 +283,7 @@ class CommunityFrame(tk.Frame):
         username_label = tk.Label(
             bubble_frame,
             text=username,
-            font=("Arial", 10, "italic"),
+            font=("PTT 45 Pride", 10, "italic"),
             fg="gray",
             bg="white",
         )
@@ -249,7 +294,7 @@ class CommunityFrame(tk.Frame):
             bubble_frame, 
             text="ยกเลิกการส่ง", 
             fg="red", 
-            font=("Arial", 12), 
+            font=("PTT 45 Pride", 12), 
             bd=0, 
             bg="white", 
             command=lambda: self.cancel_single_message(bubble_frame, post_id)
@@ -272,9 +317,9 @@ class CommunityFrame(tk.Frame):
                 video_label.pack(side="left", padx=5)
                 video_label.bind("<Button-1>", lambda e: self.play_video(filepath))
             else:
-                tk.Label(bubble_frame, text="ไม่สามารถโหลดวิดีโอได้", font=("Arial", 12), bg="white").pack(side="left", padx=5)
+                tk.Label(bubble_frame, text="ไม่สามารถโหลดวิดีโอได้", font=("PTT 45 Pride", 12), bg="white").pack(side="left", padx=5)
 
-            username_label = tk.Label(bubble_frame, text="Username", font=("Arial", 10, "italic"), fg="gray", bg="white")
+            username_label = tk.Label(bubble_frame, text="Username", font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="w", padx=5)
 
             # Like Section
@@ -291,7 +336,7 @@ class CommunityFrame(tk.Frame):
             like_button.is_liked = False  # เริ่มต้นยังไม่กด Like
 
             self.like_count = 0
-            like_label = tk.Label(like_frame, text=f"{self.like_count} Likes", font=("Arial", 12), bg="white")
+            like_label = tk.Label(like_frame, text=f"{self.like_count} Likes", font=("PTT 45 Pride", 12), bg="white")
 
             like_button.config(command=lambda: self.toggle_like(like_button, like_label))
             like_button.pack(side="top", pady=2)
@@ -299,7 +344,7 @@ class CommunityFrame(tk.Frame):
 
 
             # ปุ่มยกเลิกการส่ง
-            cancel_button = tk.Button(bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("Arial", 12), bd=0, bg="white", command=lambda: self.cancel_single_message(bubble_frame))
+            cancel_button = tk.Button(bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="white", command=lambda: self.cancel_single_message(bubble_frame))
             cancel_button.pack(side="bottom", pady=5, anchor="center")
 
             bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
@@ -421,11 +466,11 @@ class CommunityFrame(tk.Frame):
             image_label.image = image_tk
             image_label.pack(side="left", padx=5)
 
-            username_label = tk.Label(bubble_frame, text="Username", font=("Arial", 10, "italic"), fg="gray", bg="white")
+            username_label = tk.Label(bubble_frame, text="Username", font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="w", padx=5)
 
             # ปุ่มยกเลิกการส่ง จะไปอยู่ด้านล่างตรงกลาง
-            cancel_button = tk.Button(bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("Arial", 12), bd=0, bg="white", command=lambda: self.cancel_single_message(bubble_frame))
+            cancel_button = tk.Button(bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="white", command=lambda: self.cancel_single_message(bubble_frame))
             cancel_button.pack(side="bottom", pady=5, anchor="center")  # เปลี่ยนจาก "right" เป็น "bottom" และใช้ anchor="center"
 
             bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
