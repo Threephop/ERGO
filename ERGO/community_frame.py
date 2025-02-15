@@ -154,11 +154,24 @@ class CommunityFrame(tk.Frame):
             print("Exception:", e)
         return None  # ถ้าหาไม่เจอให้ return None
             
-    def cancel_single_message(self, bubble_frame):
-        """ ลบเฉพาะข้อความหรือสื่อใน bubble_frame นั้นๆ """
-        bubble_frame.destroy()
-        
+    def cancel_single_message(self, bubble_frame, post_id):
+        """ลบเฉพาะข้อความหรือสื่อใน bubble_frame นั้นๆ และเรียก API เพื่อลบข้อความจากฐานข้อมูลด้วย post_id"""
+        bubble_frame.destroy()  # ลบออกจาก UI
 
+        try:
+            response = requests.delete(
+                f"http://localhost:8000/delete-message/{post_id}",
+                json={"user_id": self.user_id}  # ส่ง user_id ไปด้วยเพื่อยืนยันสิทธิ์ในการลบ
+            )
+
+            if response.status_code == 200:
+                print("ลบข้อความสำเร็จ!")
+            else:
+                print("เกิดข้อผิดพลาด:", response.json())
+
+        except Exception as e:
+            print("เชื่อมต่อ API ไม่สำเร็จ:", e)
+        
     def send_message(self):
         message = self.entry.get().strip()
         if message and message != self.placeholder_text:

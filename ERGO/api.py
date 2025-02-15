@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Form
+from fastapi import FastAPI, HTTPException, Form, Request
 from datetime import datetime
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
 import sqlite3
@@ -109,7 +109,40 @@ def get_messages():
         for row in messages
     ]}
 
+@app.delete("/delete-message/{post_id}")
+async def delete_message(post_id: int, request: Request):
+    # รับข้อมูล JSON ที่ส่งมาจาก client (คาดว่า {"user_id": <user_id>})
+    data = await request.json()
+    user_id = data.get("user_id")
+    
+    # เชื่อมต่อฐานข้อมูล
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
+    try:
+        # ตรวจสอบว่ามีข้อความที่มี post_id ดังกล่าวหรือไม่
+        cursor.execute("SELECT user_id FROM dbo.CommunityPosts_Table WHERE post_id = ?", (post_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # ตรวจสอบว่าข้อความนั้นเป็นของผู้ใช้ที่ร้องขอลบหรือไม่
+        if row[0] != user_id:
+            raise HTTPException(status_code=403, detail="Unauthorized to delete this message")
+        
+        # ลบข้อความจากฐานข้อมูล
+        cursor.execute("DELETE FROM dbo.CommunityPosts_Table WHERE post_id = ?", (post_id,))
+        conn.commit()
+
+        return {"message": "Message deleted successfully"}
+    
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete message: {str(e)}")
+    
+    finally:
+        conn.close()
 
 @app.get("/showstat")
 def get_usage_stats():
