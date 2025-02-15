@@ -48,7 +48,7 @@ class App(tk.Tk):
                 data = response.json()
 
                 # พิมพ์ข้อมูลที่ได้รับจาก API
-                print("Users list from API:", data)
+                # print("Users list from API:", data)
 
                 # ตรวจสอบว่า 'users' มีอยู่ และเป็น list
                 users_list = data.get('users', [])
