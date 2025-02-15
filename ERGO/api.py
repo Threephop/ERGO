@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Form
 from datetime import datetime
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
+import sqlite3
 
 app = FastAPI()
 
@@ -43,14 +44,13 @@ def add_user(username: str, email: str, create_at: str):
     cursor = conn.cursor()
 
     # ตรวจสอบว่าผู้ใช้มีอยู่แล้วในฐานข้อมูลหรือไม่
-    cursor.execute("SELECT COUNT(*) FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
-    existing_user = cursor.fetchone()[0]
+    cursor.execute("SELECT username FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    existing_user = cursor.fetchone()
 
-    if existing_user > 0:
-        # ถ้าผู้ใช้งานมีอยู่แล้ว ให้ทำการอัปเดตชื่อและเวลาล่าสุดแทน
-        cursor.execute("UPDATE dbo.Users_Table SET username = ?, create_at = ? WHERE outlook_mail = ?",
-                       (username, create_at, email))
-        message = "User data updated successfully"
+    if existing_user:
+        # อัปเดตเฉพาะ create_at
+        cursor.execute("UPDATE dbo.Users_Table SET create_at = ? WHERE outlook_mail = ?", (create_at, email))
+        message = "User login time updated successfully"
     else:
         # ถ้าผู้ใช้งานยังไม่มี ให้ทำการเพิ่มข้อมูลใหม่
         cursor.execute("INSERT INTO dbo.Users_Table (username, outlook_mail, create_at) VALUES (?, ?, ?)",
@@ -60,35 +60,23 @@ def add_user(username: str, email: str, create_at: str):
     conn.commit()
     conn.close()
     return {"message": message}
-
-
-# ฟังก์ชันที่ดึงรายชื่อตารางทั้งหมดในฐานข้อมูล
-@app.get("/tables")
-def get_tables():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE'")
-        tables = cursor.fetchall()
-        conn.close()
-        return {"tables": [table[0] for table in tables]}
-    except Exception as e:
-        return {"error": f"An error occurred: {str(e)}"}
     
-# ฟังก์ชันสำหรับส่งข้อความเข้า community
+# ฟังก์ชันที่ดึงรายชื่อตารางทั้งหมดในฐานข้อมูล
 @app.post("/post-message")
-def post_message(content: str, create_at: str):
+def post_message(user_id: int, content: str, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
     try:
-        # เพิ่มข้อความใหม่เข้า database
-        cursor.execute(
-            "INSERT INTO dbo.CommunityPosts_Table (content, create_at) VALUES (?, ?)",
-            (content, create_at)
-        )
+        # ใช้ OUTPUT INSERTED.post_id เพื่อดึงค่า post_id ที่ถูกสร้างขึ้น
+        query = """
+            INSERT INTO dbo.CommunityPosts_Table (user_id, content, create_at)
+            OUTPUT INSERTED.post_id
+            VALUES (?, ?, ?)
+        """
+        cursor.execute(query, (user_id, content, create_at))
+        post_id = cursor.fetchone()[0]
         conn.commit()
-        return {"message": "Message posted successfully"}
+        return {"message": "Message posted successfully", "post_id": int(post_id)}
     
     except Exception as e:
         conn.rollback()
@@ -97,15 +85,31 @@ def post_message(content: str, create_at: str):
     finally:
         conn.close()
 
+
+
 # ฟังก์ชันดึงข้อความทั้งหมดจาก community
 @app.get("/get-messages")
 def get_messages():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT content, create_at FROM dbo.CommunityPosts_Table ORDER BY create_at")
+
+    # ปรับปรุงคำสั่ง SQL เพื่อดึงข้อมูล post_id, content, create_at และ username
+    cursor.execute("""
+        SELECT c.post_id, c.content, c.create_at, u.username
+        FROM dbo.CommunityPosts_Table c
+        JOIN dbo.Users_Table u ON c.user_id = u.user_id
+        ORDER BY c.create_at
+    """)
     messages = cursor.fetchall()
     conn.close()
-    return {"messages": [{"content": row[0], "create_at": row[1]} for row in messages]}
+
+    # ส่งข้อมูลที่มี post_id, content, create_at และ username
+    return {"messages": [
+        {"post_id": row[0], "content": row[1], "create_at": row[2], "username": row[3]}
+        for row in messages
+    ]}
+
+
 
 @app.get("/showstat")
 def get_usage_stats():
@@ -233,20 +237,16 @@ def get_usage_stats(user_id: int):
     if row:
         conn.close()
         return {
-            "Monday": row[0],
-            "Tuesday": row[1],
-            "Wednesday": row[2],
-            "Thursday": row[3],
-            "Friday": row[4],
-            "Saturday": row[5],
-            "Sunday": row[6]
+            "Monday": row[0] if row[0] is not None else 0,
+            "Tuesday": row[1] if row[1] is not None else 0,
+            "Wednesday": row[2] if row[2] is not None else 0,
+            "Thursday": row[3] if row[3] is not None else 0,
+            "Friday": row[4] if row[4] is not None else 0,
+            "Saturday": row[5] if row[5] is not None else 0,
+            "Sunday": row[6] if row[6] is not None else 0
         }
     else:
         # ถ้าไม่พบข้อมูลใน Dashboard_Table, ให้ทำการ INSERT ข้อมูลใหม่
-        # ดึงชื่อวันปัจจุบัน
-        today_day = datetime.today().strftime('%A').lower()  # เช่น 'monday', 'tuesday', ...
-        
-        # ในกรณีที่ไม่มีข้อมูลใน Dashboard_Table ให้เพิ่มข้อมูลเริ่มต้นเป็น 0
         cursor.execute(
             """
             INSERT INTO dbo.Dashboard_Table (user_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday)
@@ -276,3 +276,30 @@ def get_usage_stats(user_id: int):
             "Sunday": row[6]
         }
 
+
+# 🔄 ฟังก์ชันสำหรับอัปเดตชื่อผู้ใช้ (รับค่าเป็น Form Data)
+@app.post("/update_username/")
+def update_username(
+    user_id: int = Form(...),  # รับค่า user_id จาก Form Data
+    new_username: str = Form(...)  # รับค่า new_username จาก Form Data
+):
+
+    if not new_username:
+        raise HTTPException(status_code=400, detail="New username cannot be empty")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ตรวจสอบว่ามี user_id ในฐานข้อมูลหรือไม่
+    cursor.execute("SELECT * FROM dbo.Users_Table WHERE user_id = ?", (user_id,))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # อัปเดต username
+    cursor.execute("UPDATE dbo.Users_Table SET username = ? WHERE user_id = ?", (new_username, user_id))
+    conn.commit()
+    conn.close()
+
+    return {"message": "Username updated successfully", "user_id": user_id, "new_username": new_username}

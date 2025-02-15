@@ -48,7 +48,7 @@ class App(tk.Tk):
                 data = response.json()
 
                 # พิมพ์ข้อมูลที่ได้รับจาก API
-                print("Users list from API:", data)
+                # print("Users list from API:", data)
 
                 # ตรวจสอบว่า 'users' มีอยู่ และเป็น list
                 users_list = data.get('users', [])
@@ -398,6 +398,12 @@ class App(tk.Tk):
 
             elif frame_class == DashboardFrame:
                 self.frames[frame_class] = frame_class(self, self.user_email)  # ส่ง email ไปให้ DashboardFrame
+            
+            elif frame_class == CommunityFrame:
+                self.frames[frame_class] = frame_class(self, self.user_email)
+
+            elif frame_class == ProfileFrame:
+                self.frames[frame_class] = frame_class(self, self.user_email)  # ส่ง email ไปให้ ProfileFrame    
 
             else:
                 self.frames[frame_class] = frame_class(self)
