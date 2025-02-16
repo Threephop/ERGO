@@ -6,6 +6,7 @@ pip install pygame==2.1.3
 pip3 install ffpyplayer
 pip install python-multipart
 pip install msal
+pip install pywin32
 
 ---API---
 pip install adal
