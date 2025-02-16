@@ -62,21 +62,24 @@ class HomeFrame(tk.Frame):
             if not cap.isOpened():
                 messagebox.showerror("ข้อผิดพลาด", "ไม่สามารถเปิดวิดีโอได้")
                 return
-
+            
+            window_name = "Video Player"
+            cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+            
             while video_playing and cap.isOpened():
                 ret, frame = cap.read()
                 if not ret:
                     break
 
-                cv2.imshow("เล่นวิดีโอ (ปิดหน้าต่างเพื่อหยุด)", frame)
-                if cv2.getWindowProperty("เล่นวิดีโอ (ปิดหน้าต่างเพื่อหยุด)", cv2.WND_PROP_VISIBLE) < 1:
+                cv2.imshow(window_name, frame)
+
+                key = cv2.waitKey(25)
+                if key == ord('q') or cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
                     break
 
-                if cv2.waitKey(25) & 0xFF == ord('q'):
-                    break
 
             cap.release()
-            cv2.destroyAllWindows()
+            cv2.destroyAllWindows(window_name)
             video_playing = False
 
         threading.Thread(target=run_video).start()
