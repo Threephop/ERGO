@@ -5,13 +5,20 @@ import cv2  # For playing video using OpenCV
 import threading  # For running video playback in a separate thread
 
 # Video Section
+video_dir = os.path.join(os.path.dirname(__file__), "video")
+video1_path = os.path.join(video_dir, "video1.mp4")
+icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+video1_icon_path = os.path.join(icon_dir, "video1.png")
+
+# Video Section
 video_data = [
-    {"title": "Video Name + นอก K.cal", "path": "C:\\Users\\User\\Downloads\\video1.mp4", "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP1", "image": "C:\\Users\\User\\Downloads\\image111111.png"},
-    {"title": "Video Name", "path": "C:\\Users\\User\\Downloads\\video2.mp4", "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP2", "image": "C:\\Users\\User\\Downloads\\image111111.png"},
-    {"title": "Video Name", "path":"C:\\Users\\User\\Downloads\\VideoTest\\sample-mp4-files-sample_640x360.mp4", "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP3", "image": "C:\\Users\\User\\Downloads\\image111111.png"},
-    {"title": "Video Name", "path": "C:\\Users\\User\\Downloads\\VideoTest\\SampleVideo_1280x720_1mb.mp4", "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP4", "image": "C:\\Users\\User\\Downloads\\image111111.png"},
-    {"title": "Video Name", "path": "C:\\Users\\User\\Downloads\\Video5.mp4", "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP5", "image": "C:\\Users\\User\\Downloads\\image111111.png"}
+    {"title": "Video Name + 500 K.cal", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP1", "image": video1_icon_path},
+    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP2", "image": video1_icon_path},
+    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP3", "image": video1_icon_path},
+    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP4", "image": video1_icon_path},
+    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP5", "image": video1_icon_path}
 ]
+
 
 video_playing = False
 
