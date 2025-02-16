@@ -3,9 +3,11 @@ from tkinter import filedialog, messagebox, simpledialog
 from PIL import Image, ImageTk
 import os
 import requests
+import webbrowser
+import subprocess  # เพิ่มการนำเข้า subprocess
 
 class ProfileFrame(tk.Frame):
-    def __init__(self, parent,user_email):
+    def __init__(self, parent, user_email):
         super().__init__(parent, bg="white")
 
         # กำหนดไดเรกทอรีสำหรับไอคอน
@@ -160,15 +162,30 @@ class ProfileFrame(tk.Frame):
         return False  # ถ้าอัปเดตไม่สำเร็จ ให้ return False
 
 
+    # ฟังก์ชัน Logout
     def logout(self):
+        try:
+            logout_url = "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
+            webbrowser.open(logout_url)  # เปิดหน้าต่างเบราว์เซอร์เพื่อทำการ logout
+
+            # แจ้งเตือนผู้ใช้ว่าทำการ Logout สำเร็จ
+            messagebox.showinfo("Logout", "You have been logged out. Restarting login flow.")
+
+            # เรียกใช้ Login.py เพื่อกลับไปที่หน้า login
+            login_py_path = os.path.join(os.path.dirname(__file__), "Login.py")
+            subprocess.Popen(["python", login_py_path], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+            self.master.destroy()  # ปิดหน้าต่างปัจจุบัน
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred during logout: {e}")
         print("คลิกออกจากระบบ")
 
 
 if __name__ == "__main__":
-    root = tk.Tk()
+    root = tk.Tk()  
     root.title("Profile Frame")
 
-    frame = ProfileFrame(root)
+    frame = ProfileFrame(root, user_email="test@example.com")
     frame.pack(fill="both", expand=True)
 
     root.mainloop()

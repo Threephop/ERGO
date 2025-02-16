@@ -3,10 +3,19 @@ from datetime import datetime
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
 import sqlite3
 import socketio
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 sio = socketio.AsyncServer(async_mode="asgi")
 socket_app = socketio.ASGIApp(sio, app)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # หรือกำหนดเฉพาะ domain ที่อนุญาต
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ฟังก์ชันที่ดึงข้อมูลผู้ใช้งาน
 @app.get("/users")

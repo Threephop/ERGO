@@ -1,71 +1,82 @@
 import tkinter as tk
-from ffpyplayer.player import MediaPlayer
-import cv2
-from PIL import Image, ImageTk
-import threading
+from tkinter import PhotoImage, messagebox
+import os  # For opening local video files
+import cv2  # For playing video using OpenCV
+import threading  # For running video playback in a separate thread
+
+# Video Section
+video_dir = os.path.join(os.path.dirname(__file__), "video")
+video1_path = os.path.join(video_dir, "video1.mp4")
+icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+video1_icon_path = os.path.join(icon_dir, "video1.png")
+
+# Video Section
+video_data = [
+    {"title": "Video Name + 500 K.cal", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP1", "image": video1_icon_path},
+    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP2", "image": video1_icon_path},
+    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP3", "image": video1_icon_path},
+    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP4", "image": video1_icon_path},
+    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP5", "image": video1_icon_path}
+]
+
+
+video_playing = False
 
 class HomeFrame(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent, bg="#ffffff")
-        
-        # กำหนดขนาดหน้าต่าง
-        parent.geometry("1024x768")
-        
-        # Label สำหรับหน้าหลัก
-        label = tk.Label(self, text="Home Page", bg="#ffffff", fg="#000000", font=("Arial", 24))
-        label.pack(pady=20)
-        
-        # สร้างตัวแสดงวิดีโอ
-        self.video_label = tk.Label(self)
-        self.video_label.pack(pady=10)
-        
-        # ปุ่ม Play/Pause
-        self.play_button = tk.Button(self, text="Play", command=self.toggle_video)
-        self.play_button.pack(pady=10)
 
-        # URL ของวิดีโอ
-        self.video_url = "https://ergoproject.blob.core.windows.net/ergovideo/videoplayback.mp4"
-        
-        # สถานะการเล่น
-        self.is_playing = False
-        
-        # ตัวแปรสำหรับการควบคุมกระบวนการ
-        self.thread = None
-        self.player = None
+        # Main content
+        main_content = tk.Frame(self, bg="#ffffff")
+        main_content.pack(side="right", expand=True, fill="both")
 
-    def toggle_video(self):
-        if self.is_playing:
-            self.is_playing = False
-            self.play_button.config(text="Play")
-            if self.player:
-                self.player.close()
-        else:
-            self.is_playing = True
-            self.play_button.config(text="Pause")
-            # เริ่มต้นกระบวนการเล่นวิดีโอใน Thread ใหม่
-            self.thread = threading.Thread(target=self.play_video)
-            self.thread.start()
+        # Title
+        tk.Label(main_content, text="Video", bg="#ffffff", fg="#000000", font=("Arial", 24, "bold")).pack(pady=10)
+        tk.Label(main_content, text="วิดีโอสุขภาพ", 
+                 bg="#ffffff", fg="#888888", font=("Arial", 12, "italic")).pack(pady=5)
 
-    def play_video(self):
-        self.player = MediaPlayer(self.video_url)
+        video_frame = tk.Frame(main_content, bg="#ffffff")
+        video_frame.pack(pady=10)
 
-        while self.is_playing:
-            grabbed, frame = self.player.get_frame()
-            if not grabbed:
-                break
+        for i, video in enumerate(video_data):
+            try:
+                thumbnail = PhotoImage(file=video["image"]).subsample(2, 2)  # Load image and resize
+            except Exception as e:
+                print(f"Error loading image for {video['title']}: {e}")
+                thumbnail = PhotoImage(width=150, height=100)  # Placeholder image
 
-            # แปลง frame จาก OpenCV (BGR) เป็น RGB
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            video_btn = tk.Button(video_frame, image=thumbnail, text=video["description"],
+                                   compound="top", bg="#ffffff", fg="#000000",
+                                   font=("Arial", 10),
+                                   command=lambda v=video: self.play_video(v["path"]))
+            video_btn.image = thumbnail  # Keep a reference to prevent garbage collection
+            video_btn.grid(row=i // 2, column=i % 2, padx=10, pady=10)
 
-            # แปลงภาพเป็นรูปที่สามารถแสดงใน Tkinter
-            img = Image.fromarray(frame)
-            imgtk = ImageTk.PhotoImage(image=img)
+    def play_video(self, video_path):
+        def run_video():
+            global video_playing
+            video_playing = True
 
-            # แสดงภาพบน label
-            self.video_label.imgtk = imgtk
-            self.video_label.configure(image=imgtk)
+            cap = cv2.VideoCapture(video_path)
 
-            # รอเวลาให้เหมาะสมสำหรับการแสดงภาพถัดไป
-            cv2.waitKey(1)
+            if not cap.isOpened():
+                messagebox.showerror("ข้อผิดพลาด", "ไม่สามารถเปิดวิดีโอได้")
+                return
 
-        self.player.close()
+            while video_playing and cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                cv2.imshow("เล่นวิดีโอ (ปิดหน้าต่างเพื่อหยุด)", frame)
+                if cv2.getWindowProperty("เล่นวิดีโอ (ปิดหน้าต่างเพื่อหยุด)", cv2.WND_PROP_VISIBLE) < 1:
+                    break
+
+                if cv2.waitKey(25) & 0xFF == ord('q'):
+                    break
+
+            cap.release()
+            cv2.destroyAllWindows()
+            video_playing = False
+
+        threading.Thread(target=run_video).start()

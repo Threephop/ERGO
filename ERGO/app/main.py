@@ -9,6 +9,8 @@ from PDPA_frame import PopupFrame
 from profile_frame import ProfileFrame
 from decimal import Decimal
 from PIL import Image, ImageTk
+import win32gui
+import win32con
 import time
 import os
 import requests
@@ -17,7 +19,12 @@ import sys
 class App(tk.Tk):
     def __init__(self, user_email):
         super().__init__()
+        # กำหนด path สำหรับไอคอนทั้งหมด
+        self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+        self.change_taskbar_icon()
         self.title("ERGO PROJECT")
+        # ตั้งค่าไอคอน
+        self.iconbitmap(os.path.join(self.icon_dir, "GODJI-Action_200113_0008.ico"))  # เปลี่ยนเป็นพาธของไฟล์ .ico
         self.geometry("1024x768")  # ขนาดหน้าต่าง
         self.configure(bg="white")  # สีพื้นหลังหน้าต่างหลัก
         window_width = 1024
@@ -75,8 +82,7 @@ class App(tk.Tk):
         
         self.show_popup()
 
-        # กำหนด path สำหรับไอคอนทั้งหมด
-        self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+        
         
         # ฟังก์ชันที่จะได้รับค่าภาษา
         self.selected_language = "English"
@@ -123,7 +129,6 @@ class App(tk.Tk):
 
         # Binding the window resize event to a function
         self.bind("<Configure>", self.on_resize)
-        
         
         # ฟังก์ชันตัดคำตามช่องว่าง
         def wrap_text(text, width):
@@ -338,6 +343,12 @@ class App(tk.Tk):
 
         # Default frame
         self.show_frame(HomeFrame)
+        
+    def change_taskbar_icon(self):
+        # เปลี่ยนไอคอน Taskbar โดยใช้ win32gui
+        icon_path = os.path.join(self.icon_dir, "GODJI-Action_200113_0008.ico")
+        hwnd = win32gui.GetForegroundWindow()
+        win32gui.SendMessage(hwnd, win32con.WM_SETICON, win32con.ICON_SMALL, icon_path)
 
     def toggle_mute(self):
         """สลับสถานะเสียงและอัปเดตไอคอนปุ่ม"""

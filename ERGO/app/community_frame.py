@@ -70,6 +70,10 @@ class CommunityFrame(tk.Frame):
         # ปุ่มส่ง
         self.send_button = tk.Button(self.bottom_bar, image=self.send_icon, command=self.send_message, bd=0, bg="#FFFFFF", activebackground="#D4D4D4")
         self.send_button.pack(side="right", padx=10, pady=5)
+        
+        # สร้างปุ่ม refresh
+        self.refresh_button = tk.Button(self, text="Refresh", font=("Arial", 12, "bold"), command=self.load_messages, bg="#4CAF50", fg="white")
+        self.refresh_button.grid(row=0, column=0, padx=10, pady=10, sticky="ne")
 
         self.entry.bind("<Return>", lambda event: self.send_message())
         self.load_messages()
@@ -170,6 +174,10 @@ class CommunityFrame(tk.Frame):
         popup.geometry(f"+{x}+{y}")
         
     def load_messages(self):
+        # Clear existing messages before loading new ones
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+        
         try:
             response = requests.get("http://localhost:8000/get-messages")
             if response.status_code == 200:
@@ -183,7 +191,6 @@ class CommunityFrame(tk.Frame):
                 print("เกิดข้อผิดพลาด:", response.json())
         except Exception as e:
             print("เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
-
 
             
     def fetch_user_id(self, user_email):

@@ -3,6 +3,8 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 from msal import PublicClientApplication
 from profile_frame import ProfileFrame
+import win32gui
+import win32con
 import webbrowser
 import os
 import requests
@@ -17,6 +19,14 @@ SCOPES = ["User.Read"]
 icon_dir = os.path.join(os.path.dirname(__file__), "icon")
 file_dir = os.path.join(os.path.dirname(__file__))
 mainPY = os.path.join(file_dir, "main.py")
+icon_path = os.path.join(icon_dir, "windows_icon.ico")
+
+def change_taskbar_icon(window, icon_path):
+    try:
+        window.iconbitmap(icon_path)  # Set icon for window and taskbar
+    except Exception as e:
+        print(f"Error changing icon: {e}")
+
 
 # API endpoint for adding user data to the database
 API_ENDPOINT = "http://localhost:8000/add-user"
@@ -118,8 +128,10 @@ def logout():
 
 # สร้างหน้าต่างหลัก
 root = tk.Tk()
+# เปลี่ยนไอคอนใน Taskbar
+change_taskbar_icon(root, icon_path)
 root.title("ERGO PROJECT")
-
+root.iconbitmap(os.path.join(icon_dir, "GODJI-Action_200113_0008.ico"))
 # ขนาดหน้าต่าง
 window_width = 1024
 window_height = 768
