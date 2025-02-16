@@ -1,5 +1,4 @@
 import tkinter as tk
-<<<<<<< HEAD
 from tkinter import PhotoImage, messagebox
 import os  # For opening local video files
 import cv2  # For playing video using OpenCV
@@ -14,19 +13,11 @@ video_data = [
     {"title": "Video Name", "path": "C:\\Users\\User\\Downloads\\Video5.mp4", "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP5", "image": "C:\\Users\\User\\Downloads\\image111111.png"}
 ]
 
-
 video_playing = False
-=======
-from ffpyplayer.player import MediaPlayer
-import cv2
-from PIL import Image, ImageTk
-import threading
->>>>>>> 5b0e05826978a165422bfcb703b9c0517a65d461
 
 class HomeFrame(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent, bg="#ffffff")
-<<<<<<< HEAD
 
         # Main content
         main_content = tk.Frame(self, bg="#ffffff")
@@ -82,68 +73,3 @@ class HomeFrame(tk.Frame):
             video_playing = False
 
         threading.Thread(target=run_video).start()
-
-=======
-        
-        # กำหนดขนาดหน้าต่าง
-        parent.geometry("1024x768")
-        
-        # Label สำหรับหน้าหลัก
-        label = tk.Label(self, text="Home Page", bg="#ffffff", fg="#000000", font=("Arial", 24))
-        label.pack(pady=20)
-        
-        # สร้างตัวแสดงวิดีโอ
-        self.video_label = tk.Label(self)
-        self.video_label.pack(pady=10)
-        
-        # ปุ่ม Play/Pause
-        self.play_button = tk.Button(self, text="Play", command=self.toggle_video)
-        self.play_button.pack(pady=10)
-
-        # URL ของวิดีโอ
-        self.video_url = "https://ergoproject.blob.core.windows.net/ergovideo/videoplayback.mp4"
-        
-        # สถานะการเล่น
-        self.is_playing = False
-        
-        # ตัวแปรสำหรับการควบคุมกระบวนการ
-        self.thread = None
-        self.player = None
-
-    def toggle_video(self):
-        if self.is_playing:
-            self.is_playing = False
-            self.play_button.config(text="Play")
-            if self.player:
-                self.player.close()
-        else:
-            self.is_playing = True
-            self.play_button.config(text="Pause")
-            # เริ่มต้นกระบวนการเล่นวิดีโอใน Thread ใหม่
-            self.thread = threading.Thread(target=self.play_video)
-            self.thread.start()
-
-    def play_video(self):
-        self.player = MediaPlayer(self.video_url)
-
-        while self.is_playing:
-            grabbed, frame = self.player.get_frame()
-            if not grabbed:
-                break
-
-            # แปลง frame จาก OpenCV (BGR) เป็น RGB
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            # แปลงภาพเป็นรูปที่สามารถแสดงใน Tkinter
-            img = Image.fromarray(frame)
-            imgtk = ImageTk.PhotoImage(image=img)
-
-            # แสดงภาพบน label
-            self.video_label.imgtk = imgtk
-            self.video_label.configure(image=imgtk)
-
-            # รอเวลาให้เหมาะสมสำหรับการแสดงภาพถัดไป
-            cv2.waitKey(1)
-
-        self.player.close()
->>>>>>> 5b0e05826978a165422bfcb703b9c0517a65d461
