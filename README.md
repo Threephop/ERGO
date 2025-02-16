@@ -5,6 +5,7 @@ pip install opencv-python-headless --upgrade
 pip install pygame==2.1.3  
 pip3 install ffpyplayer
 pip install python-multipart
+pip install msal
 
 ---API---
 pip install adal
@@ -15,6 +16,21 @@ pip install fastapi
 python -m uvicorn api:app --reload
 ---STOP API---
 Ctrl + C in terminal
+---Venv---
+<!-- เข้าสู่โหมด venv เพื่อคำสั่ง pip install จะติดตั้ง package ลงใน venv แทนที่จะลงใน Python หลักของเครื่อง -->
+<!-- สร้าง -->
+python -m venv venv
+<!-- เข้า -->
+venv\Scripts\activate
+<!-- ตรวจสอบแพ็กเกจที่ติดติ้ง -->
+pip list
+<!-- ออก -->
+deactivate
+---requirements---
+<!-- อัพเดตว่า pip อะไรไปบ้างใน venv -->
+pip freeze > requirements.txt
+<!-- ติดตั้งทุก pip install -->
+pip install -r requirements.txt
 
 ---Manual---
 1. pip install ...
