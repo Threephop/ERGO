@@ -31,9 +31,9 @@ class HomeFrame(tk.Frame):
         main_content.pack(side="right", expand=True, fill="both")
 
         # Title
-        tk.Label(main_content, text="Video", bg="#ffffff", fg="#000000", font=("Arial", 24, "bold")).pack(pady=10)
+        tk.Label(main_content, text="Video", bg="#ffffff", fg="#000000", font=("PTT 45 Pride", 24, "bold")).pack(pady=10)
         tk.Label(main_content, text="วิดีโอสุขภาพ", 
-                 bg="#ffffff", fg="#888888", font=("Arial", 12, "italic")).pack(pady=5)
+                 bg="#ffffff", fg="#888888", font=("PTT 45 Pride", 12, "italic")).pack(pady=5)
 
         video_frame = tk.Frame(main_content, bg="#ffffff")
         video_frame.pack(pady=10)
@@ -47,7 +47,7 @@ class HomeFrame(tk.Frame):
 
             video_btn = tk.Button(video_frame, image=thumbnail, text=video["description"],
                                    compound="top", bg="#ffffff", fg="#000000",
-                                   font=("Arial", 10),
+                                   font=("PTT 45 Pride", 10),
                                    command=lambda v=video: self.play_video(v["path"]))
             video_btn.image = thumbnail  # Keep a reference to prevent garbage collection
             video_btn.grid(row=i // 2, column=i % 2, padx=10, pady=10)
@@ -77,9 +77,8 @@ class HomeFrame(tk.Frame):
                 if key == ord('q') or cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
                     break
 
-
             cap.release()
-            cv2.destroyAllWindows(window_name)
+            cv2.destroyAllWindows()  # แก้ไขตรงนี้
             video_playing = False
 
-        threading.Thread(target=run_video).start()
+        threading.Thread(target=run_video, daemon=True).start()  # ใช้ daemon=True ให้ปิด thread อัตโนมัติ
