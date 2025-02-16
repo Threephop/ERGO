@@ -40,7 +40,15 @@ def play_video(video_path, volume=50):
             break
 
     cap.release()
-    cv2.destroyWindow(window_name)
+
+    # ตรวจสอบว่าหน้าต่างยังคงเปิดอยู่ก่อนปิด
+    if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) >= 1:
+        print(f"Closing window: {window_name}")
+        cv2.destroyWindow(window_name)
+    else:
+        print("No window found, using destroyAllWindows()")
+        cv2.destroyAllWindows()
+
     video_playing = False
 
 
@@ -54,6 +62,7 @@ def show_popup(volume):
     def select_video():
         selected = video_var.get()
         if selected and selected in video_list:
+            print(f"Selected video: {selected}")
             play_video(video_list[selected], volume)
         else:
             messagebox.showerror("Error", "กรุณาเลือกวิดีโอ")

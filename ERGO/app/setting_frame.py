@@ -14,6 +14,9 @@ class SettingFrame(tk.Frame):
         # Callback function to notify parent of language change
         self.change_language_callback = change_language_callback
 
+        self.time_entries = []  # เก็บรายการของ set time
+        self.time_threads = []  # เก็บ thread ของการตั้งเวลา
+        
         # Volume control
         volume_frame = tk.Frame(self, bg="white")
         volume_frame.place(x=50, y=50, width=350, height=50)
@@ -68,6 +71,13 @@ class SettingFrame(tk.Frame):
 
         self.update_language_ui("English")
         
+        # ปุ่มเพิ่ม Set Time
+        add_time_button = tk.Button(self, text="+ เพิ่มเวลา", command=self.add_time_set)
+        add_time_button.place(x=400, y=230, width=100, height=30)
+
+        self.add_time_set("10", "30")
+        self.add_time_set("14", "30")
+        
         # Time control
         time_frame = tk.Frame(self, bg="white")
         time_frame.place(x=50, y=200, width=350, height=100)
@@ -108,6 +118,25 @@ class SettingFrame(tk.Frame):
         if translations:
             self.volume_label.config(text=translations.get("volume", "Volume"))
             self.language_label.config(text=translations.get("language", "Language"))
+            
+    def add_time_set(self, default_hour="10", default_minute="30"):
+        y_offset = 200 + len(self.time_entries) * 50
+        time_frame = tk.Frame(self, bg="white")
+        time_frame.place(x=50, y=y_offset, width=350, height=80)
+
+        tk.Label(time_frame, text=f"Set Time {len(self.time_entries) + 1}", font=("Arial", 16), bg="white").place(x=0, y=10, width=100, height=30)
+
+        hour_var = tk.StringVar(value=default_hour)
+        minute_var = tk.StringVar(value=default_minute)
+
+        ttk.Combobox(time_frame, textvariable=hour_var, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=110, y=10, width=50, height=30)
+        ttk.Combobox(time_frame, textvariable=minute_var, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=10, width=50, height=30)
+
+        set_button = tk.Button(time_frame, text="Set", command=lambda: self.set_time(hour_var, minute_var))
+        set_button.place(x=240, y=10, width=50, height=30)
+
+        self.time_entries.append((hour_var, minute_var, time_frame))
+        self.set_time(hour_var, minute_var)
 
     def set_time(self, hour_var, minute_var):
         selected_time = f"{hour_var.get()}:{minute_var.get()}"
