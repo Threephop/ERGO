@@ -41,3 +41,7 @@ python -m uvicorn api:app --reload
 3. Run app
 cd ERGO\app
 python Login.py
+
+---Build app .exe---
+pip install pyinstaller
+pyinstaller --onefile --windowed --add-data "video/*;video/" --add-data "icon/*;icon/" --add-data "font/*;font/" Login.py
