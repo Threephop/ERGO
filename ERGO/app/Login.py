@@ -88,7 +88,7 @@ def login():
                             messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
 
                             # ✅ ส่ง email ไป main.py แทน user_id
-                            root.after(100, lambda: subprocess.Popen(["python", mainPY, email], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP))
+                            root.after(100, lambda: subprocess.Popen(["python", mainPY, email], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP, shell=True))
                             root.withdraw()
                         else:
                             messagebox.showerror("Error", "User ID not found in the database after adding.")
