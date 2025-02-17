@@ -2,6 +2,7 @@ import tkinter as tk
 import webbrowser
 from tkinter import messagebox
 from tkinter import *
+import os
 
 class PopupFrame(tk.Toplevel):
     def __init__(self, parent):
@@ -9,7 +10,8 @@ class PopupFrame(tk.Toplevel):
         self.title("PDPA")
         self.geometry("850x700")
         self.configure(bg="white")
-
+        self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+        self.iconbitmap(os.path.join(self.icon_dir, "GODJI-Action_200113_0008.ico"))
         # คำนวณตำแหน่งตรงกลางจอ
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
