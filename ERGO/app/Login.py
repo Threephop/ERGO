@@ -3,6 +3,7 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 from msal import PublicClientApplication
 from profile_frame import ProfileFrame
+from main import App
 import win32gui
 import win32con
 import webbrowser
