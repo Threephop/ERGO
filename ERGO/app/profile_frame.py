@@ -7,8 +7,10 @@ import webbrowser
 import subprocess  # เพิ่มการนำเข้า subprocess
 
 class ProfileFrame(tk.Frame):
-    def __init__(self, parent, user_email):
+    def __init__(self, parent, user_email, app_instance):
         super().__init__(parent, bg="white")
+
+        self.app_instance = app_instance
 
         # กำหนดไดเรกทอรีสำหรับไอคอน
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
@@ -170,6 +172,9 @@ class ProfileFrame(tk.Frame):
 
             # แจ้งเตือนผู้ใช้ว่าทำการ Logout สำเร็จ
             messagebox.showinfo("Logout", "You have been logged out. Restarting login flow.")
+            # เรียก stop_timer() ก่อนออกจากระบบ
+            if self.app_instance:
+                self.app_instance.stop_timer()
 
             # เรียกใช้ Login.py เพื่อกลับไปที่หน้า login
             login_py_path = os.path.join(os.path.dirname(__file__), "Login.py")
