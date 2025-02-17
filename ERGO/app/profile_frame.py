@@ -172,7 +172,9 @@ class ProfileFrame(tk.Frame):
 
             # แจ้งเตือนผู้ใช้ว่าทำการ Logout สำเร็จ
             messagebox.showinfo("Logout", "You have been logged out. Restarting login flow.")
-
+            # เรียก stop_timer() ก่อนออกจากระบบ
+            if self.app_instance:
+                self.app_instance.stop_timer()
             # ปิดหน้าต่าง Main
             self.master.destroy()
 
