@@ -11,6 +11,7 @@ class SettingFrame(tk.Frame):
         
         self.time_entries = []  # เก็บรายการของ set time
         self.time_threads = []  # เก็บ thread ของการตั้งเวลา
+        self.skipped_times = set() # เก็บเวลาที่ skip ไปแล้ว
 
         # Volume control
         volume_frame = tk.Frame(self, bg="white")
@@ -52,8 +53,11 @@ class SettingFrame(tk.Frame):
     def update_volume_label(self, *args):
         self.volume_label.config(text=f"{int(self.volume.get())}%")
     
+    def add_time_set(self, default_hour="00", default_minute="00"):
+        if len(self.time_entries) >= 12:
+            print("Cannot add more than 12 set times.")
+            return # ไม่สร้างเวลาเพิ่มเมื่อเต็ม 12 ช่อง
     
-    def add_time_set(self, default_hour="10", default_minute="30"):
         y_offset = 200 + len(self.time_entries) * 50
         time_frame = tk.Frame(self, bg="white")
         time_frame.place(x=50, y=y_offset, width=350, height=80)
@@ -68,6 +72,9 @@ class SettingFrame(tk.Frame):
 
         set_button = tk.Button(time_frame, text="Set", command=lambda: self.set_time(hour_var, minute_var))
         set_button.place(x=240, y=10, width=50, height=30)
+        
+        set_button = tk.Button(time_frame, text="skip", command=lambda: self.stop_time(hour_var, minute_var))
+        set_button.place(x=290, y=10, width=50, height=30)
 
         self.time_entries.append((hour_var, minute_var, time_frame))
         self.set_time(hour_var, minute_var)
@@ -76,14 +83,28 @@ class SettingFrame(tk.Frame):
         selected_time = f"{hour_var.get()}:{minute_var.get()}"
         current_volume = int(self.volume.get())
         print(f"Time set to: {selected_time}, Volume: {current_volume}%")
+
+        # ลบจาก skipped_times ถ้ามี
+        if selected_time in self.skipped_times:
+            self.skipped_times.remove(selected_time)
+
         thread = threading.Thread(target=self.check_time, args=(selected_time,), daemon=True)
         self.time_threads.append(thread)
         thread.start()
 
+    def stop_time(self, hour_var, minute_var):
+        selected_time = f"{hour_var.get()}:{minute_var.get()}"
+        print(f"Skipping time: {selected_time}")
+        self.skipped_times.add(selected_time)  # เพิ่มเวลาที่ skip ไปแล้ว 
 
     def check_time(self, target_time):
         while True:
             current_time = time.strftime("%H:%M")
+
+            if target_time in self.skipped_times:  # เช็คว่าอยู่ใน skipped_times ไหม
+                print(f"Skipped: {target_time}")
+                return  # จบ Thread เมื่อถูก skip
+            
             if current_time == target_time:
                 show_popup(int(self.volume.get()))
                 return  # จบ Thread เมื่อถึงเวลา

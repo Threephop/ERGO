@@ -152,44 +152,6 @@ class App(tk.Tk):
         self.setting_button.image = setting_icon
         self.setting_button.place(x=50, y=650)  # ปรับตำแหน่งปุ่ม Setting
 
-        # สร้างปุ่ม skipx1
-        skipx1_icon_path = os.path.join(self.icon_dir, "skipx1.png")
-        skipx1_icon = tk.PhotoImage(file=skipx1_icon_path)
-
-        self.skipx1_button = tk.Button(
-            self.sidebar,
-            image=skipx1_icon,
-            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
-            bg="#221551",
-            fg="white",
-            font=("Arial", 12),
-            relief="flat",
-            activebackground="#6F6969",
-            activeforeground="white",
-
-        )
-        self.skipx1_button.image = skipx1_icon
-        self.skipx1_button.place(x=45, y=700)  # ปรับตำแหน่งปุ่ม Skip1
-
-        # สร้างปุ่ม skipx2
-        skipx2_icon_path = os.path.join(self.icon_dir, "skipx2.png")
-        skipx2_icon = tk.PhotoImage(file=skipx2_icon_path)
-
-        self.skipx2_button = tk.Button(
-            self.sidebar,
-            image=skipx2_icon,
-            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
-            bg="#221551",
-            fg="white",
-            font=("Arial", 12),
-            relief="flat",
-            activebackground="#6F6969",
-            activeforeground="white",
-
-        )
-        self.skipx2_button.image = skipx2_icon
-        self.skipx2_button.place(x=105, y=695)  # ปรับตำแหน่งปุ่ม Skip2
-
         # สร้างปุ่ม speaker
         speaker_icon_path = os.path.join(self.icon_dir, "Speaker.png")
         speaker_icon = tk.PhotoImage(file=speaker_icon_path)
@@ -207,7 +169,7 @@ class App(tk.Tk):
 
         )
         self.speaker_button.image = speaker_icon
-        self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม Skip2
+        self.speaker_button.place(x=104, y=641)  
 
         from PIL import Image, ImageTk  # เพิ่มการนำเข้า Pillow
 
