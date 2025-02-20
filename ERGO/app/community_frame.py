@@ -85,6 +85,8 @@ class CommunityFrame(tk.Frame):
 
         self.entry.bind("<Return>", lambda event: self.send_message())
         self.load_messages()
+        self.update_idletasks() # อัปเดต UI ก่อนเลื่อนลงไปที่ข้อความล่าสุด
+        self.canvas.yview_moveto(1.0)  # เลื่อนลงไปที่ข้อความล่าสุด
         
         response = requests.get("http://127.0.0.1:8000/users")
         if response.status_code == 200:
@@ -201,6 +203,9 @@ class CommunityFrame(tk.Frame):
                         self.add_message_bubble(post_id, username, content)
                     else:
                         self.add_message_bubble_another(post_id, username, content)
+                # ✅ เลื่อน scroll ลงไปที่ข้อความล่าสุด
+                self.update_idletasks() # อัปเดต UI ก่อนเลื่อนลงไปที่ข้อความล่าสุด
+                self.canvas.yview_moveto(1.0)  # เลื่อนลงไปที่ข้อความล่าสุด
             else:
                 print("⚠️ เกิดข้อผิดพลาด:", response.json())
         except Exception as e:
@@ -274,6 +279,8 @@ class CommunityFrame(tk.Frame):
                         print("ส่งข้อความสำเร็จ! post_id:", post_id)
                         # คุณสามารถเรียก add_message_bubble โดยส่ง post_id ที่ถูกต้องได้
                         self.add_message_bubble(post_id, self.username, message)
+                        self.update_idletasks() # อัปเดต UI ก่อนเลื่อนลงไปที่ข้อความล่าสุด
+                        self.canvas.yview_moveto(1.0)  # เลื่อนลงไปที่ข้อความล่าสุด
                     else:
                         print("ไม่สามารถดึง post_id ได้จากการตอบกลับ")
                 else:
