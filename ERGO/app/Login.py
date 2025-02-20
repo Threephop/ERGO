@@ -3,6 +3,7 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 from msal import PublicClientApplication
 from profile_frame import ProfileFrame
+from main import App
 import win32gui
 import win32con
 import webbrowser
@@ -88,8 +89,10 @@ def login():
                             messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
 
                             # ✅ ส่ง email ไป main.py แทน user_id
-                            root.after(100, lambda: subprocess.Popen(["python", mainPY, email], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP))
-                            root.withdraw()
+                            root.destroy()  # ปิดหน้าต่าง Login
+                            # เปิดหน้าต่าง Main โดยส่งค่า email ไป
+                            main_app = App(email)  # เรียกคลาส App จาก main.py
+                            main_app.mainloop()
                         else:
                             messagebox.showerror("Error", "User ID not found in the database after adding.")
                     else:

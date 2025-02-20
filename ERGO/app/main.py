@@ -16,11 +16,19 @@ import os
 import requests
 import sys
 
+def change_windows_taskbar_icon(window, icon_windows_path):
+    try:
+        window.iconbitmap(icon_windows_path)  # ใช้พารามิเตอร์ที่ถูกต้อง
+    except Exception as e:
+        print(f"Error changing icon: {e}")
+
 class App(tk.Tk):
     def __init__(self, user_email):
         super().__init__()
         # กำหนด path สำหรับไอคอนทั้งหมด
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
+        self.icon_windows_path = os.path.join(self.icon_dir, "windows_icon.ico")
+        change_windows_taskbar_icon(self, self.icon_windows_path)
         self.change_taskbar_icon()
         self.title("ERGO PROJECT")
         # ตั้งค่าไอคอน
@@ -414,7 +422,7 @@ class App(tk.Tk):
                 self.frames[frame_class] = frame_class(self, self.user_email)
 
             elif frame_class == ProfileFrame:
-                self.frames[frame_class] = frame_class(self, self.user_email)  # ส่ง email ไปให้ ProfileFrame    
+                self.frames[frame_class] = frame_class(self, self.user_email, app_instance=self)  # ส่ง email ไปให้ ProfileFrame    
 
             else:
                 self.frames[frame_class] = frame_class(self)

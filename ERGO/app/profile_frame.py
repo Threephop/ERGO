@@ -7,8 +7,10 @@ import webbrowser
 import subprocess  # เพิ่มการนำเข้า subprocess
 
 class ProfileFrame(tk.Frame):
-    def __init__(self, parent, user_email):
+    def __init__(self, parent, user_email, app_instance):
         super().__init__(parent, bg="white")
+
+        self.app_instance = app_instance
 
         # กำหนดไดเรกทอรีสำหรับไอคอน
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
@@ -162,24 +164,44 @@ class ProfileFrame(tk.Frame):
         return False  # ถ้าอัปเดตไม่สำเร็จ ให้ return False
 
 
-    # ฟังก์ชัน Logout
     def logout(self):
         try:
+            # เปิดเบราว์เซอร์เพื่อทำการ logout จาก Microsoft
             logout_url = "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
-            webbrowser.open(logout_url)  # เปิดหน้าต่างเบราว์เซอร์เพื่อทำการ logout
+            webbrowser.open(logout_url)
 
             # แจ้งเตือนผู้ใช้ว่าทำการ Logout สำเร็จ
             messagebox.showinfo("Logout", "You have been logged out. Restarting login flow.")
+            # เรียก stop_timer() ก่อนออกจากระบบ
+            if self.app_instance:
+                self.app_instance.stop_timer()
+            # ปิดหน้าต่าง Main
+            self.master.destroy()
 
-            # เรียกใช้ Login.py เพื่อกลับไปที่หน้า login
-            login_py_path = os.path.join(os.path.dirname(__file__), "Login.py")
-            subprocess.Popen(["python", login_py_path], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-            self.master.destroy()  # ปิดหน้าต่างปัจจุบัน
+            # เปิดหน้าต่าง Login ใหม่
+            self.open_login()
 
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred during logout: {e}")
-        print("คลิกออกจากระบบ")
 
+    def open_login(self):
+        """เปิดหน้าต่าง Login ใหม่โดยไม่ต้องนำเข้า LoginApp"""
+        import sys
+        import os
+
+        # ตรวจสอบว่าไฟล์ Login.py อยู่ในตำแหน่งที่ถูกต้อง
+        login_py_path = os.path.join(os.path.dirname(__file__), "Login.py")
+        if not os.path.exists(login_py_path):
+            messagebox.showerror("Error", "Cannot find Login.py")
+            return
+
+        # สร้างหน้าต่าง Login ใหม่
+        try:
+            # สร้างกระบวนการใหม่เพื่อรัน Login.py
+            python_executable = sys.executable  # ใช้ Python interpreter เดียวกัน
+            subprocess.Popen([python_executable, login_py_path])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open Login: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()  
