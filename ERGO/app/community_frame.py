@@ -167,24 +167,33 @@ class CommunityFrame(tk.Frame):
         popup.geometry(f"+{x}+{y}")
         
     def load_messages(self):
-        # Clear existing messages before loading new ones
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
-        
+
         try:
             response = requests.get("http://localhost:8000/get-messages")
             if response.status_code == 200:
                 messages = response.json().get("messages", [])
+                user_id = self.user_id  # user_id ของผู้ใช้ที่ล็อกอินอยู่
+                
+                print(f"✅ Logged-in user_id: {user_id}")  # เช็ค user_id
+
                 for msg in messages:
-                    username = msg.get("username", "Unknown")  # ใช้ค่า username ที่ได้จาก API
+                    username = msg.get("username", "Unknown")
                     post_id = msg.get("post_id")
                     content = msg.get("content")
-                    self.add_message_bubble(post_id, username, content)  # ส่ง post_id, username, และ message
-            else:
-                print("เกิดข้อผิดพลาด:", response.json())
-        except Exception as e:
-            print("เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
+                    message_owner_id = msg.get("user_id")  # user_id ของเจ้าของโพสต์
+                    
+                    print(f"📝 Post {post_id} by user_id: {message_owner_id}")  # ดูค่าของ user_id ในโพสต์
 
+                    if message_owner_id == user_id:
+                        self.add_message_bubble(post_id, username, content)
+                    else:
+                        self.add_message_bubble_another(post_id, username, content)
+            else:
+                print("⚠️ เกิดข้อผิดพลาด:", response.json())
+        except Exception as e:
+            print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
             
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
@@ -307,6 +316,40 @@ class CommunityFrame(tk.Frame):
             command=lambda: self.cancel_single_message(bubble_frame, post_id)
         )
         cancel_button.pack(side="bottom", pady=5, anchor="center")
+        
+        bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
+        
+    def add_message_bubble_another(self, post_id, username, message):
+        bubble_frame = tk.Frame(self.scrollable_frame, bg="lightblue", pady=5, padx=10)
+        
+        # แสดงรูปโปรไฟล์
+        profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="lightblue")
+        profile_label.pack(side="left", padx=5)
+        
+        # แสดงข้อความ
+        text_bubble = tk.Label(
+            bubble_frame,
+            text=message,
+            font=("PTT 45 Pride", 14),
+            bg="#d0f0ff",  # สีฟ้าอ่อน
+            wraplength=400,
+            justify="left",
+            anchor="w",
+            padx=10,
+            pady=5,
+            relief="ridge",
+        )
+        text_bubble.pack(side="left", padx=5)
+        
+        # แสดงชื่อผู้ใช้
+        username_label = tk.Label(
+            bubble_frame,
+            text=username,
+            font=("PTT 45 Pride", 10, "italic"),
+            fg="gray",
+            bg="lightblue",
+        )
+        username_label.pack(anchor="w", padx=5)
         
         bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
 

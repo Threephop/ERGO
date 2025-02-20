@@ -102,9 +102,9 @@ def get_messages():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ปรับปรุงคำสั่ง SQL เพื่อดึงข้อมูล post_id, content, create_at และ username
+    # ดึง user_id ของเจ้าของโพสต์มาด้วย
     cursor.execute("""
-        SELECT c.post_id, c.content, c.create_at, u.username
+        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
         ORDER BY c.create_at
@@ -112,9 +112,8 @@ def get_messages():
     messages = cursor.fetchall()
     conn.close()
 
-    # ส่งข้อมูลที่มี post_id, content, create_at และ username
     return {"messages": [
-        {"post_id": row[0], "content": row[1], "create_at": row[2], "username": row[3]}
+        {"post_id": row[0], "content": row[1], "create_at": row[2], "user_id": row[3], "username": row[4]}
         for row in messages
     ]}
 
