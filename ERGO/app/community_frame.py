@@ -18,23 +18,34 @@ class CommunityFrame(tk.Frame):
         if not os.path.exists(self.icon_dir):
             os.makedirs(self.icon_dir)
 
-        self.canvas = tk.Canvas(self, bg="white", highlightthickness=0, width=800, height=700)
+        # สร้าง Canvas และ Scrollbar
+        self.canvas = tk.Canvas(self, bg="#364DB6", highlightthickness=0)
         self.scrollbar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = tk.Frame(self.canvas, bg="white")
 
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
-        )
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        # สร้าง Frame ที่จะใช้เป็นพื้นที่เลื่อน
+        self.scrollable_frame = tk.Frame(self.canvas, bg="#ffffff")
+
+        # อัปเดต scrollable_frame ให้มีขนาดเท่ากับ canvas
+        self.scrollable_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(self.window_id, width=e.width))
+
+        # เพิ่ม scrollable_frame เข้าไปใน canvas
+        self.window_id = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        # ตั้งค่าการเลื่อน scrollbar
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
+        # ✅ ใช้ `grid()` แทน `pack()`
         self.canvas.grid(row=0, column=0, sticky="nsew")
         self.scrollbar.grid(row=0, column=1, sticky="ns")
 
         # ⭐ สร้าง Bottom Bar ⭐
-        self.bottom_bar = tk.Frame(self, bg="#FFFFFF", padx=10, pady=8)  # พื้นหลังสีเทาอ่อน
+        self.bottom_bar = tk.Frame(self, bg="#FFFFFF", padx=10, pady=8)  
         self.bottom_bar.grid(row=1, column=0, columnspan=2, sticky="ew")
+
+        # ✅ ทำให้ Canvas ปรับขนาดตาม Frame ได้
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
 
         # โหลดไอคอน
         self.camera_icon = self.load_resized_image("camera.png", (42, 39))
@@ -184,7 +195,7 @@ class CommunityFrame(tk.Frame):
                     content = msg.get("content")
                     message_owner_id = msg.get("user_id")  # user_id ของเจ้าของโพสต์
                     
-                    print(f"📝 Post {post_id} by user_id: {message_owner_id}")  # ดูค่าของ user_id ในโพสต์
+                    # print(f"📝 Post {post_id} by user_id: {message_owner_id}")  # ดูค่าของ user_id ในโพสต์
 
                     if message_owner_id == user_id:
                         self.add_message_bubble(post_id, username, content)
@@ -275,17 +286,18 @@ class CommunityFrame(tk.Frame):
 
     def add_message_bubble(self, post_id, username, message):
         bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
-        
+        bubble_frame.pack(anchor="e", fill="x", padx=5, pady=5)  # จัดให้อยู่ทางขวา
+
         # แสดงรูปโปรไฟล์
         profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
-        profile_label.pack(side="left", padx=5)
-        
+        profile_label.pack(side="right", padx=5)  # จัดรูปโปรไฟล์ไปทางขวา
+
         # แสดงข้อความ
         text_bubble = tk.Label(
             bubble_frame,
             text=message,
             font=("PTT 45 Pride", 14),
-            bg="#e0e0e0",
+            bg="#a3d977",  # เปลี่ยนสีพื้นหลังเป็นสีเขียว
             wraplength=400,
             justify="left",
             anchor="w",
@@ -293,8 +305,8 @@ class CommunityFrame(tk.Frame):
             pady=5,
             relief="ridge",
         )
-        text_bubble.pack(side="left", padx=5)
-        
+        text_bubble.pack(side="right", padx=5)  # จัดข้อความไปด้านขวา
+
         # แสดงชื่อผู้ใช้
         username_label = tk.Label(
             bubble_frame,
@@ -303,8 +315,8 @@ class CommunityFrame(tk.Frame):
             fg="gray",
             bg="white",
         )
-        username_label.pack(anchor="w", padx=5)
-        
+        username_label.pack(anchor="e", padx=5)  # จัดชื่อผู้ใช้ไปทางขวา
+
         # ปุ่มยกเลิกการส่ง โดยส่ง bubble_frame และ post_id ไปยังฟังก์ชัน cancel_single_message
         cancel_button = tk.Button(
             bubble_frame, 
@@ -314,16 +326,15 @@ class CommunityFrame(tk.Frame):
             bd=0, 
             bg="white", 
             command=lambda: self.cancel_single_message(bubble_frame, post_id)
-        )
-        cancel_button.pack(side="bottom", pady=5, anchor="center")
-        
-        bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
+    )
+        cancel_button.pack(side="bottom", pady=5, anchor="e")  # จัดปุ่มไปด้านขวา
+
         
     def add_message_bubble_another(self, post_id, username, message):
-        bubble_frame = tk.Frame(self.scrollable_frame, bg="lightblue", pady=5, padx=10)
+        bubble_frame = tk.Frame(self.scrollable_frame, bg="#ffffff", pady=5, padx=10)
         
         # แสดงรูปโปรไฟล์
-        profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="lightblue")
+        profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="#ffffff")
         profile_label.pack(side="left", padx=5)
         
         # แสดงข้อความ
@@ -347,7 +358,7 @@ class CommunityFrame(tk.Frame):
             text=username,
             font=("PTT 45 Pride", 10, "italic"),
             fg="gray",
-            bg="lightblue",
+            bg="#ffffff",
         )
         username_label.pack(anchor="w", padx=5)
         
