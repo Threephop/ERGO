@@ -80,7 +80,7 @@ class PopupFrame(ctk.CTkToplevel):
 
             label = ctk.CTkLabel(check_frame, text=text, font=("PTT 45 Pride", 16), fg_color="white",
                 wraplength=800,  width=600, justify="left")  # ปรับ wraplength และ width
-            label.grid(row=i, column=1, sticky="w", padx=5, pady=5)
+            label.grid(row=i, column=1, sticky="w", padx=10, pady=5)
 
         # ปุ่มเลือกทั้งหมด
         select_all_button = ctk.CTkButton(self, text="เลือกทั้งหมด", command=self.select_all,
