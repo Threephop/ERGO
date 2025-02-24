@@ -377,7 +377,7 @@ def get_unique_filename(directory, filename, extension):
 
     return file_path
 
-@app.get("/export_dashboard/")
+@app.get("/export_dashboard_active/")
 def export_dashboard(email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -415,7 +415,7 @@ def export_dashboard(email: str):
 
     # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้ โดยเพิ่มชื่อไฟล์ให้ไม่ซ้ำ
     downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-    file_path = get_unique_filename(downloads_folder, "dashboard_data", ".xlsx")
+    file_path = get_unique_filename(downloads_folder, "dashboard_active", ".xlsx")
     
     df.to_excel(file_path, index=False)
 
