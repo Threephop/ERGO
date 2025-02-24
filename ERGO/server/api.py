@@ -48,7 +48,7 @@ def get_user_id(email: str):
 
 # ฟังก์ชันที่เพิ่มผู้ใช้งาน
 @app.post("/add-user")
-def add_user(username: str, email: str, create_at: str):
+def add_user(username: str, email: str, role: int, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -62,8 +62,8 @@ def add_user(username: str, email: str, create_at: str):
         message = "User login time updated successfully"
     else:
         # ถ้าผู้ใช้งานยังไม่มี ให้ทำการเพิ่มข้อมูลใหม่
-        cursor.execute("INSERT INTO dbo.Users_Table (username, outlook_mail, create_at) VALUES (?, ?, ?)",
-                       (username, email, create_at))
+        cursor.execute("INSERT INTO dbo.Users_Table (username, outlook_mail, role, create_at) VALUES (?, ?, ?, ?)",
+                       (username, email, role, create_at))
         message = "User added successfully"
 
     conn.commit()
