@@ -5,6 +5,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import messagebox
 import urllib.parse
 import re
+import os
 import requests
 
 class DashboardFrame(tk.Frame):
@@ -128,6 +129,7 @@ class DashboardFrame(tk.Frame):
             return
 
         try:
+            # ส่งคำขอไปที่ API
             response = requests.get(f"{self.api_base_url}/export_dashboard_active/?email={self.user_email}")
 
             if response.status_code == 200:
@@ -145,12 +147,16 @@ class DashboardFrame(tk.Frame):
                 if not filename:
                     filename = "dashboard_active.xlsx"
 
-                # บันทึกไฟล์ไปยังเครื่องของผู้ใช้
-                with open(filename, "wb") as file:
-                    file.write(response.content)
-                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved successfully!")
+                # หาตำแหน่งโฟลเดอร์ Downloads ของผู้ใช้
+                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+                file_path = os.path.join(downloads_folder, filename)
+
+                # # บันทึกไฟล์ไปยังโฟลเดอร์ Downloads ของผู้ใช้
+                # with open(file_path, "wb") as file:
+                #     file.write(response.content)
+
+                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
             else:
                 messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
         except requests.exceptions.RequestException:
             messagebox.showerror("Error", "Failed to connect to the server")
-            
