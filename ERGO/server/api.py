@@ -46,6 +46,22 @@ def get_user_id(email: str):
         return {"user_id": user[0]}  # ส่ง user_id กลับไป
     return {"error": "User not found"}
 
+# 📌 API ค้นหา role จาก email
+@app.get("/get_user_role/{email}")
+def get_user_role(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ดึง role จาก outlook_mail
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    conn.close()
+
+    if user:
+        return {"email": email, "role": user[0]}  # ส่ง role กลับไป
+    return {"error": "User not found"}
+
 # ฟังก์ชันที่เพิ่มผู้ใช้งาน
 @app.post("/add-user")
 def add_user(username: str, email: str, role: int, create_at: str):
