@@ -24,7 +24,7 @@ class PopupFrame(ctk.CTkToplevel):
 
         # สร้าง Canvas และ Scrollbar
         frame_canvas = ctk.CTkFrame(self, fg_color="white")
-        frame_canvas.pack(pady=(10, 100), padx=10, fill="both", expand=True)
+        frame_canvas.pack(pady=(10, 100), padx=3, fill="both", expand=True)
 
         canvas = ctk.CTkCanvas(frame_canvas, bg="white", highlightthickness=0)
         canvas.pack(side="left", fill="both", expand=True)
@@ -34,7 +34,7 @@ class PopupFrame(ctk.CTkToplevel):
         canvas.configure(yscrollcommand=scrollbar_canvas.set)
 
         check_frame = ctk.CTkFrame(canvas, fg_color="white")
-        canvas.create_window((0, 0), window=check_frame, anchor="nw", width=800)
+        canvas.create_window((0, 0), window=check_frame, anchor="nw", width=1100)
 
         # ข้อความข้อตกลง
         check_texts = [
@@ -73,16 +73,18 @@ class PopupFrame(ctk.CTkToplevel):
             var = ctk.BooleanVar()
             self.check_vars.append(var)
 
-            check_box = ctk.CTkCheckBox(check_frame, text="", variable=var, fg_color="white")
+            check_box = ctk.CTkCheckBox(check_frame, text="", variable=var, fg_color="white",
+                width=20, height=40, checkbox_width=20, checkbox_height=20)
+
             check_box.grid(row=i, column=0, sticky="nw", padx=10, pady=5)
 
             label = ctk.CTkLabel(check_frame, text=text, font=("PTT 45 Pride", 16), fg_color="white",
-                                 wraplength=750, justify="left")
+                wraplength=800,  width=600, justify="left")  # ปรับ wraplength และ width
             label.grid(row=i, column=1, sticky="w", padx=5, pady=5)
 
         # ปุ่มเลือกทั้งหมด
         select_all_button = ctk.CTkButton(self, text="เลือกทั้งหมด", command=self.select_all,
-        font=("PTT 45 Pride", 12), fg_color="#4CAF50", text_color="white")
+        font=("PTT 45 Pride", 12), fg_color="#2ea6f4", text_color="white")
         select_all_button.place(x=250, y=600)
 
         # ปุ่มยกเลิกการเลือกทั้งหมด
@@ -113,7 +115,7 @@ class PopupFrame(ctk.CTkToplevel):
         link_label.bind("<Button-1>", open_link)
 
         accept_button = ctk.CTkButton(self, text="ตกลง", command=self.check_accepted,
-                                      font=("PTT 45 Pride", 12), fg_color="#787878", text_color="white")
+                                      font=("PTT 45 Pride", 12), fg_color="#4CAF50", text_color="white")
         accept_button.place(x=100, y=600)
 
         reject_button = ctk.CTkButton(self, text="ปฏิเสธ", command=self.destroy,
