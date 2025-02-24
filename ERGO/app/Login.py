@@ -72,11 +72,12 @@ def login():
 
                 if email and username:
                     created_at = datetime.datetime.utcnow().isoformat()
+                    role = 0 # 0 = User, 1 = Admin
 
                     # 🔹 เรียก API `/add-user` เพื่อเพิ่มผู้ใช้ก่อน
                     add_user_response = requests.post(
                         "http://127.0.0.1:8000/add-user",
-                        params={"username": username, "email": email, "create_at": created_at}
+                        params={"username": username, "email": email, "role": role, "create_at": created_at}
                     )
 
                     if add_user_response.status_code == 200:
