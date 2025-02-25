@@ -79,6 +79,40 @@ class SettingFrame(tk.Frame):
             "ภาษาไทย": {"volume": "ระดับเสียง", "language": "ภาษา"},
         }
 
+        self.update_language_ui("English")
+        
+        # ปุ่มเพิ่ม Set Time
+        add_time_button = tk.Button(self, text="+ เพิ่มเวลา", command=self.add_time_set)
+        add_time_button.place(x=400, y=230, width=100, height=30)
+
+        self.add_time_set("10", "30")
+        self.add_time_set("14", "30")
+        
+        # Time control
+        time_frame = tk.Frame(self, bg="white")
+        time_frame.place(x=50, y=200, width=350, height=100)
+
+        tk.Label(time_frame, text="Set Time 1", font=("PTT 45 Pride", 16), bg="white").place(x=0, y=10, width=120, height=30)
+
+        self.hour_var1 = tk.StringVar(value="10")
+        self.minute_var1 = tk.StringVar(value="30")
+
+        ttk.Combobox(time_frame, textvariable=self.hour_var1, width=5, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=120, y=10, width=50, height=30)
+        ttk.Combobox(time_frame, textvariable=self.minute_var1, width=5, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=10, width=50, height=30)
+
+        tk.Button(time_frame, text="Set", command=lambda: self.set_time(self.hour_var1, self.minute_var1)).place(x=240, y=10, width=50, height=30)
+
+        # Set Time 2
+        tk.Label(time_frame, text="Set Time 2", font=("PTT 45 Pride", 16), bg="white").place(x=0, y=50, width=120, height=30)
+
+        self.hour_var2 = tk.StringVar(value="15")
+        self.minute_var2 = tk.StringVar(value="00")
+
+        ttk.Combobox(time_frame, textvariable=self.hour_var2, width=5, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=120, y=50, width=50, height=30)
+        ttk.Combobox(time_frame, textvariable=self.minute_var2, width=5, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=50, width=50, height=30)
+
+        tk.Button(time_frame, text="Set", command=lambda: self.set_time(self.hour_var2, self.minute_var2)).place(x=240, y=50, width=50, height=30)
+
     def update_volume_label(self, *args):
         self.volume_value_label.config(text=f"{int(self.volume.get())}%")
 
@@ -100,27 +134,9 @@ class SettingFrame(tk.Frame):
         if translations:
             self.volume_label.config(text=translations.get("volume", "Volume"))
             self.language_label.config(text=translations.get("language", "Language"))
-
-            # อัปเดตข้อความใน time_frame (Set Time, Set, Skip)
-            for i, (hour_var, minute_var, label, set_button, skip_button) in enumerate(self.time_entries):
-                new_label_text = f"ตั้งเวลา {i + 1}" if language == "ภาษาไทย" else f"Set Time {i + 1}"
-                set_text = "ตั้ง" if language == "ภาษาไทย" else "Set"
-                skip_text = "ข้าม" if language == "ภาษาไทย" else "Skip"
-
-                # อัปเดตข้อความ Label และปุ่ม
-                label.config(text=new_label_text)
-                set_button.config(text=set_text)
-                skip_button.config(text=skip_text)
-
-                # อัปเดตรายการ self.time_entries
-                self.time_entries[i] = (hour_var, minute_var, label, set_button, skip_button)
-
-            # แปลปุ่ม Add Time
-            self.add_time_button.config(text="เพิ่มเวลา" if language == "ภาษาไทย" else "+ Add Time")
-
-    def set_time(self, hour, minute, label_text, set_text=None, skip_text=None):
-        """สร้างอินพุตเวลา และเพิ่มเข้าไปใน UI"""
-        y_offset = 200 + len(self.time_entries) * 60
+            
+    def add_time_set(self, default_hour="10", default_minute="30"):
+        y_offset = 200 + len(self.time_entries) * 50
         time_frame = tk.Frame(self, bg="white")
         time_frame.place(x=50, y=y_offset, width=550, height=60)
 

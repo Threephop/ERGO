@@ -2,6 +2,10 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from tkinter import messagebox
+import urllib.parse
+import re
+import os
 import requests
 
 class DashboardFrame(tk.Frame):
@@ -9,13 +13,18 @@ class DashboardFrame(tk.Frame):
         super().__init__(parent)
         self.api_base_url = "http://127.0.0.1:8000"  # ✅ กำหนดค่าก่อน
         self.user_id = self.fetch_user_id(user_email)  # ✅ เรียกใช้หลังจากกำหนดค่า api_base_url
-        
+        self.user_email = user_email # ✅ ใช้เก็บ email ของผู้ใช้
+        self.user_role = self.fetch_user_role(user_email)  # ✅ ดึง role ของผู้ใช้
 
         # Create chart
         self.create_chart()
 
         # Create activity details section
         self.create_activity_details()
+
+        # 🔹 ปุ่ม Export Excel
+        self.export_button = tk.Button(self, text="Export Excel", command=self.export_excel_active)
+        self.export_button.pack(pady=10)
         
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
@@ -51,6 +60,17 @@ class DashboardFrame(tk.Frame):
         except Exception as e:
             print("Exception:", e)
         return [0, 0, 0, 0, 0, 0, 0]
+
+    def fetch_user_role(self, email):
+        """ 🔹 ดึง role ของผู้ใช้จาก API """
+        try:
+            response = requests.get(f"{self.api_base_url}/get_user_role/{email}")
+            if response.status_code == 200:
+                return response.json().get("role")
+            else:
+                return None
+        except requests.exceptions.RequestException:
+            return None
 
 
     def create_chart(self):
@@ -101,3 +121,42 @@ class DashboardFrame(tk.Frame):
         for i, (label, detail) in enumerate(zip(labels, details)):
             ttk.Label(activity_frame, text=label, font=("Arial", 12, "bold")).grid(row=0, column=i, padx=5, pady=5)
             ttk.Label(activity_frame, text=detail, font=("Arial", 12)).grid(row=1, column=i, padx=5, pady=5)
+
+    def export_excel_active(self):
+        """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
+        if self.user_role != 1:  # ✅ ถ้าไม่ใช่ Admin
+            messagebox.showerror("Permission Denied", "You don't have permission to export data")
+            return
+
+        try:
+            # ส่งคำขอไปที่ API
+            response = requests.get(f"{self.api_base_url}/export_dashboard_active/?email={self.user_email}")
+
+            if response.status_code == 200:
+                # ใช้ชื่อไฟล์ที่ได้รับจาก response headers
+                content_disposition = response.headers.get("Content-Disposition", "")
+                filename = content_disposition.split("filename=")[-1].strip("\"")
+
+                # ถอดรหัส URL จากชื่อไฟล์ที่ได้
+                filename = urllib.parse.unquote(filename)
+
+                # ลบส่วนที่ไม่จำเป็นออกจากชื่อไฟล์
+                filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
+
+                # หากไม่ได้ชื่อไฟล์จาก header สามารถใช้ชื่อไฟล์ที่กำหนด
+                if not filename:
+                    filename = "dashboard_active.xlsx"
+
+                # หาตำแหน่งโฟลเดอร์ Downloads ของผู้ใช้
+                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+                file_path = os.path.join(downloads_folder, filename)
+
+                # # บันทึกไฟล์ไปยังโฟลเดอร์ Downloads ของผู้ใช้
+                # with open(file_path, "wb") as file:
+                #     file.write(response.content)
+
+                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
+            else:
+                messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
+        except requests.exceptions.RequestException:
+            messagebox.showerror("Error", "Failed to connect to the server")

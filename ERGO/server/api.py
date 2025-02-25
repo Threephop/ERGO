@@ -1,8 +1,12 @@
-from fastapi import FastAPI, HTTPException, Form, Request
+from fastapi import FastAPI, HTTPException, Form, Request, Query
 from datetime import datetime
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
 import sqlite3
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+import pyodbc
+import pandas as pd
+import os
 
 app = FastAPI()
 
@@ -46,9 +50,25 @@ def get_user_id(email: str):
         return {"user_id": user[0]}  # ส่ง user_id กลับไป
     return {"error": "User not found"}
 
+# 📌 API ค้นหา role จาก email
+@app.get("/get_user_role/{email}")
+def get_user_role(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ดึง role จาก outlook_mail
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    conn.close()
+
+    if user:
+        return {"email": email, "role": user[0]}  # ส่ง role กลับไป
+    return {"error": "User not found"}
+    
 # ฟังก์ชันที่เพิ่มผู้ใช้งาน
 @app.post("/add-user")
-def add_user(username: str, email: str, create_at: str):
+def add_user(username: str, email: str, role: int, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -62,8 +82,8 @@ def add_user(username: str, email: str, create_at: str):
         message = "User login time updated successfully"
     else:
         # ถ้าผู้ใช้งานยังไม่มี ให้ทำการเพิ่มข้อมูลใหม่
-        cursor.execute("INSERT INTO dbo.Users_Table (username, outlook_mail, create_at) VALUES (?, ?, ?)",
-                       (username, email, create_at))
+        cursor.execute("INSERT INTO dbo.Users_Table (username, outlook_mail, role, create_at) VALUES (?, ?, ?, ?)",
+                       (username, email, role, create_at))
         message = "User added successfully"
 
     conn.commit()
@@ -102,9 +122,9 @@ def get_messages():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ปรับปรุงคำสั่ง SQL เพื่อดึงข้อมูล post_id, content, create_at และ username
+    # ดึง user_id ของเจ้าของโพสต์มาด้วย
     cursor.execute("""
-        SELECT c.post_id, c.content, c.create_at, u.username
+        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
         ORDER BY c.create_at
@@ -112,9 +132,8 @@ def get_messages():
     messages = cursor.fetchall()
     conn.close()
 
-    # ส่งข้อมูลที่มี post_id, content, create_at และ username
     return {"messages": [
-        {"post_id": row[0], "content": row[1], "create_at": row[2], "username": row[3]}
+        {"post_id": row[0], "content": row[1], "create_at": row[2], "user_id": row[3], "username": row[4]}
         for row in messages
     ]}
 
@@ -345,3 +364,60 @@ def update_username(
     conn.close()
 
     return {"message": "Username updated successfully", "user_id": user_id, "new_username": new_username}
+
+def get_unique_filename(directory, filename, extension):
+    """ ตรวจสอบชื่อไฟล์ หากมีอยู่แล้วให้เพิ่มเลขต่อท้าย """
+    base_name = filename
+    counter = 1
+    file_path = os.path.join(directory, f"{filename}{extension}")
+
+    while os.path.exists(file_path):
+        file_path = os.path.join(directory, f"{base_name} ({counter}){extension}")
+        counter += 1
+
+    return file_path
+
+@app.get("/export_dashboard_active/")
+def export_dashboard(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to export data")
+
+    # 🔹 ดึงข้อมูลจาก Users_Table และ Dashboard_Table
+    query = """
+    SELECT 
+        u.username, 
+        u.outlook_mail, 
+        d.monday, 
+        d.tuesday, 
+        d.wednesday, 
+        d.thursday, 
+        d.friday, 
+        d.saturday, 
+        d.sunday
+    FROM dbo.Dashboard_Table d
+    JOIN dbo.Users_Table u ON d.user_id = u.user_id
+    """
+    
+    df = pd.read_sql(query, conn)
+    conn.close()
+
+    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้ โดยเพิ่มชื่อไฟล์ให้ไม่ซ้ำ
+    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+    file_path = get_unique_filename(downloads_folder, "dashboard_active", ".xlsx")
+    
+    df.to_excel(file_path, index=False)
+
+    # ส่งชื่อไฟล์ที่ได้ไปยัง frontend
+    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
