@@ -7,6 +7,7 @@ pip3 install ffpyplayer
 pip install python-multipart
 pip install msal
 pip install pywin32
+pip install customtkinter
 
 ---API---
 pip install adal

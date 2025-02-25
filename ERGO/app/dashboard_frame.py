@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
+import customtkinter as ctk
+from customtkinter import *
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import messagebox
@@ -8,23 +10,59 @@ import re
 import os
 import requests
 
-class DashboardFrame(tk.Frame):
-    def __init__(self, parent,user_email):
-        super().__init__(parent)
-        self.api_base_url = "http://127.0.0.1:8000"  # ✅ กำหนดค่าก่อน
-        self.user_id = self.fetch_user_id(user_email)  # ✅ เรียกใช้หลังจากกำหนดค่า api_base_url
-        self.user_email = user_email # ✅ ใช้เก็บ email ของผู้ใช้
-        self.user_role = self.fetch_user_role(user_email)  # ✅ ดึง role ของผู้ใช้
+class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
+    def __init__(self, parent, user_email):
+        super().__init__(parent, fg_color="white")
+        self.api_base_url = "http://127.0.0.1:8000"  
+        self.user_id = self.fetch_user_id(user_email)  
+        self.user_email = user_email  
+        self.user_role = self.fetch_user_role(user_email)  
 
-        # Create chart
-        self.create_chart()
+        # ✅ สร้าง Notebook (ใช้แท็บของ Tkinter)
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill="both", expand=True)
 
-        # Create activity details section
-        self.create_activity_details()
+        # ✅ สร้าง Style สำหรับแต่งแท็บ
+        style = ttk.Style()
+        style.configure("TNotebook.Tab", font=("PTT 45 Pride", 12, "bold"), padding=[10, 5])
+        style.configure("TNotebook", background="white")  # สีพื้นหลังของ Notebook
 
-        # 🔹 ปุ่ม Export Excel
-        self.export_button = tk.Button(self, text="Export Excel", command=self.export_excel_active)
-        self.export_button.pack(pady=10)
+        # ✅ สร้าง Notebook
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # ✅ สร้างแท็บ
+        self.tab1 = tk.Frame(self.notebook, bg="#ffffff", bd=3, relief="solid")
+        self.tab2 = tk.Frame(self.notebook, bg="#ffffff", bd=3, relief="solid")
+        self.tab3 = tk.Frame(self.notebook, bg="#ffffff", bd=3, relief="solid")
+
+        self.notebook.add(self.tab1, text="Active")  
+        self.notebook.add(self.tab2, text="Like")  
+        self.notebook.add(self.tab3, text="Calories")  # เพิ่ม Tab 3
+
+        # ✅ วาง widget ในแต่ละแท็บ
+        self.create_content(self.tab1, "Active", "#000000")
+        self.create_content(self.tab2, "Like", "#000000")
+        self.create_content(self.tab3, "Calories", "#000000")
+
+    def create_content(self, parent, text, color):
+        """ สร้าง Label แสดงข้อความในแต่ละแท็บ """
+        label = tk.Label(parent, text=text, font=("PTT 45 Pride", 14), fg=color, bg="white")
+        label.pack(pady=10) 
+
+        # ✅ วาง widget ต่างๆ ใน tab1
+        if text == "Active":  # เฉพาะแท็บ "Active" ที่จะสร้างกราฟและปุ่ม Export
+            self.create_chart(self.tab1)  # ส่ง self.tab1 ไปเป็น parent
+            self.create_activity_details(self.tab1, self.user_email)  # เรียกใช้แค่ใน tab1
+
+            # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
+            self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
+            self.export_button.pack(pady=10)
+        else:
+            # สำหรับแท็บอื่นๆ ไม่ต้องสร้างกราฟหรือปุ่ม Export
+            pass
+
+
         
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
@@ -38,7 +76,7 @@ class DashboardFrame(tk.Frame):
             print("Error fetching user_id:", response.json().get("error", "Unknown error"))
         except Exception as e:
             print("Exception:", e)
-        return None  # ถ้าหาไม่เจอให้ return None
+        return None
         
     def fetch_usage_data(self):
         """ดึงข้อมูล active_hours จาก API"""
@@ -72,88 +110,80 @@ class DashboardFrame(tk.Frame):
         except requests.exceptions.RequestException:
             return None
 
-
-    def create_chart(self):
+    def create_chart(self, parent):
         """Function to create bar chart"""
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        active_hours = self.fetch_usage_data()  # ดึงข้อมูลจาก API
+        active_hours = self.fetch_usage_data()  
 
         # Chart Frame
-        chart_frame = ttk.LabelFrame(self, text="Statistics", padding=(10, 10))
-        chart_frame.place(x=5, y=10, relwidth=0.8, relheight=0.6)
+        chart_frame = ttk.LabelFrame(parent, text="Statistics", padding=(10, 10))
+        chart_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Create chart
         fig, ax = plt.subplots(figsize=(12, 4))
         bars = ax.bar(days, active_hours, color="#1f6eb0", width=0.4)
 
-        # Apply font, labels without italic
         ax.set_xlabel("Week", fontsize=12)
         ax.set_ylabel("Active (hours)", fontsize=12)
         ax.set_title("Activity Over the Week", fontsize=14)
 
-        # Set ticks for x-axis
         ax.set_xticks(range(len(days)))
         ax.set_xticklabels(days, rotation=0, ha="center", fontsize=9)
 
-        # แสดงตัวเลขบนแท่งกราฟ
         for bar in bars:
-            yval = bar.get_height()  # ความสูงของแท่ง (จำนวนชั่วโมง)
+            yval = bar.get_height()
             ax.text(bar.get_x() + bar.get_width() / 2, yval, round(yval, 2), ha="center", va="bottom", fontsize=10)
 
-        # Embed chart into Tkinter
         canvas = FigureCanvasTkAgg(fig, master=chart_frame)
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(fill="both", expand=True)
 
-
-
-
-    def create_activity_details(self):
+    def create_activity_details(self, parent, user_email):
         """Function to create activity details section"""
-        # Activity Frame
-        activity_frame = ttk.LabelFrame(self, text="Activity", padding=(10, 10))
-        activity_frame.place(x=10, y=520, relwidth=0.6, relheight=0.3)
+        
+        # เรียก API เพื่อดึงข้อมูล activity details
+        url = f"http://127.0.0.1:8000/get_activity_details/?email={user_email}"
+        response = requests.get(url)
+        
+        # ถ้าเรียก API แล้วได้รับข้อมูลมา
+        if response.status_code == 200:
+            activity_data = response.json()
+            details = activity_data.get("activity_details", ["", "", "", "", "", "", "", ""])
+        else:
+            details = ["", "", "", "", "", "", "", ""]  # กรณีไม่ได้รับข้อมูลจาก API
+        
+        # สร้าง LabelFrame สำหรับแสดงข้อมูล
+        activity_frame = ttk.LabelFrame(parent, text="Activity", padding=(10, 10))
+        activity_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
-        # Add labels
-        labels = ["Date", "User", "Timer", "Calorie", "Stance"]
-        details = ["01/01/2024", "NameUser", "1 hour", "324 kcal", "บริหารร่างกาย"]
-
+        labels = ["Username", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        
+        # แสดงข้อมูลใน LabelFrame
         for i, (label, detail) in enumerate(zip(labels, details)):
-            ttk.Label(activity_frame, text=label, font=("Arial", 12, "bold")).grid(row=0, column=i, padx=5, pady=5)
-            ttk.Label(activity_frame, text=detail, font=("Arial", 12)).grid(row=1, column=i, padx=5, pady=5)
+            ttk.Label(activity_frame, text=label, font=("PTT 45 Pride", 12, "bold")).grid(row=0, column=i, padx=5, pady=5)
+            ttk.Label(activity_frame, text=detail, font=("PTT 45 Pride", 12)).grid(row=1, column=i, padx=5, pady=5)
 
     def export_excel_active(self):
         """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
-        if self.user_role != 1:  # ✅ ถ้าไม่ใช่ Admin
+        if self.user_role != 1:
             messagebox.showerror("Permission Denied", "You don't have permission to export data")
             return
 
         try:
-            # ส่งคำขอไปที่ API
             response = requests.get(f"{self.api_base_url}/export_dashboard_active/?email={self.user_email}")
 
             if response.status_code == 200:
-                # ใช้ชื่อไฟล์ที่ได้รับจาก response headers
                 content_disposition = response.headers.get("Content-Disposition", "")
                 filename = content_disposition.split("filename=")[-1].strip("\"")
 
-                # ถอดรหัส URL จากชื่อไฟล์ที่ได้
                 filename = urllib.parse.unquote(filename)
-
-                # ลบส่วนที่ไม่จำเป็นออกจากชื่อไฟล์
                 filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
 
-                # หากไม่ได้ชื่อไฟล์จาก header สามารถใช้ชื่อไฟล์ที่กำหนด
                 if not filename:
                     filename = "dashboard_active.xlsx"
 
-                # หาตำแหน่งโฟลเดอร์ Downloads ของผู้ใช้
                 downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
                 file_path = os.path.join(downloads_folder, filename)
-
-                # # บันทึกไฟล์ไปยังโฟลเดอร์ Downloads ของผู้ใช้
-                # with open(file_path, "wb") as file:
-                #     file.write(response.content)
 
                 messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
             else:
