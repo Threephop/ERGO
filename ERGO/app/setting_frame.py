@@ -18,15 +18,25 @@ class SettingFrame(tk.Frame):
         # แก้ไขเส้นทาง settings.json ให้อยู่ในโฟลเดอร์ผู้ใช้
         self.settings_file = os.path.join(os.path.expanduser("~"), "settings.json")
         
+        # Initialize language_var before loading settings
+        self.language_var = tk.StringVar(value="English")
+        
         # โหลดการตั้งค่าจากไฟล์
         self.settings = self.load_settings()
         
         # ใช้ค่าจาก settings.json ถ้ามี
         self.volume = tk.DoubleVar(value=self.settings.get("volume", 50))
+        self.language_var.set(self.settings.get("language", "English"))
         self.default_times = self.settings.get("times", [("10", "30"), ("14", "30")])
 
         self.time_entries = []  # เก็บรายการของ set time
         self.time_threads = []  # เก็บ thread ของการตั้งเวลา
+        self.stop_flags = {}
+
+        self.translations = {
+            "English": {"volume": "Volume", "language": "Language", "set": "Set", "skip": "Skip", "add_time": "+ Add Time", "set_time": "Set Time", "delete": "Delete"},
+            "ภาษาไทย": {"volume": "ระดับเสียง", "language": "ภาษา", "set": "ตั้ง", "skip": "ข้าม", "add_time": "เพิ่มเวลา", "set_time": "ตั้งเวลา", "delete": "ลบ"}
+        }
 
         # เพิ่มเวลา default จากไฟล์หรือค่าเริ่มต้น
         for hour, minute in self.default_times:
@@ -39,7 +49,6 @@ class SettingFrame(tk.Frame):
         self.volume_label = tk.Label(volume_frame, text="Volume", font=("PTT 45 Pride", 16), bg="white")
         self.volume_label.place(x=0, y=10, width=100, height=30)
 
-        self.volume = tk.DoubleVar(value=50)  # Default value is 50
         self.volume_scale = tk.Scale(
             volume_frame,
             from_=0,
@@ -66,28 +75,16 @@ class SettingFrame(tk.Frame):
         self.language_label = tk.Label(language_frame, text="Language", font=("PTT 45 Pride", 16), bg="white")
         self.language_label.place(x=0, y=10, width=100, height=30)
 
-        self.language_var = tk.StringVar(value="Select")
         self.language_dropdown = ttk.Combobox(language_frame, textvariable=self.language_var, font=("PTT 45 Pride", 12), state="readonly")
         self.language_dropdown["values"] = ("English", "ภาษาไทย")
         self.language_dropdown.place(x=140, y=10, width=150, height=30)
 
         self.language_dropdown.bind("<<ComboboxSelected>>", self.change_language)
 
-        self.translations = {
-            "English": {
-                "volume": "Volume",
-                "language": "Language",
-            },
-            "ภาษาไทย": {
-                "volume": "ระดับเสียง",
-                "language": "ภาษา",
-            },
-        }
-
-        self.update_language_ui("English")
+        self.update_language_ui(self.language_var.get())
         
         # ปุ่มเพิ่ม Set Time
-        add_time_button = tk.Button(self, text="+ เพิ่มเวลา", command=self.add_time_set)
+        add_time_button = tk.Button(self, text=self.translations[self.language_var.get()]["add_time"], command=self.add_time_set)
         add_time_button.place(x=550, y=230, width=100, height=30)
 
     def update_volume_label(self, *args):
@@ -99,19 +96,34 @@ class SettingFrame(tk.Frame):
 
         # Notify parent (main.py) about language change
         self.change_language_callback(selected_language)
+        self.save_settings()  # Save settings after language change
 
     def update_language_ui(self, language):
         translations = self.translations.get(language, {})
         if translations:
             self.volume_label.config(text=translations.get("volume", "Volume"))
             self.language_label.config(text=translations.get("language", "Language"))
-            
+
+            for i, (hour_var, minute_var, time_frame, label, set_button, skip_button, delete_button) in enumerate(self.time_entries):
+                label.config(text=f"{translations['set_time']} {i + 1}")
+                set_button.config(text=translations["set"])
+                skip_button.config(text=translations["skip"])
+                delete_button.config(text=translations["delete"])
+
     def add_time_set(self, default_hour="00", default_minute="00"):
+        if len(self.time_entries) >= 12:
+            print("Cannot add more than 12 time entries.")
+            return
+
         y_offset = 200 + len(self.time_entries) * 50
         time_frame = tk.Frame(self, bg="white")
-        time_frame.place(x=50, y=y_offset, width=350, height=80)
+        time_frame.place(x=50, y=y_offset, width=500, height=80)
 
-        tk.Label(time_frame, text=f"Set Time {len(self.time_entries) + 1}", font=("Arial", 16), bg="white").place(x=0, y=10, width=100, height=30)
+        language = self.language_var.get()
+        translations = self.translations[language]
+
+        label = tk.Label(time_frame, text=f"{translations['set_time']} {len(self.time_entries) + 1}", font=("Arial", 16), bg="white")
+        label.place(x=0, y=10, width=100, height=30)
 
         hour_var = tk.StringVar(value=default_hour)
         minute_var = tk.StringVar(value=default_minute)
@@ -119,15 +131,22 @@ class SettingFrame(tk.Frame):
         ttk.Combobox(time_frame, textvariable=hour_var, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=110, y=10, width=50, height=30)
         ttk.Combobox(time_frame, textvariable=minute_var, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=10, width=50, height=30)
         
-        # ปุ่มsetเวลา
-        set_button = tk.Button(time_frame, text="Set", command=lambda: self.set_time(hour_var, minute_var))
+        # ปุ่ม set เวลา
+        set_button = tk.Button(time_frame, text=translations["set"], command=lambda: self.set_time(hour_var, minute_var))
         set_button.place(x=240, y=10, width=50, height=30)
 
-        # ปุ่มลบเวลา
-        delete_button = tk.Button(time_frame, text="Delete", command=lambda: self.delete_time_set(time_frame, hour_var, minute_var))
-        delete_button.place(x=300, y=10, width=50, height=30)
+        # ปุ่ม skip เวลา
+        skip_button = tk.Button(time_frame, text=translations["skip"], command=lambda: self.skip_time(hour_var, minute_var))
+        skip_button.place(x=300, y=10, width=50, height=30)
 
-        self.time_entries.append((hour_var, minute_var, time_frame))
+        # ปุ่มลบเวลา
+        delete_button = tk.Button(time_frame, text=translations["delete"], command=lambda: self.delete_time_set(time_frame, hour_var, minute_var))
+        delete_button.place(x=360, y=10, width=50, height=30)
+
+        self.time_entries.append((hour_var, minute_var, time_frame, label, set_button, skip_button, delete_button))
+
+        # Save settings after adding a new time entry
+        self.save_settings()
 
     def set_time(self, hour_var, minute_var):
         selected_time = f"{hour_var.get()}:{minute_var.get()}"
@@ -140,7 +159,7 @@ class SettingFrame(tk.Frame):
         def check_time():
             while True:
                 current_time = time.strftime("%H:%M")
-                if current_time == selected_time:
+                if current_time == selected_time and not self.stop_flags.get(selected_time, False):
                     # เล่นเสียงแจ้งเตือน
                     self.play_notification_sound()
 
@@ -151,17 +170,30 @@ class SettingFrame(tk.Frame):
 
         threading.Thread(target=check_time, daemon=True).start()
 
+    def skip_time(self, hour_var, minute_var):
+        selected_time = f"{hour_var.get()}:{minute_var.get()}"
+        self.stop_flags[selected_time] = True
+        print(f"Skipped time: {selected_time}")
+        
+        # บันทึกการตั้งค่าหลังจาก skip
+        self.save_current_times()
+
     def delete_time_set(self, time_frame, hour_var, minute_var):
         """ลบเวลาเฉพาะที่เลือก"""
+        selected_time = f"{hour_var.get()}:{minute_var.get()}"
         # ลบเวลาออกจาก list
         self.time_entries = [entry for entry in self.time_entries if entry[2] != time_frame]
 
         # ทำการลบ UI ของ time_frame
         time_frame.destroy()
 
+        # ลบ stop_flags ของเวลา
+        if selected_time in self.stop_flags:
+            del self.stop_flags[selected_time]
+
         # บันทึกการตั้งค่าหลังจากลบข้อมูล
         self.save_current_times()
-    print("เวลาถูกลบออกแล้ว")
+        print("เวลาถูกลบออกแล้ว")
 
     def play_notification_sound(self):
         """เล่นเสียงแจ้งเตือน"""
@@ -190,7 +222,8 @@ class SettingFrame(tk.Frame):
         """บันทึกการตั้งค่าไปยังไฟล์ JSON"""
         settings_data = {
             "volume": self.volume.get(),
-            "times": [(hour.get(), minute.get()) for hour, minute, _ in self.time_entries],
+            "language": self.language_var.get(),
+            "times": [(hour.get(), minute.get()) for hour, minute, _, _, _, _, _ in self.time_entries],
         }
         try:
             # สร้างโฟลเดอร์ถ้ายังไม่มี
