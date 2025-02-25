@@ -6,6 +6,14 @@ from tkinter import ttk
 import pygame  # ใช้สำหรับเล่นเสียง
 from popup_video import show_popup  # นำเข้า show_popup สำหรับแสดงวิดีโอ
 
+import time
+import threading
+import os
+import tkinter as tk
+from tkinter import ttk
+import pygame  # ใช้สำหรับเล่นเสียง
+from popup_video import show_popup  # นำเข้า show_popup สำหรับแสดงวิดีโอ
+
 class SettingFrame(tk.Frame):
     def __init__(self, parent, is_muted_callback, change_language_callback):
         super().__init__(parent, bg="white")
@@ -13,8 +21,9 @@ class SettingFrame(tk.Frame):
         self.change_language_callback = change_language_callback  
 
         self.stop_flags = {}
-        self.time_entries = []  
+        self.time_entries = {}  # ใช้ dict เพื่อเก็บค่าของเวลา
         self.max_time_entries = 12
+        self.initialized_times = set()  # เก็บ Set Time 1 และ 2 ที่ถูกเริ่มทำงานไปแล้ว
 
         self.language_var = tk.StringVar(value="English")
 
@@ -25,20 +34,15 @@ class SettingFrame(tk.Frame):
         )
         self.add_time_button.place(x=595, y=240, width=110, height=40)
 
-        # เรียกใช้ฟังก์ชันเพิ่มเวลาตั้งต้น
-        self.initialize_time_entries()
-
         # ควบคุมภาษาและเสียง
         self.setup_volume_control()
         self.setup_language_control()
-        
-        self.update_language_ui("English")  # ตั้งค่า UI เริ่มต้น
-    
-    def initialize_time_entries(self):
-        """สร้างเวลาตั้งต้น"""
-        default_times = [("10", "30"), ("15", "00")]  # เวลาตั้งต้น
-        for i, (hour, minute) in enumerate(default_times):
-            self.set_time(hour, minute, f"Set Time {i + 1}")
+
+        # เรียกใช้ฟังก์ชันเพิ่มเวลาตั้งต้น
+        self.initialize_time_entries()
+
+        # ตั้งค่า UI เริ่มต้น
+        self.update_language_ui("English")
 
     def setup_volume_control(self):
         """ตั้งค่าการควบคุมระดับเสียง"""
@@ -68,7 +72,6 @@ class SettingFrame(tk.Frame):
         self.language_label = tk.Label(language_frame, text="Language", font=("PTT 45 Pride", 16), bg="white")
         self.language_label.place(x=0, y=10, width=100, height=30)
 
-        self.language_var = tk.StringVar(value="Select")
         self.language_dropdown = ttk.Combobox(language_frame, textvariable=self.language_var, font=("PTT 45 Pride", 12), state="readonly")
         self.language_dropdown["values"] = ("English", "ภาษาไทย")
         self.language_dropdown.place(x=140, y=10, width=150, height=30)
@@ -79,17 +82,15 @@ class SettingFrame(tk.Frame):
             "ภาษาไทย": {"volume": "ระดับเสียง", "language": "ภาษา"},
         }
 
-        self.update_language_ui("English")
-    
     def update_volume_label(self, *args):
         self.volume_value_label.config(text=f"{int(self.volume.get())}%")
-    
+
     def change_language(self, event):
         """เปลี่ยนภาษา UI"""
         selected_language = self.language_var.get()
         self.update_language_ui(selected_language)
         self.change_language_callback(selected_language)
-        
+    
     def update_language_ui(self, language):
         """อัปเดต UI ตามภาษา"""
         translations = self.translations.get(language, {})
@@ -97,9 +98,8 @@ class SettingFrame(tk.Frame):
             self.volume_label.config(text=translations.get("volume", "Volume"))
             self.language_label.config(text=translations.get("language", "Language"))
 
-        # เปลี่ยนข้อความของ Set Time, Set, Skip
-        for i, (hour_var, minute_var, label, set_button, skip_button) in enumerate(self.time_entries):
-            new_label_text = f"ตั้งเวลา {i + 1}" if language == "ภาษาไทย" else f"Set Time {i + 1}"
+        for i, (time_frame, hour_var, minute_var, label, set_button, skip_button) in self.time_entries.items():
+            new_label_text = f"ตั้งเวลา {i}" if language == "ภาษาไทย" else f"Set Time {i}"
             set_text = "ตั้ง" if language == "ภาษาไทย" else "Set"
             skip_text = "ข้าม" if language == "ภาษาไทย" else "Skip"
 
@@ -107,15 +107,117 @@ class SettingFrame(tk.Frame):
             set_button.config(text=set_text)
             skip_button.config(text=skip_text)
 
-            self.time_entries[i] = (hour_var, minute_var, label, set_button, skip_button)
-
-        # เปลี่ยนปุ่ม Add Time
         self.add_time_button.config(text="เพิ่มเวลา" if language == "ภาษาไทย" else "+ Add Time")
-        
-            
-    def set_time(self, hour, minute, label_text, set_text=None, skip_text=None):
-        """สร้างอินพุตเวลา และเพิ่มเข้าไปใน UI"""
-        y_offset = 200 + len(self.time_entries) * 60
+
+
+    def initialize_time_entries(self):
+        """สร้าง Set Time 1 และ 2 และเริ่มทำงานทันทีเมื่อเปิดแอป"""
+        self.set_time("10", "30", "Set Time 1", auto_start=True)
+        self.set_time("15", "00", "Set Time 2", auto_start=True)
+
+    import time
+import threading
+import os
+import tkinter as tk
+from tkinter import ttk
+import pygame  # ใช้สำหรับเล่นเสียง
+from popup_video import show_popup  # นำเข้า show_popup สำหรับแสดงวิดีโอ
+
+class SettingFrame(tk.Frame):
+    def __init__(self, parent, is_muted_callback, change_language_callback):
+        super().__init__(parent, bg="white")
+        self.is_muted_callback = is_muted_callback  
+        self.change_language_callback = change_language_callback  
+
+        self.stop_flags = {}
+        self.time_entries = {}  
+        self.max_time_entries = 12
+        self.initialized_times = set()  
+
+        self.language_var = tk.StringVar(value="English")
+
+        self.add_time_button = tk.Button(
+            self, text="+ Add Time", font=("Arial", 12), bg="#f0f0f0", 
+            relief="raised", command=self.add_time_set
+        )
+        self.add_time_button.place(x=595, y=240, width=110, height=40)
+
+        self.setup_volume_control()
+        self.setup_language_control()
+
+        self.initialize_time_entries()
+
+        self.update_language_ui("English")
+
+    def setup_volume_control(self):
+        volume_frame = tk.Frame(self, bg="white")
+        volume_frame.place(x=50, y=50, width=350, height=50)
+
+        self.volume_label = tk.Label(volume_frame, text="Volume", font=("PTT 45 Pride", 16), bg="white")
+        self.volume_label.place(x=0, y=10, width=100, height=30)
+
+        self.volume = tk.DoubleVar(value=50)
+        self.volume_scale = tk.Scale(
+            volume_frame, from_=0, to=100, orient="horizontal", length=200,
+            variable=self.volume, bg="white", highlightthickness=0, troughcolor="lightgray", activebackground="blue"
+        )
+        self.volume_scale.place(x=100, y=0, width=200, height=50)
+
+        self.volume_value_label = tk.Label(volume_frame, text=f"{int(self.volume.get())}%", font=("PTT 45 Pride", 12), bg="white")
+        self.volume_value_label.place(x=300, y=10, width=50, height=30)
+
+        self.volume.trace("w", self.update_volume_label)
+
+    def setup_language_control(self):
+        language_frame = tk.Frame(self, bg="white")
+        language_frame.place(x=50, y=120, width=350, height=50)
+
+        self.language_label = tk.Label(language_frame, text="Language", font=("PTT 45 Pride", 16), bg="white")
+        self.language_label.place(x=0, y=10, width=100, height=30)
+
+        self.language_dropdown = ttk.Combobox(language_frame, textvariable=self.language_var, font=("PTT 45 Pride", 12), state="readonly")
+        self.language_dropdown["values"] = ("English", "ภาษาไทย")
+        self.language_dropdown.place(x=140, y=10, width=150, height=30)
+        self.language_dropdown.bind("<<ComboboxSelected>>", self.change_language)
+
+        self.translations = {
+            "English": {"volume": "Volume", "language": "Language"},
+            "ภาษาไทย": {"volume": "ระดับเสียง", "language": "ภาษา"},
+        }
+
+    def update_volume_label(self, *args):
+        self.volume_value_label.config(text=f"{int(self.volume.get())}%")
+
+    def change_language(self, event):
+        selected_language = self.language_var.get()
+        self.update_language_ui(selected_language)
+        self.change_language_callback(selected_language)
+    
+    def update_language_ui(self, language):
+        translations = self.translations.get(language, {})
+        if translations:
+            self.volume_label.config(text=translations.get("volume", "Volume"))
+            self.language_label.config(text=translations.get("language", "Language"))
+
+        for i, (time_frame, hour_var, minute_var, label, set_button, skip_button) in self.time_entries.items():
+            new_label_text = f"ตั้งเวลา {i}" if language == "ภาษาไทย" else f"Set Time {i}"
+            set_text = "ตั้ง" if language == "ภาษาไทย" else "Set"
+            skip_text = "ข้าม" if language == "ภาษาไทย" else "Skip"
+
+            label.config(text=new_label_text)
+            set_button.config(text=set_text)
+            skip_button.config(text=skip_text)
+
+        self.add_time_button.config(text="เพิ่มเวลา" if language == "ภาษาไทย" else "+ Add Time")
+
+    def initialize_time_entries(self):
+        self.set_time("10", "30", "Set Time 1", auto_start=True)
+        self.set_time("15", "00", "Set Time 2", auto_start=True)
+
+    def set_time(self, hour, minute, label_text, set_text="Set", skip_text="Skip",auto_start = False):
+        """สร้างอินพุตเวลา และสามารถกด Set เพื่อเริ่มทำงาน"""
+        time_id = len(self.time_entries) + 1
+        y_offset = 200 + (time_id - 1) * 60
         time_frame = tk.Frame(self, bg="white")
         time_frame.place(x=50, y=y_offset, width=550, height=60)
 
@@ -128,62 +230,92 @@ class SettingFrame(tk.Frame):
         ttk.Combobox(time_frame, textvariable=hour_var, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=120, y=10, width=60, height=30)
         ttk.Combobox(time_frame, textvariable=minute_var, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=190, y=10, width=60, height=30)
 
-        # 🔹 ตรวจสอบให้แน่ใจว่า language_var ถูกสร้างแล้ว
-        if hasattr(self, "language_var"):
-            current_language = self.language_var.get()
-        else:
-            current_language = "English"  # ค่าเริ่มต้นถ้าไม่มี language_var
-
-        # ตั้งค่าปุ่ม Set และ Skip ตามภาษา
-        if set_text is None:
-            set_text = "ตั้ง" if current_language == "ภาษาไทย" else "Set"
-        if skip_text is None:
-            skip_text = "ข้าม" if current_language == "ภาษาไทย" else "Skip"
-
-        set_button = tk.Button(time_frame, text=set_text, font=("Arial", 10), command=lambda: self.start_check_time(hour_var, minute_var, label_text))
+        # ✅ ใช้ set_text และ skip_text ที่รับมาเป็นค่าเริ่มต้น
+        set_button = tk.Button(
+            time_frame, text=set_text, font=("Arial", 10), 
+            command=lambda: self.start_check_time(hour_var, minute_var, label_text)
+        )
         set_button.place(x=270, y=10, width=70, height=30)
 
-        skip_button = tk.Button(time_frame, text=skip_text, font=("Arial", 10), command=lambda: self.skip_time(label_text))
+        skip_button = tk.Button(
+            time_frame, text=skip_text, font=("Arial", 10), 
+            command=lambda: self.skip_time(label_text)
+        )
         skip_button.place(x=350, y=10, width=70, height=30)
 
-        self.time_entries.append((hour_var, minute_var, label, set_button, skip_button))
+        self.time_entries[time_id] = (time_frame, hour_var, minute_var, label, set_button, skip_button)
         self.stop_flags[label_text] = False
-        self.start_check_time(hour_var, minute_var, label_text)  # เริ่มตรวจสอบเวลาทันทีที่สร้าง
 
+        if auto_start and label_text not in self.initialized_times:
+            self.initialized_times.add(label_text)
+            self.start_check_time(hour_var, minute_var, label_text)
+
+    def start_check_time(self, hour_var, minute_var, label_text):
+        """เริ่มเฝ้าตรวจสอบเวลา และแจ้งเตือนเมื่อถึงเวลา"""
+        print(f"{label_text} started at {hour_var.get()}:{minute_var.get()}")
+
+        # ✅ รีเซ็ตค่าให้ทำงานได้อีกครั้ง
+        self.stop_flags[label_text] = False  
+
+        def check_time():
+            while True:
+                current_time = time.strftime("%H:%M")
+                if self.stop_flags.get(label_text, False):  
+                    print(f"{label_text} skipped.")
+                    break
+
+                if current_time == f"{hour_var.get()}:{minute_var.get()}":
+                    print(f"Time reached for {label_text}: {current_time}")
+                    self.play_notification_sound()
+                    show_popup(50)
+                    break
+                time.sleep(1)
+
+        threading.Thread(target=check_time, daemon=True).start()
 
 
     def start_check_time(self, hour_var, minute_var, label_text):
         """เริ่มเฝ้าตรวจสอบเวลา และแจ้งเตือนเมื่อถึงเวลา"""
-        print(f"{label_text} updated to: {hour_var.get()}:{minute_var.get()}")
-        
+        print(f"{label_text} started at {hour_var.get()}:{minute_var.get()}")
+
+        # ✅ รีเซ็ตค่าให้ทำงานได้อีกครั้ง
+        self.stop_flags[label_text] = False  
+
         def check_time():
-            while not self.stop_flags.get(label_text, False):  # หยุดเมื่อกด Skip
+            while True:
                 current_time = time.strftime("%H:%M")
-                if current_time == f"{hour_var.get()}:{minute_var.get()}" and not self.stop_flags.get(label_text, False):
-                    self.play_notification_sound()  # เล่นเสียงแจ้งเตือน
-                    show_popup(50)  # แสดง popup
+                if self.stop_flags.get(label_text, False):  
+                    print(f"{label_text} skipped.")
+                    break
+
+                if current_time == f"{hour_var.get()}:{minute_var.get()}":
+                    print(f"Time reached for {label_text}: {current_time}")
+                    self.play_notification_sound()
+                    show_popup(50)
                     break
                 time.sleep(1)
 
         threading.Thread(target=check_time, daemon=True).start()
 
     def skip_time(self, label_text):
-        """ข้ามเวลา (Skip) ที่เลือก และหยุดการแจ้งเตือน"""
+        """ข้ามเวลา และหยุดการแจ้งเตือน"""
         self.stop_flags[label_text] = True
-        print(f"{label_text} skipped. No popup will appear.")
 
     def add_time_set(self):
-        """เพิ่มเวลาตั้งใหม่ (สูงสุด 12 ครั้ง)"""
+        """เพิ่มเวลาตั้งใหม่"""
         if len(self.time_entries) >= self.max_time_entries:
             print("Cannot add more than 12 time entries.")
             return
-        
-        # ตรวจสอบภาษาปัจจุบัน
-        current_language = self.language_var.get()
-        new_time_label = f"ตั้งเวลา {len(self.time_entries) + 1}" if current_language == "ภาษาไทย" else f"Set Time {len(self.time_entries) + 1}"
 
-        # เพิ่มเวลาตั้งใหม่
-        self.set_time("00", "00", new_time_label)
+        # ✅ ดึงค่าภาษาปัจจุบันเพื่อตั้งค่าปุ่ม Set และ Skip
+        language = self.language_var.get()
+        new_time_label = f"ตั้งเวลา {len(self.time_entries) + 1}" if language == "ภาษาไทย" else f"Set Time {len(self.time_entries) + 1}"
+        
+        set_text = "ตั้ง" if language == "ภาษาไทย" else "Set"
+        skip_text = "ข้าม" if language == "ภาษาไทย" else "Skip"
+
+        # ✅ ส่งค่า set_text และ skip_text ไปที่ set_time()
+        self.set_time("00", "00", new_time_label, set_text, skip_text)
 
 
     def play_notification_sound(self):
