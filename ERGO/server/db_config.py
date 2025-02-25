@@ -46,6 +46,6 @@ def get_db_connection():
         "SERVER=ergoservers.database.windows.net;"
         "DATABASE=ERGODATABASE;"
         "Authentication=ActiveDirectoryInteractive;"  # หรือ ActiveDirectoryPassword สำหรับการยืนยันตัวตน
-        "UID=threephop.t@live.ku.th;"
+        "UID=arthit.thong@live.ku.th;"
     )
     return pyodbc.connect(conn_str)

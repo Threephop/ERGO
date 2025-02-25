@@ -1,6 +1,7 @@
 import time
 import threading
 import os
+import json
 import tkinter as tk
 from tkinter import ttk
 import pygame  # ใช้สำหรับเล่นเสียง
@@ -13,10 +14,24 @@ class SettingFrame(tk.Frame):
         
         # Callback function to notify parent of language change
         self.change_language_callback = change_language_callback
+        
+        # แก้ไขเส้นทาง settings.json ให้อยู่ในโฟลเดอร์ผู้ใช้
+        self.settings_file = os.path.join(os.path.expanduser("~"), "settings.json")
+        
+        # โหลดการตั้งค่าจากไฟล์
+        self.settings = self.load_settings()
+        
+        # ใช้ค่าจาก settings.json ถ้ามี
+        self.volume = tk.DoubleVar(value=self.settings.get("volume", 50))
+        self.default_times = self.settings.get("times", [("10", "30"), ("14", "30")])
 
         self.time_entries = []  # เก็บรายการของ set time
         self.time_threads = []  # เก็บ thread ของการตั้งเวลา
-        
+
+        # เพิ่มเวลา default จากไฟล์หรือค่าเริ่มต้น
+        for hour, minute in self.default_times:
+            self.add_time_set(hour, minute)
+
         # Volume control
         volume_frame = tk.Frame(self, bg="white")
         volume_frame.place(x=50, y=50, width=350, height=50)
@@ -73,10 +88,7 @@ class SettingFrame(tk.Frame):
         
         # ปุ่มเพิ่ม Set Time
         add_time_button = tk.Button(self, text="+ เพิ่มเวลา", command=self.add_time_set)
-        add_time_button.place(x=400, y=230, width=100, height=30)
-
-        self.add_time_set("10", "30")
-        self.add_time_set("14", "30")
+        add_time_button.place(x=550, y=230, width=100, height=30)
 
     def update_volume_label(self, *args):
         self.volume_value_label.config(text=f"{int(self.volume.get())}%")
@@ -106,17 +118,24 @@ class SettingFrame(tk.Frame):
 
         ttk.Combobox(time_frame, textvariable=hour_var, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=110, y=10, width=50, height=30)
         ttk.Combobox(time_frame, textvariable=minute_var, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=10, width=50, height=30)
-
+        
+        # ปุ่มsetเวลา
         set_button = tk.Button(time_frame, text="Set", command=lambda: self.set_time(hour_var, minute_var))
         set_button.place(x=240, y=10, width=50, height=30)
 
+        # ปุ่มลบเวลา
+        delete_button = tk.Button(time_frame, text="Delete", command=lambda: self.delete_time_set(time_frame, hour_var, minute_var))
+        delete_button.place(x=300, y=10, width=50, height=30)
+
         self.time_entries.append((hour_var, minute_var, time_frame))
-        self.set_time(hour_var, minute_var)
 
     def set_time(self, hour_var, minute_var):
         selected_time = f"{hour_var.get()}:{minute_var.get()}"
         current_volume = int(self.volume.get())
         print(f"Time set to: {selected_time}, Volume: {current_volume}%")
+
+        # เพิ่มการบันทึกเวลาไปที่ JSON ทันที
+        self.save_current_times()
 
         def check_time():
             while True:
@@ -131,6 +150,18 @@ class SettingFrame(tk.Frame):
                 time.sleep(1)
 
         threading.Thread(target=check_time, daemon=True).start()
+
+    def delete_time_set(self, time_frame, hour_var, minute_var):
+        """ลบเวลาเฉพาะที่เลือก"""
+        # ลบเวลาออกจาก list
+        self.time_entries = [entry for entry in self.time_entries if entry[2] != time_frame]
+
+        # ทำการลบ UI ของ time_frame
+        time_frame.destroy()
+
+        # บันทึกการตั้งค่าหลังจากลบข้อมูล
+        self.save_current_times()
+    print("เวลาถูกลบออกแล้ว")
 
     def play_notification_sound(self):
         """เล่นเสียงแจ้งเตือน"""
@@ -149,6 +180,39 @@ class SettingFrame(tk.Frame):
         else:
             print(f"Error: Sound file not found - {sound_path}")
 
+    def save_current_times(self):
+        """บันทึกเวลาล่าสุดลงในไฟล์ JSON"""
+        times = [(entry[0].get(), entry[1].get()) for entry in self.time_entries]
+        self.settings["times"] = times
+        self.save_settings()
+
+    def save_settings(self):
+        """บันทึกการตั้งค่าไปยังไฟล์ JSON"""
+        settings_data = {
+            "volume": self.volume.get(),
+            "times": [(hour.get(), minute.get()) for hour, minute, _ in self.time_entries],
+        }
+        try:
+            # สร้างโฟลเดอร์ถ้ายังไม่มี
+            os.makedirs(os.path.dirname(self.settings_file), exist_ok=True)
+
+            # เขียนข้อมูลใหม่ลงไฟล์ในครั้งเดียว
+            with open(self.settings_file, "w") as file:
+                json.dump(settings_data, file, indent=4)
+
+            print("การตั้งค่าถูกบันทึกเรียบร้อยแล้ว")
+        except Exception as e:
+            print(f"เกิดข้อผิดพลาดในการบันทึกไฟล์: {e}")
+
+    def load_settings(self):
+        """โหลดการตั้งค่าจากไฟล์ JSON"""
+        if os.path.exists(self.settings_file):
+            try:
+                with open(self.settings_file, "r") as file:
+                    return json.load(file)
+            except json.JSONDecodeError:
+                print("เกิดข้อผิดพลาดในการอ่านไฟล์ JSON")
+        return {}
 
 if __name__ == "__main__":
     def on_language_change(language):
