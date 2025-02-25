@@ -337,6 +337,60 @@ def get_usage_stats(user_id: int):
             "Sunday": row[6]
         }
 
+@app.get("/get_activity_details/")
+def get_activity_details(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to access this data")
+
+    # 🔹 ดึงข้อมูลจาก Users_Table และ Dashboard_Table
+    query = """
+    SELECT 
+        u.username, 
+        d.monday, 
+        d.tuesday, 
+        d.wednesday, 
+        d.thursday, 
+        d.friday, 
+        d.saturday
+    FROM dbo.Dashboard_Table d
+    JOIN dbo.Users_Table u ON d.user_id = u.user_id
+    WHERE u.outlook_mail = ?
+    """
+    
+    cursor.execute(query, (email,))
+    data = cursor.fetchone()
+
+    if not data:
+        conn.close()
+        raise HTTPException(status_code=404, detail="No activity data found for this user")
+
+    # 🔹 เตรียมข้อมูลให้กับ details
+    details = [
+        data[0],  # Username
+        data[1],  # Monday
+        data[2],  # Tuesday
+        data[3],  # Wednesday
+        data[4],  # Thursday
+        data[5],  # Friday
+        data[6]   # Saturday
+    ]
+
+    conn.close()
+    
+    return {"activity_details": details}
+
 
 # 🔄 ฟังก์ชันสำหรับอัปเดตชื่อผู้ใช้ (รับค่าเป็น Form Data)
 @app.post("/update_username/")

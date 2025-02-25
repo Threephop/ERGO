@@ -51,12 +51,18 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         label.pack(pady=10) 
 
         # ✅ วาง widget ต่างๆ ใน tab1
-        self.create_chart(self.tab1)  # ส่ง self.tab1 ไปเป็น parent
-        self.create_activity_details(self.tab1)
+        if text == "Active":  # เฉพาะแท็บ "Active" ที่จะสร้างกราฟและปุ่ม Export
+            self.create_chart(self.tab1)  # ส่ง self.tab1 ไปเป็น parent
+            self.create_activity_details(self.tab1, self.user_email)  # เรียกใช้แค่ใน tab1
 
-        # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
-        self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
-        self.export_button.pack(pady=10)
+            # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
+            self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
+            self.export_button.pack(pady=10)
+        else:
+            # สำหรับแท็บอื่นๆ ไม่ต้องสร้างกราฟหรือปุ่ม Export
+            pass
+
+
         
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
@@ -132,14 +138,27 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(fill="both", expand=True)
 
-    def create_activity_details(self, parent):
+    def create_activity_details(self, parent, user_email):
         """Function to create activity details section"""
+        
+        # เรียก API เพื่อดึงข้อมูล activity details
+        url = f"http://127.0.0.1:8000/get_activity_details/?email={user_email}"
+        response = requests.get(url)
+        
+        # ถ้าเรียก API แล้วได้รับข้อมูลมา
+        if response.status_code == 200:
+            activity_data = response.json()
+            details = activity_data.get("activity_details", ["", "", "", "", "", "", "", ""])
+        else:
+            details = ["", "", "", "", "", "", "", ""]  # กรณีไม่ได้รับข้อมูลจาก API
+        
+        # สร้าง LabelFrame สำหรับแสดงข้อมูล
         activity_frame = ttk.LabelFrame(parent, text="Activity", padding=(10, 10))
         activity_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
-        labels = ["Date", "User", "Timer", "Calorie", "Stance"]
-        details = ["01/01/2024", "NameUser", "1 hour", "324 kcal", "บริหารร่างกาย"]
-
+        labels = ["Username", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        
+        # แสดงข้อมูลใน LabelFrame
         for i, (label, detail) in enumerate(zip(labels, details)):
             ttk.Label(activity_frame, text=label, font=("PTT 45 Pride", 12, "bold")).grid(row=0, column=i, padx=5, pady=5)
             ttk.Label(activity_frame, text=detail, font=("PTT 45 Pride", 12)).grid(row=1, column=i, padx=5, pady=5)
