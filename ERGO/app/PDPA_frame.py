@@ -78,7 +78,7 @@ class PopupFrame(ctk.CTkToplevel):
 
             check_box.grid(row=i, column=0, sticky="nw", padx=10, pady=5)
 
-            label = ctk.CTkLabel(check_frame, text=text, font=("PTT 45 Pride", 16), fg_color="white",
+            label = ctk.CTkLabel(check_frame, text=text, font=("PTT 45 Pride", 16), text_color="black", fg_color="white",
                 wraplength=800,  width=600, justify="left")  # ปรับ wraplength และ width
             label.grid(row=i, column=1, sticky="w", padx=10, pady=5)
 
