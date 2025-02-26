@@ -17,6 +17,7 @@ pip install fastapi
 pip install pandas
 pip install openpyxl
 pip install azure-storage-blob
+pip install sqlalchemy
 
 ---RUN API---
 python -m uvicorn api:app --reload

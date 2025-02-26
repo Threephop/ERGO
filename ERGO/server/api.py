@@ -1,25 +1,19 @@
-from fastapi import FastAPI, HTTPException, Form, Request, Query
+from fastapi import FastAPI, HTTPException, Form, Request, Query, UploadFile, File
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 from datetime import datetime
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
 import sqlite3
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter
 from fastapi.responses import FileResponse
 import pyodbc
 import pandas as pd
 import os
 
-app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # หรือกำหนดเฉพาะ domain ที่อนุญาต
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+api_router = APIRouter()
 
 # ฟังก์ชันที่ดึงข้อมูลผู้ใช้งาน
-@app.get("/users")
+@api_router.get("/users")
 def get_users():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -35,7 +29,7 @@ def get_users():
 
     return {"users": users_list}
 
-@app.get("/get_user_id/{email}")
+@api_router.get("/get_user_id/{email}")
 def get_user_id(email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -51,7 +45,7 @@ def get_user_id(email: str):
     return {"error": "User not found"}
 
 # 📌 API ค้นหา role จาก email
-@app.get("/get_user_role/{email}")
+@api_router.get("/get_user_role/{email}")
 def get_user_role(email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -67,7 +61,7 @@ def get_user_role(email: str):
     return {"error": "User not found"}
     
 # ฟังก์ชันที่เพิ่มผู้ใช้งาน
-@app.post("/add-user")
+@api_router.post("/add-user")
 def add_user(username: str, email: str, role: int, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -91,7 +85,7 @@ def add_user(username: str, email: str, role: int, create_at: str):
     return {"message": message}
     
 # ฟังก์ชันที่ดึงรายชื่อตารางทั้งหมดในฐานข้อมูล
-@app.post("/post-message")
+@api_router.post("/post-message")
 def post_message(user_id: int, content: str, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -117,7 +111,7 @@ def post_message(user_id: int, content: str, create_at: str):
 
 
 # ฟังก์ชันดึงข้อความทั้งหมดจาก community
-@app.get("/get-messages")
+@api_router.get("/get-messages")
 def get_messages():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -137,7 +131,7 @@ def get_messages():
         for row in messages
     ]}
 
-@app.delete("/delete-message/{post_id}")
+@api_router.delete("/delete-message/{post_id}")
 async def delete_message(post_id: int, request: Request):
     # รับข้อมูล JSON ที่ส่งมาจาก client (คาดว่า {"user_id": <user_id>})
     data = await request.json()
@@ -172,7 +166,7 @@ async def delete_message(post_id: int, request: Request):
     finally:
         conn.close()
 
-@app.get("/showstat")
+@api_router.get("/showstat")
 def get_usage_stats():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -206,7 +200,7 @@ def get_usage_stats():
 
 
 # API รับค่าจากแอปและอัปเดต hours_used ใน UsageStats_Table
-@app.get("/update_app_time/")
+@api_router.get("/update_app_time/")
 def update_app_time(email: str, app_time: float):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -279,7 +273,7 @@ def update_app_time(email: str, app_time: float):
     }
 
 
-@app.get("/get_usage_stats/{user_id}")
+@api_router.get("/get_usage_stats/{user_id}")
 def get_usage_stats(user_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -337,7 +331,7 @@ def get_usage_stats(user_id: int):
             "Sunday": row[6]
         }
 
-@app.get("/get_activity_details/")
+@api_router.get("/get_activity_details/")
 def get_activity_details(email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -393,7 +387,7 @@ def get_activity_details(email: str):
 
 
 # 🔄 ฟังก์ชันสำหรับอัปเดตชื่อผู้ใช้ (รับค่าเป็น Form Data)
-@app.post("/update_username/")
+@api_router.post("/update_username/")
 def update_username(
     user_id: int = Form(...),  # รับค่า user_id จาก Form Data
     new_username: str = Form(...)  # รับค่า new_username จาก Form Data
@@ -431,7 +425,7 @@ def get_unique_filename(directory, filename, extension):
 
     return file_path
 
-@app.get("/export_dashboard_active/")
+@api_router.get("/export_dashboard_active/")
 def export_dashboard(email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
