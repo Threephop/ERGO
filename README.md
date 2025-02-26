@@ -16,6 +16,7 @@ pip install uvicorn
 pip install fastapi
 pip install pandas
 pip install openpyxl
+pip install azure-storage-blob
 
 ---RUN API---
 python -m uvicorn api:app --reload
