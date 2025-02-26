@@ -4,7 +4,7 @@ from azure.storage.blob import BlobServiceClient
 def get_blob_service_client():
     # กำหนดข้อมูลสำหรับการเชื่อมต่อกับ Azure Blob Storage
     AZURE_STORAGE_ACCOUNT_NAME = "ergostorageblob"
-    AZURE_STORAGE_ACCOUNT_KEY = ""
+    AZURE_STORAGE_ACCOUNT_KEY = "password ต้องใส่ใหม่ github ไม่เก็บ password ในไฟล์"
     # สร้าง client สำหรับเชื่อมต่อกับ Azure Blob Storage
     blob_service_client = BlobServiceClient(
         account_url=f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
