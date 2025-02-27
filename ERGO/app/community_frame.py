@@ -372,7 +372,7 @@ class CommunityFrame(tk.Frame):
         bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
 
 
-    def post_video(self, filepath, user_id):
+    def post_video(self, filepath, user_id, post_id):
         try:
             # ✅ 1. เรียก API เช็คการเชื่อมต่อกับ Blob Storage
             container_name = "ergo"  # แก้ไขเป็นชื่อ Container จริง
@@ -415,7 +415,6 @@ class CommunityFrame(tk.Frame):
             # Close the file after the upload
             file.close()
 
-
             # ✅ 3. สร้าง Bubble Frame สำหรับโพสต์วิดีโอ
             bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
             profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
@@ -456,7 +455,7 @@ class CommunityFrame(tk.Frame):
             # ปุ่มยกเลิกการส่ง
             cancel_button = tk.Button(
                 bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="white",
-                command=lambda: self.cancel_single_message(bubble_frame)
+                command=lambda: self.cancel_single_message(bubble_frame, post_id)
             )
             cancel_button.pack(side="bottom", pady=5, anchor="center")
 
@@ -558,11 +557,29 @@ class CommunityFrame(tk.Frame):
     def open_folder(self):
         filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png"), ("Video files", "*.mp4 *.avi *.mkv")])
         if filepath:
-            self.post_media(filepath)
+            # เรียก API เพื่ออัปโหลดและรับ `post_id`
+            upload_url = "http://localhost:8000/upload_file/"
+            files = {"file": open(filepath, "rb")}
+            params = {"user_id": self.user_id}
 
-    def post_media(self, filepath):
+            upload_response = requests.post(upload_url, files=files, params=params)
+            files["file"].close()  # ปิดไฟล์หลังอัปโหลดเสร็จ
+
+            if upload_response.status_code == 200:
+                response_data = upload_response.json()
+                post_id = response_data.get("post_id")
+                if post_id is not None:
+                    print(f"✅ ได้รับ post_id: {post_id}")
+                    self.post_media(filepath, post_id)
+                else:
+                    messagebox.showerror("Error", "ไม่สามารถดึง post_id ได้")
+            else:
+                messagebox.showerror("Error", "อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
+
+
+    def post_media(self, filepath, post_id):
         if filepath.lower().endswith(('mp4', 'avi', 'mkv')):
-            self.post_video(filepath, self.user_id) 
+            self.post_video(filepath, self.user_id, post_id) 
         else:
             self.post_image(filepath)
 
