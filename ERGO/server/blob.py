@@ -26,8 +26,8 @@ async def check_blob_storage(container_name: str):
         raise HTTPException(status_code=500, detail=f"Failed to connect to Blob Storage: {e}")
 
 # API สำหรับอัปโหลดไฟล์วิดีโอไปยัง Blob Storage
-@blob_router.post("/upload_video/")
-async def upload_video(file: UploadFile = File(...), container_name: str = "ergo"):
+@blob_router.post("/upload_file/")
+async def upload_video(file: UploadFile = File(...), container_name: str = "ergo", user_id: int = 5):
     # ตรวจสอบว่าไฟล์ถูกส่งมาหรือไม่
     if file is None:
         raise HTTPException(status_code=400, detail="No file uploaded")
@@ -53,13 +53,21 @@ async def upload_video(file: UploadFile = File(...), container_name: str = "ergo
         file_url = f"https://ergostorageblob.blob.core.windows.net/{container_name}/{new_filename}"
 
         # ถ้าต้องการบันทึก URL ลงฐานข้อมูล คุณสามารถทำตามนี้ได้
-        # conn = get_db_connection()
-        # cursor = conn.cursor()
-        # query = "INSERT INTO dbo.CommunityPosts_Table (video_path) VALUES (?)"
-        # cursor.execute(query, (file_url,))
-        # conn.commit()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = """
+            SET NOCOUNT ON;
+            INSERT INTO dbo.CommunityPosts_Table (user_id, video_path)
+            OUTPUT INSERTED.post_id
+            VALUES (?, ?)
+        """
 
-        return {"message": "Video uploaded successfully", "video_url": file_url}
+        cursor.execute(query, (user_id, file_url))  # ส่งค่าตามลำดับที่ถูกต้อง
+        print(f"type(user_id): {type(user_id)}, type(file_url): {type(file_url)}")
+
+        post_id = cursor.fetchone()[0]
+        conn.commit()
+        return {"message": "Video uploaded successfully", "video_url": file_url, "user_id": user_id ,"post_id": int(post_id)}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload video: {e}")
