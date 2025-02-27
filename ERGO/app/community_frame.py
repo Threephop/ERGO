@@ -374,48 +374,10 @@ class CommunityFrame(tk.Frame):
 
     def post_video(self, filepath, user_id, post_id):
         try:
-            # ✅ 1. เรียก API เช็คการเชื่อมต่อกับ Blob Storage
-            container_name = "ergo"  # แก้ไขเป็นชื่อ Container จริง
-            check_blob_url = f"http://localhost:8000/check_blob_storage/?container_name={container_name}"
-            response = requests.get(check_blob_url)
+            # ✅ ไม่ต้องอัปโหลดไฟล์อีกครั้ง แค่ใช้ post_id ที่ได้จาก open_folder
+            print(f"ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอ")
 
-            if response.status_code == 200:
-                data = response.json()
-                print(f"✅ เชื่อมต่อกับ Blob Storage สำเร็จ: {data['message']}")
-            else:
-                print("❌ ไม่สามารถเชื่อมต่อกับ Blob Storage ได้")
-                messagebox.showerror("Error", "ไม่สามารถเชื่อมต่อกับ Blob Storage ได้ กรุณาลองใหม่อีกครั้ง")
-                return
-            
-            # ✅ 2. อัปโหลดวิดีโอไปยัง Azure Blob Storage
-            upload_url = "http://localhost:8000/upload_file/"
-
-            # Open the file outside the with block to keep it open until the upload completes
-            file = open(filepath, "rb")
-            files = {"file": file}
-
-            # ส่ง user_id ใน query parameters
-            params = {"user_id": user_id}  # ส่ง user_id เป็น query parameter
-
-            upload_response = requests.post(upload_url, files=files, params=params)
-
-            # Log the response status and content for debugging
-            print(f"Upload Response Status: {upload_response.status_code}")
-            print(f"Upload Response Content: {upload_response.text}")
-
-            if upload_response.status_code == 200:
-                video_url = upload_response.json().get("video_url")
-                print(f"✅ วิดีโอถูกอัปโหลดไปยัง Azure Blob Storage: {video_url}")
-            else:
-                print(f"❌ อัปโหลดวิดีโอล้มเหลว: {upload_response.json()}")
-                messagebox.showerror("Error", "อัปโหลดวิดีโอไปยัง Blob Storage ล้มเหลว กรุณาลองใหม่อีกครั้ง")
-                file.close()  # Close the file after uploading
-                return
-
-            # Close the file after the upload
-            file.close()
-
-            # ✅ 3. สร้าง Bubble Frame สำหรับโพสต์วิดีโอ
+            # ✅ แสดง UI หรือโพสต์วิดีโอตามปกติ
             bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
             profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
             profile_label.pack(side="left", padx=5)
@@ -432,7 +394,7 @@ class CommunityFrame(tk.Frame):
             username_label = tk.Label(bubble_frame, text=self.username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="w", padx=5)
 
-            # Like Section
+            # ✅ Like Section
             like_frame = tk.Frame(bubble_frame, bg="white")
             like_frame.pack(expand=True, anchor="center", pady=5)
 
@@ -452,7 +414,7 @@ class CommunityFrame(tk.Frame):
             like_button.pack(side="top", pady=2)
             like_label.pack(side="top")
 
-            # ปุ่มยกเลิกการส่ง
+            # ✅ ปุ่มยกเลิกการส่ง
             cancel_button = tk.Button(
                 bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="white",
                 command=lambda: self.cancel_single_message(bubble_frame, post_id)
@@ -557,20 +519,19 @@ class CommunityFrame(tk.Frame):
     def open_folder(self):
         filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png"), ("Video files", "*.mp4 *.avi *.mkv")])
         if filepath:
-            # เรียก API เพื่ออัปโหลดและรับ `post_id`
+            # ✅ อัปโหลดไฟล์ครั้งเดียว และรับ `post_id`
             upload_url = "http://localhost:8000/upload_file/"
-            files = {"file": open(filepath, "rb")}
-            params = {"user_id": self.user_id}
-
-            upload_response = requests.post(upload_url, files=files, params=params)
-            files["file"].close()  # ปิดไฟล์หลังอัปโหลดเสร็จ
+            with open(filepath, "rb") as file:
+                files = {"file": file}
+                params = {"user_id": self.user_id}
+                upload_response = requests.post(upload_url, files=files, params=params)
 
             if upload_response.status_code == 200:
                 response_data = upload_response.json()
                 post_id = response_data.get("post_id")
                 if post_id is not None:
                     print(f"✅ ได้รับ post_id: {post_id}")
-                    self.post_media(filepath, post_id)
+                    self.post_media(filepath, post_id)  # ✅ ส่ง post_id ต่อให้ post_media
                 else:
                     messagebox.showerror("Error", "ไม่สามารถดึง post_id ได้")
             else:
@@ -579,9 +540,10 @@ class CommunityFrame(tk.Frame):
 
     def post_media(self, filepath, post_id):
         if filepath.lower().endswith(('mp4', 'avi', 'mkv')):
-            self.post_video(filepath, self.user_id, post_id) 
+            self.post_video(filepath, self.user_id, post_id)  # ✅ ส่ง post_id ไปให้ post_video
         else:
             self.post_image(filepath)
+
 
     def post_image(self, filepath):
         try:
