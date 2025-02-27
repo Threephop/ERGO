@@ -199,6 +199,7 @@ class CommunityFrame(tk.Frame):
                     filepath = msg.get("video_path", None)  # ดึง video_path ถ้ามี
 
                     if filepath:  # ถ้าเป็นวิดีโอ
+                        print(f"filepath: {filepath}")  # เพิ่มการพิมพ์ filepath เพื่อตรวจสอบ
                         if message_owner_id == user_id:
                             self.post_video(filepath, user_id, post_id, username)  # ส่ง username ไปให้ post_video
                         else:
@@ -217,7 +218,7 @@ class CommunityFrame(tk.Frame):
                 print("⚠️ เกิดข้อผิดพลาด:", response.json())
         except Exception as e:
             print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
-            
+                
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
         url = f"{self.api_base_url}/get_user_id/{user_email}"
@@ -430,7 +431,7 @@ class CommunityFrame(tk.Frame):
 
         except Exception as e:
             messagebox.showerror("Error", f"Error posting video: {e}")
-
+            
     def post_video_another(self, filepath, user_id, post_id, username):
         try:
             print(f"ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอที่โพสต์โดยผู้ใช้อื่น")
@@ -497,28 +498,11 @@ class CommunityFrame(tk.Frame):
         like_label.config(text=f"{self.like_count} Likes")  # อัปเดตจำนวน Like
 
 
-    import requests
-
     def get_video_thumbnail(self, filepath):
         try:
-            # ตรวจสอบว่า filepath เป็น URL หรือไม่
-            if filepath.startswith("http://") or filepath.startswith("https://"):
-                # ดาวน์โหลดไฟล์วิดีโอจาก URL มายังเครื่อง
-                local_filepath = os.path.join(self.icon_dir, os.path.basename(filepath))
-                response = requests.get(filepath, stream=True)
-                if response.status_code == 200:
-                    with open(local_filepath, "wb") as file:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            file.write(chunk)
-                else:
-                    print(f"ไม่สามารถดาวน์โหลดไฟล์วิดีโอ: {filepath}")
-                    return None
-            else:
-                local_filepath = filepath
-
-            cap = cv2.VideoCapture(local_filepath)
+            cap = cv2.VideoCapture(filepath)
             if not cap.isOpened():
-                print(f"ไม่สามารถเปิดไฟล์วิดีโอ: {local_filepath}")
+                print(f"ไม่สามารถเปิดไฟล์วิดีโอ: {filepath}")
                 return None
 
             ret, frame = cap.read()
@@ -530,7 +514,7 @@ class CommunityFrame(tk.Frame):
                 image = image.resize((150, 150), Image.Resampling.LANCZOS)
                 return ImageTk.PhotoImage(image)
             else:
-                print(f"ไม่สามารถอ่านเฟรมจากไฟล์วิดีโอ: {local_filepath}")
+                print(f"ไม่สามารถอ่านเฟรมจากไฟล์วิดีโอ: {filepath}")
                 return None
         except Exception as e:
             print(f"Error generating video thumbnail: {e}")
@@ -538,25 +522,10 @@ class CommunityFrame(tk.Frame):
 
     def play_video(self, filepath):
         try:
-            # ตรวจสอบว่า filepath เป็น URL หรือไม่
-            if filepath.startswith("http://") or filepath.startswith("https://"):
-                # ดาวน์โหลดไฟล์วิดีโอจาก URL มายังเครื่อง
-                local_filepath = os.path.join(self.icon_dir, os.path.basename(filepath))
-                response = requests.get(filepath, stream=True)
-                if response.status_code == 200:
-                    with open(local_filepath, "wb") as file:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            file.write(chunk)
-                else:
-                    print(f"ไม่สามารถดาวน์โหลดไฟล์วิดีโอ: {filepath}")
-                    return
-            else:
-                local_filepath = filepath
-
-            os.startfile(local_filepath)
+            os.startfile(filepath)
         except Exception as e:
             messagebox.showerror("Error", f"Error playing video: {e}")
-
+            
     def open_camera(self):
         try:
             video_path = os.path.join(self.icon_dir, "recorded_video.avi")
