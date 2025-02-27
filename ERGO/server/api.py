@@ -116,9 +116,8 @@ def get_messages():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ดึง user_id ของเจ้าของโพสต์มาด้วย
     cursor.execute("""
-        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username
+        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
         ORDER BY c.create_at
@@ -127,9 +126,17 @@ def get_messages():
     conn.close()
 
     return {"messages": [
-        {"post_id": row[0], "content": row[1], "create_at": row[2], "user_id": row[3], "username": row[4]}
+        {
+            "post_id": row[0], 
+            "content": row[1], 
+            "create_at": row[2], 
+            "user_id": row[3], 
+            "username": row[4], 
+            "video_path": row[5]  # ✅ เพิ่ม video_path
+        }
         for row in messages
     ]}
+
 
 @api_router.delete("/delete-message/{post_id}")
 async def delete_message(post_id: int, request: Request):
