@@ -15,6 +15,7 @@ import time
 import os
 import requests
 import sys
+import threading
 
 def change_windows_taskbar_icon(window, icon_windows_path):
     try:
@@ -55,7 +56,7 @@ class App(tk.Tk):
         #     self.username = data['users'][3]
         
         self.user_email = user_email
-        
+    
         # 🔹 ดึงรายชื่อ users จาก API
         response = requests.get("http://127.0.0.1:8000/users")
         if response.status_code == 200:
@@ -288,42 +289,7 @@ class App(tk.Tk):
         self.speaker_button.image = self.speaker_icon
         self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม speaker
 
-        # สร้างปุ่ม Skip 1
-        skipx1_icon_path = os.path.join(self.icon_dir, "skipx1.png")
-        skipx1_icon = tk.PhotoImage(file=skipx1_icon_path)
-
-        self.skipx1_button = tk.Button(
-            self.sidebar,
-            image=skipx1_icon,
-            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
-            bg="#221551",
-            fg="white",
-            font=("PTT 45 Pride", 12),
-            relief="flat",
-            activebackground="#6F6969",
-            activeforeground="white",
-        )
-        self.skipx1_button.image = skipx1_icon
-        self.skipx1_button.place(x=45, y=700)  # ปรับตำแหน่งปุ่ม Skip 1
-
-        # สร้างปุ่ม Skip 2
-        skipx2_icon_path = os.path.join(self.icon_dir, "skipx2.png")
-        skipx2_icon = tk.PhotoImage(file=skipx2_icon_path)
-
-        self.skipx2_button = tk.Button(
-            self.sidebar,
-            image=skipx2_icon,
-            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
-            bg="#221551",
-            fg="white",
-            font=("PTT 45 Pride", 12),
-            relief="flat",
-            activebackground="#6F6969",
-            activeforeground="white",
-        )
-        self.skipx2_button.image = skipx2_icon
-        self.skipx2_button.place(x=105, y=695)  # ปรับตำแหน่งปุ่ม Skip2
-        self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม Skip2
+        
 
         from PIL import Image, ImageTk  # เพิ่มการนำเข้า Pillow
 
@@ -475,8 +441,6 @@ class App(tk.Tk):
             self.leaderboard_button.place_forget()
             self.setting_button.place_forget()
             self.speaker_button.place_forget()
-            self.skipx1_button.place_forget()
-            self.skipx2_button.place_forget()
             
         else:
             # ขยาย sidebar กลับไปที่ขนาดเดิม
@@ -492,8 +456,6 @@ class App(tk.Tk):
             self.leaderboard_button.place(x=30, y=550)
             self.setting_button.place(x=50, y=650)
             self.speaker_button.place(x=104, y=641)
-            self.skipx1_button.place(x=45, y=700)
-            self.skipx2_button.place(x=105, y=695)
 
     def start_timer(self):
         """เริ่มจับเวลาเมื่อเปิดแอป"""
@@ -526,6 +488,20 @@ class App(tk.Tk):
         except Exception as e:
             print(f"❌ Error sending data: {e}")
     
+    # เริ่ม Task เบื้องหลัง
+        self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
+        self.bg_thread.start()
+
+    def on_closing(self):
+        """ซ่อน UI แต่แอปยังทำงาน"""
+        self.withdraw()  # ซ่อนหน้าต่างหลัก
+        print("App is running in the background...")
+
+    def background_task(self):
+        """ทำงานต่อเนื่องแม้ UI ถูกซ่อน"""
+        while self.running:
+            print("Background task running...")
+            time.sleep(5)  # ทำงานทุก 5 วินาที
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
