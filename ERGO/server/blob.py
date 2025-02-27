@@ -27,7 +27,7 @@ async def check_blob_storage(container_name: str):
 
 # API สำหรับอัปโหลดไฟล์วิดีโอไปยัง Blob Storage
 @blob_router.post("/upload_file/")
-async def upload_video(file: UploadFile = File(...), container_name: str = "ergo", user_id: int = 5):
+async def upload_video(user_id: int, file: UploadFile = File(...), container_name: str = "ergo"):
     # ตรวจสอบว่าไฟล์ถูกส่งมาหรือไม่
     if file is None:
         raise HTTPException(status_code=400, detail="No file uploaded")
