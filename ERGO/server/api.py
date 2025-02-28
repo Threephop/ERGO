@@ -1,0 +1,478 @@
+from fastapi import FastAPI, HTTPException, Form, Request, Query, UploadFile, File
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+from datetime import datetime
+from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
+import sqlite3
+from fastapi import APIRouter
+from fastapi.responses import FileResponse
+import pyodbc
+import pandas as pd
+import os
+
+
+api_router = APIRouter()
+
+# ฟังก์ชันที่ดึงข้อมูลผู้ใช้งาน
+@api_router.get("/users")
+def get_users():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ค้นหาผู้ใช้ทั้งหมด
+    cursor.execute("SELECT outlook_mail, username FROM dbo.Users_Table")
+    users = cursor.fetchall()
+
+    conn.close()
+
+    # สร้าง list ของ dictionary
+    users_list = [{"email": user[0], "username": user[1]} for user in users]
+
+    return {"users": users_list}
+
+@api_router.get("/get_user_id/{email}")
+def get_user_id(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 🔹 ค้นหา user_id โดยใช้ email
+    cursor.execute("SELECT user_id FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+    
+    conn.close()
+    
+    if user:
+        return {"user_id": user[0]}  # ส่ง user_id กลับไป
+    return {"error": "User not found"}
+
+# 📌 API ค้นหา role จาก email
+@api_router.get("/get_user_role/{email}")
+def get_user_role(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ดึง role จาก outlook_mail
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    conn.close()
+
+    if user:
+        return {"email": email, "role": user[0]}  # ส่ง role กลับไป
+    return {"error": "User not found"}
+    
+# ฟังก์ชันที่เพิ่มผู้ใช้งาน
+@api_router.post("/add-user")
+def add_user(username: str, email: str, role: int, create_at: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ตรวจสอบว่าผู้ใช้มีอยู่แล้วในฐานข้อมูลหรือไม่
+    cursor.execute("SELECT username FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    existing_user = cursor.fetchone()
+
+    if existing_user:
+        # อัปเดตเฉพาะ create_at
+        cursor.execute("UPDATE dbo.Users_Table SET create_at = ? WHERE outlook_mail = ?", (create_at, email))
+        message = "User login time updated successfully"
+    else:
+        # ถ้าผู้ใช้งานยังไม่มี ให้ทำการเพิ่มข้อมูลใหม่
+        cursor.execute("INSERT INTO dbo.Users_Table (username, outlook_mail, role, create_at) VALUES (?, ?, ?, ?)",
+                       (username, email, role, create_at))
+        message = "User added successfully"
+
+    conn.commit()
+    conn.close()
+    return {"message": message}
+    
+# ฟังก์ชันที่ดึงรายชื่อตารางทั้งหมดในฐานข้อมูล
+@api_router.post("/post-message")
+def post_message(user_id: int, content: str, create_at: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # ใช้ OUTPUT INSERTED.post_id เพื่อดึงค่า post_id ที่ถูกสร้างขึ้น
+        query = """
+            INSERT INTO dbo.CommunityPosts_Table (user_id, content, create_at)
+            OUTPUT INSERTED.post_id
+            VALUES (?, ?, ?)
+        """
+        cursor.execute(query, (user_id, content, create_at))
+        post_id = cursor.fetchone()[0]
+        conn.commit()
+        return {"message": "Message posted successfully", "post_id": int(post_id)}
+    
+    except Exception as e:
+        conn.rollback()
+        return {"error": f"Failed to post message: {str(e)}"}
+    
+    finally:
+        conn.close()
+
+
+
+# ฟังก์ชันดึงข้อความทั้งหมดจาก community
+@api_router.get("/get-messages")
+def get_messages():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path
+        FROM dbo.CommunityPosts_Table c
+        JOIN dbo.Users_Table u ON c.user_id = u.user_id
+        ORDER BY c.create_at
+    """)
+    messages = cursor.fetchall()
+    conn.close()
+
+    return {"messages": [
+        {
+            "post_id": row[0], 
+            "content": row[1], 
+            "create_at": row[2], 
+            "user_id": row[3], 
+            "username": row[4], 
+            "video_path": row[5]  # ✅ เพิ่ม video_path
+        }
+        for row in messages
+    ]}
+
+
+@api_router.delete("/delete-message/{post_id}")
+async def delete_message(post_id: int, request: Request):
+    # รับข้อมูล JSON ที่ส่งมาจาก client (คาดว่า {"user_id": <user_id>})
+    data = await request.json()
+    user_id = data.get("user_id")
+    
+    # เชื่อมต่อฐานข้อมูล
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # ตรวจสอบว่ามีข้อความที่มี post_id ดังกล่าวหรือไม่
+        cursor.execute("SELECT user_id FROM dbo.CommunityPosts_Table WHERE post_id = ?", (post_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # ตรวจสอบว่าข้อความนั้นเป็นของผู้ใช้ที่ร้องขอลบหรือไม่
+        if row[0] != user_id:
+            raise HTTPException(status_code=403, detail="Unauthorized to delete this message")
+        
+        # ลบข้อความจากฐานข้อมูล
+        cursor.execute("DELETE FROM dbo.CommunityPosts_Table WHERE post_id = ?", (post_id,))
+        conn.commit()
+
+        return {"message": "Message deleted successfully"}
+    
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete message: {str(e)}")
+    
+    finally:
+        conn.close()
+
+@api_router.get("/showstat")
+def get_usage_stats():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ใช้ LEFT JOIN เพื่อดึง user ทั้งหมด แม้ว่าจะไม่มีข้อมูลใน UsageStats_Table
+    cursor.execute("""
+        SELECT u.user_id, u.username, 
+               COALESCE(us.hours_used, 0) AS hours_used, 
+               COALESCE(us.kcal_burned, 0) AS kcal_burned, 
+               COALESCE(us.like_count_id, 0) AS like_count_id
+        FROM dbo.Users_Table u
+        LEFT JOIN dbo.UsageStats_Table us ON u.user_id = us.user_id
+    """)
+
+    stats = cursor.fetchall()
+    conn.close()
+
+    # แปลงข้อมูลเป็น JSON
+    return {
+        "stats": [
+            {
+                "user_id": row[0],
+                "username": row[1],
+                "hours_used": row[2],
+                "kcal_burned": row[3],
+                "like_count_id": row[4]
+            } 
+            for row in stats
+        ]
+    }
+
+
+# API รับค่าจากแอปและอัปเดต hours_used ใน UsageStats_Table
+@api_router.get("/update_app_time/")
+def update_app_time(email: str, app_time: float):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 🔹 ค้นหา user_id จาก Users_Table
+    cursor.execute("SELECT user_id FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_id = user[0]
+
+    # 🔹 ดึงชื่อวันปัจจุบัน
+    today_day = datetime.today().strftime('%A').lower()  # เช่น 'monday', 'tuesday', ...
+
+    # 🔹 ดึงค่าปัจจุบันของ hours_used จาก UsageStats_Table
+    cursor.execute("SELECT hours_used FROM dbo.UsageStats_Table WHERE user_id = ?", (user_id,))
+    current_hours = cursor.fetchone()
+    
+    if current_hours and current_hours[0] is not None:
+        new_hours = float(current_hours[0]) + (app_time / 3600)  # แปลงวินาทีเป็นชั่วโมงแล้วบวกเพิ่ม
+    else:
+        new_hours = app_time / 3600  # ถ้ายังไม่มีค่า ให้ใช้ค่าใหม่เลย
+        # 🔹 ถ้าไม่มีข้อมูล ให้ทำการ insert ข้อมูลใหม่ลงใน UsageStats_Table
+        cursor.execute(
+            "INSERT INTO dbo.UsageStats_Table (user_id, hours_used) VALUES (?, ?)",
+            (user_id, new_hours)
+        )
+    
+    # 🔹 อัปเดตค่า hours_used ใน UsageStats_Table
+    cursor.execute(
+        "UPDATE dbo.UsageStats_Table SET hours_used = ? WHERE user_id = ?", 
+        (new_hours, user_id)
+    )
+
+    # 🔹 ตรวจสอบว่ามีข้อมูลใน Dashboard_Table ของวันนั้นหรือไม่
+    cursor.execute(
+        f"SELECT {today_day} FROM dbo.Dashboard_Table WHERE user_id = ?", 
+        (user_id,)
+    )
+    dashboard_hours = cursor.fetchone()
+
+    if dashboard_hours and dashboard_hours[0] is not None:
+        # 🔹 ถ้ามี ให้บวกเพิ่ม
+        updated_dashboard_hours = float(dashboard_hours[0]) + (app_time / 3600)
+        cursor.execute(
+            f"UPDATE dbo.Dashboard_Table SET {today_day} = ? WHERE user_id = ?",
+            (updated_dashboard_hours, user_id)
+        )
+    else:
+        # 🔹 ถ้ายังไม่มี ให้เพิ่มข้อมูลใหม่
+        cursor.execute(
+            f"UPDATE dbo.Dashboard_Table SET {today_day} = ? WHERE user_id = ?",
+            (app_time / 3600, user_id)
+        )
+        # 🔹 ถ้าไม่มีข้อมูลใน Dashboard_Table สำหรับ user_id นี้ ให้ insert ข้อมูลใหม่
+        cursor.execute(
+            f"INSERT INTO dbo.Dashboard_Table (user_id, {today_day}) VALUES (?, ?)",
+            (user_id, app_time / 3600)
+        )
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "message": "App time updated successfully",
+        "new_hours_used": new_hours
+    }
+
+
+@api_router.get("/get_usage_stats/{user_id}")
+def get_usage_stats(user_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ดึงข้อมูลชั่วโมงที่ใช้งานจาก Dashboard_Table ตาม user_id
+    cursor.execute(
+        """
+        SELECT monday, tuesday, wednesday, thursday, friday, saturday, sunday
+        FROM dbo.Dashboard_Table
+        WHERE user_id = ?
+        """, (user_id,)
+    )
+    
+    row = cursor.fetchone()
+
+    if row:
+        conn.close()
+        return {
+            "Monday": row[0] if row[0] is not None else 0,
+            "Tuesday": row[1] if row[1] is not None else 0,
+            "Wednesday": row[2] if row[2] is not None else 0,
+            "Thursday": row[3] if row[3] is not None else 0,
+            "Friday": row[4] if row[4] is not None else 0,
+            "Saturday": row[5] if row[5] is not None else 0,
+            "Sunday": row[6] if row[6] is not None else 0
+        }
+    else:
+        # ถ้าไม่พบข้อมูลใน Dashboard_Table, ให้ทำการ INSERT ข้อมูลใหม่
+        cursor.execute(
+            """
+            INSERT INTO dbo.Dashboard_Table (user_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday)
+            VALUES (?, 0, 0, 0, 0, 0, 0, 0)
+            """, (user_id,)
+        )
+        conn.commit()
+
+        # หลังจาก insert ข้อมูล, ดึงข้อมูลมาแสดง
+        cursor.execute(
+            """
+            SELECT monday, tuesday, wednesday, thursday, friday, saturday, sunday
+            FROM dbo.Dashboard_Table
+            WHERE user_id = ?
+            """, (user_id,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        
+        return {
+            "Monday": row[0],
+            "Tuesday": row[1],
+            "Wednesday": row[2],
+            "Thursday": row[3],
+            "Friday": row[4],
+            "Saturday": row[5],
+            "Sunday": row[6]
+        }
+
+@api_router.get("/get_activity_details/")
+def get_activity_details(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to access this data")
+
+    # 🔹 ดึงข้อมูลจาก Users_Table และ Dashboard_Table
+    query = """
+    SELECT 
+        u.username, 
+        d.monday, 
+        d.tuesday, 
+        d.wednesday, 
+        d.thursday, 
+        d.friday, 
+        d.saturday
+    FROM dbo.Dashboard_Table d
+    JOIN dbo.Users_Table u ON d.user_id = u.user_id
+    WHERE u.outlook_mail = ?
+    """
+    
+    cursor.execute(query, (email,))
+    data = cursor.fetchone()
+
+    if not data:
+        conn.close()
+        raise HTTPException(status_code=404, detail="No activity data found for this user")
+
+    # 🔹 เตรียมข้อมูลให้กับ details
+    details = [
+        data[0],  # Username
+        data[1],  # Monday
+        data[2],  # Tuesday
+        data[3],  # Wednesday
+        data[4],  # Thursday
+        data[5],  # Friday
+        data[6]   # Saturday
+    ]
+
+    conn.close()
+    
+    return {"activity_details": details}
+
+
+# 🔄 ฟังก์ชันสำหรับอัปเดตชื่อผู้ใช้ (รับค่าเป็น Form Data)
+@api_router.post("/update_username/")
+def update_username(
+    user_id: int = Form(...),  # รับค่า user_id จาก Form Data
+    new_username: str = Form(...)  # รับค่า new_username จาก Form Data
+):
+
+    if not new_username:
+        raise HTTPException(status_code=400, detail="New username cannot be empty")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ตรวจสอบว่ามี user_id ในฐานข้อมูลหรือไม่
+    cursor.execute("SELECT * FROM dbo.Users_Table WHERE user_id = ?", (user_id,))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # อัปเดต username
+    cursor.execute("UPDATE dbo.Users_Table SET username = ? WHERE user_id = ?", (new_username, user_id))
+    conn.commit()
+    conn.close()
+
+    return {"message": "Username updated successfully", "user_id": user_id, "new_username": new_username}
+
+def get_unique_filename(directory, filename, extension):
+    """ ตรวจสอบชื่อไฟล์ หากมีอยู่แล้วให้เพิ่มเลขต่อท้าย """
+    base_name = filename
+    counter = 1
+    file_path = os.path.join(directory, f"{filename}{extension}")
+
+    while os.path.exists(file_path):
+        file_path = os.path.join(directory, f"{base_name} ({counter}){extension}")
+        counter += 1
+
+    return file_path
+
+@api_router.get("/export_dashboard_active/")
+def export_dashboard(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to export data")
+
+    # 🔹 ดึงข้อมูลจาก Users_Table และ Dashboard_Table
+    query = """
+    SELECT 
+        u.username, 
+        u.outlook_mail, 
+        d.monday, 
+        d.tuesday, 
+        d.wednesday, 
+        d.thursday, 
+        d.friday, 
+        d.saturday, 
+        d.sunday
+    FROM dbo.Dashboard_Table d
+    JOIN dbo.Users_Table u ON d.user_id = u.user_id
+    """
+    
+    df = pd.read_sql(query, conn)
+    conn.close()
+
+    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้ โดยเพิ่มชื่อไฟล์ให้ไม่ซ้ำ
+    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+    file_path = get_unique_filename(downloads_folder, "dashboard_active", ".xlsx")
+    
+    df.to_excel(file_path, index=False)
+
+    # ส่งชื่อไฟล์ที่ได้ไปยัง frontend
+    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
