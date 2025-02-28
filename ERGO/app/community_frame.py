@@ -20,7 +20,7 @@ class CommunityFrame(tk.Frame):
             os.makedirs(self.icon_dir)
 
         # สร้าง Canvas และ Scrollbar
-        self.canvas = tk.Canvas(self, bg="#364DB6", highlightthickness=0)
+        self.canvas = tk.Canvas(self, bg="#ffffff", highlightthickness=0)
         self.scrollbar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
 
         # สร้าง Frame ที่จะใช้เป็นพื้นที่เลื่อน

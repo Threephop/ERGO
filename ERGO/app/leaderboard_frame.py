@@ -98,7 +98,7 @@ class LeaderboardFrame(tk.Frame):
                 self.display_users(self.active_list_frame, sorted_stats)
 
             elif tab_name == "Popular":
-                sorted_stats = sorted(stats, key=lambda x: x["like_count_id"], reverse=True)  # เรียงจากมากไปน้อย
+                sorted_stats = sorted(stats, key=lambda x: x["like_count"], reverse=True)  # เปลี่ยนเป็น like_count
                 top_user = sorted_stats[0]["username"] if sorted_stats else "N/A"
                 self.popular_label.config(text=f"Most Popular User: {top_user}")
                 self.display_users(self.popular_list_frame, sorted_stats)
@@ -111,13 +111,12 @@ class LeaderboardFrame(tk.Frame):
         for idx, user in enumerate(stats):
             name_label = tk.Label(
                 frame,
-                text=f"{idx+1}. {user['username']} | {user['hours_used']} hrs | {user['like_count_id']} likes",
+                text=f"{idx+1}. {user['username']} | {user['hours_used']} hrs | {user['like_count']} likes",  # เปลี่ยนเป็น like_count
                 font=("Arial", 12),
                 bg="white",
                 fg="black",
             )
             name_label.pack(anchor="w", padx=20, pady=2)
-
 
 
 # เรียกใช้ App
