@@ -20,7 +20,7 @@ class CommunityFrame(tk.Frame):
             os.makedirs(self.icon_dir)
 
         # สร้าง Canvas และ Scrollbar
-        self.canvas = tk.Canvas(self, bg="#364DB6", highlightthickness=0)
+        self.canvas = tk.Canvas(self, bg="#ffffff", highlightthickness=0)
         self.scrollbar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
 
         # สร้าง Frame ที่จะใช้เป็นพื้นที่เลื่อน
@@ -189,8 +189,11 @@ class CommunityFrame(tk.Frame):
             if response.status_code == 200:
                 messages = response.json().get("messages", [])
                 user_id = self.user_id  # user_id ของผู้ใช้ที่ล็อกอินอยู่
-                
+
                 print(f"✅ Logged-in user_id: {user_id}")  # เช็ค user_id
+
+                # 🔹 เรียง messages ตาม post_id จากมากไปน้อย (ล่าสุดอยู่ล่าง)
+                messages = sorted(messages, key=lambda x: x["post_id"])
 
                 for msg in messages:
                     username = msg.get("username", "Unknown")
@@ -205,7 +208,6 @@ class CommunityFrame(tk.Frame):
                             self.post_video(filepath, user_id, post_id, username)  # ส่ง username ไปให้ post_video
                         else:
                             self.post_video_another(filepath, user_id, post_id, username)  # ส่ง username ไปให้ post_video_another
-
                     else:  # ถ้าเป็นข้อความ
                         if message_owner_id == user_id:
                             self.add_message_bubble(post_id, username, content)
@@ -219,6 +221,7 @@ class CommunityFrame(tk.Frame):
                 print("⚠️ เกิดข้อผิดพลาด:", response.json())
         except Exception as e:
             print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
+
                 
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
@@ -401,8 +404,9 @@ class CommunityFrame(tk.Frame):
             username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="e", padx=5)
 
+            # ปรับการจัดตำแหน่ง like_frame ไปทางขวา
             like_frame = tk.Frame(bubble_frame, bg="white")
-            like_frame.pack(expand=True, anchor="center", pady=5)
+            like_frame.pack(side="right", anchor="e", pady=5)  # ปรับให้อยู่ทางขวา
 
             like_icon = self.load_resized_image("Like.png", (20, 20))
             heart_icon = self.load_resized_image("heart.png", (20, 20))
@@ -421,10 +425,15 @@ class CommunityFrame(tk.Frame):
             like_label.pack(side="top")
 
             cancel_button = tk.Button(
-                bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="white",
-                command=lambda: self.cancel_single_message(bubble_frame, post_id)
+                    bubble_frame, 
+                    text="ยกเลิกการส่ง", 
+                    fg="red", 
+                    font=("PTT 45 Pride", 12), 
+                    bd=0, 
+                    bg="white", 
+                    command=lambda: self.cancel_single_message(bubble_frame, post_id)
             )
-            cancel_button.pack(side="bottom", pady=5, anchor="center")
+            cancel_button.pack(side="bottom", pady=5, anchor="e")  # จัดปุ่มไปด้านขวา
 
             bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
             self.canvas.update_idletasks()
@@ -432,59 +441,56 @@ class CommunityFrame(tk.Frame):
 
         except Exception as e:
             messagebox.showerror("Error", f"Error posting video: {e}")
+
             
     def post_video_another(self, filepath, user_id, post_id, username):
         try:
             print(f"ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอที่โพสต์โดยผู้ใช้อื่น")
 
-            bubble_frame = tk.Frame(self.scrollable_frame, bg="lightgray", pady=5, padx=10)
+            bubble_frame = tk.Frame(self.scrollable_frame, bg="#ffffff", pady=5, padx=10)
             
-            profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="lightgray")
+            profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="#ffffff")
             profile_label.pack(side="left", padx=5)
 
             thumbnail = self.get_video_thumbnail(filepath)
             if thumbnail:
-                video_label = tk.Label(bubble_frame, image=thumbnail, bg="lightgray", cursor="hand2")
+                video_label = tk.Label(bubble_frame, image=thumbnail, bg="#ffffff", cursor="hand2")
                 video_label.image = thumbnail
                 video_label.pack(side="left", padx=5)
                 video_label.bind("<Button-1>", lambda e: self.play_video(filepath))
             else:
                 tk.Label(bubble_frame, text="ไม่สามารถโหลดวิดีโอได้", font=("PTT 45 Pride", 12), bg="lightgray").pack(side="left", padx=5)
 
-            username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="lightgray")
+            username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="#ffffff")
             username_label.pack(anchor="w", padx=5)
 
-            like_frame = tk.Frame(bubble_frame, bg="lightgray")
-            like_frame.pack(expand=True, anchor="center", pady=5)
+            # ย้ายปุ่ม like_button ไปที่ซ้าย
+            like_frame = tk.Frame(bubble_frame, bg="#ffffff")
+            like_frame.pack(expand=True, anchor="w", pady=5)  # ปรับ anchor ให้ไปที่ "w" เพื่อจัดให้ไปทางซ้าย
 
             like_icon = self.load_resized_image("Like.png", (20, 20))
             heart_icon = self.load_resized_image("heart.png", (20, 20))
 
-            like_button = tk.Button(like_frame, image=like_icon, bd=0, bg="lightgray")
+            like_button = tk.Button(like_frame, image=like_icon, bd=0, bg="#ffffff")
             like_button.image = like_icon
             like_button.heart_icon = heart_icon
             like_button.like_icon = like_icon
             like_button.is_liked = False
 
             self.like_count = 0
-            like_label = tk.Label(like_frame, text=f"{self.like_count} Likes", font=("PTT 45 Pride", 12), bg="lightgray")
+            like_label = tk.Label(like_frame, text=f"{self.like_count} Likes", font=("PTT 45 Pride", 12), bg="#ffffff")
 
             like_button.config(command=lambda: self.toggle_like(like_button, like_label))
-            like_button.pack(side="top", pady=2)
-            like_label.pack(side="top")
+            like_button.pack(side="left", pady=2)  # ให้ปุ่ม like อยู่ทางซ้ายใน like_frame
+            like_label.pack(side="left")
 
-            cancel_button = tk.Button(
-                bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="lightgray",
-                command=lambda: self.cancel_single_message(bubble_frame, post_id)
-            )
-            cancel_button.pack(side="bottom", pady=5, anchor="center")
-
-            bubble_frame.pack(anchor="e", fill="x", padx=5, pady=5)
+            bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
             self.canvas.update_idletasks()
             self.canvas.yview_moveto(1)
 
         except Exception as e:
             messagebox.showerror("Error", f"Error posting video by another user: {e}")
+
 
     def toggle_like(self, like_button, like_label):
         """ เปลี่ยนสถานะของปุ่ม Like และอัปเดตจำนวน Like """

@@ -178,14 +178,18 @@ def get_usage_stats():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ใช้ LEFT JOIN เพื่อดึง user ทั้งหมด แม้ว่าจะไม่มีข้อมูลใน UsageStats_Table
+    # ใช้ LEFT JOIN กับ UsageStats_Table และคำนวณจำนวนไลก์จาก Like_Table
     cursor.execute("""
         SELECT u.user_id, u.username, 
                COALESCE(us.hours_used, 0) AS hours_used, 
-               COALESCE(us.kcal_burned, 0) AS kcal_burned, 
-               COALESCE(us.like_count_id, 0) AS like_count_id
+               COALESCE(like_counts.like_count, 0) AS like_count
         FROM dbo.Users_Table u
         LEFT JOIN dbo.UsageStats_Table us ON u.user_id = us.user_id
+        LEFT JOIN (
+            SELECT user_id, COUNT(*) AS like_count
+            FROM dbo.Like_Table
+            GROUP BY user_id
+        ) like_counts ON u.user_id = like_counts.user_id
     """)
 
     stats = cursor.fetchall()
@@ -198,8 +202,7 @@ def get_usage_stats():
                 "user_id": row[0],
                 "username": row[1],
                 "hours_used": row[2],
-                "kcal_burned": row[3],
-                "like_count_id": row[4]
+                "like_count": row[3]
             } 
             for row in stats
         ]
