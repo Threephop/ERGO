@@ -71,6 +71,50 @@ async def upload_video(user_id: int, file: UploadFile = File(...), container_nam
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload video: {e}")
+    
+# API สำหรับอัปโหลดไฟล์วิดีโอไปยัง Blob Storage
+@blob_router.post("/upload_profile/")
+async def upload_video(user_id: int, file: UploadFile = File(...), container_name: str = "ergo"):
+    # ตรวจสอบว่าไฟล์ถูกส่งมาหรือไม่
+    if file is None:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
+    # เชื่อมต่อกับ Azure Blob Storage ผ่านฟังก์ชันที่นำเข้าจาก storage_config
+    blob_service_client = get_blob_service_client()
+    container_client = get_container_client(container_name)
+
+    # สร้างชื่อไฟล์ใหม่เพื่อป้องกันการซ้ำซ้อน โดยใช้ UUID
+    new_filename = str(uuid.uuid4()) + "_" + file.filename
+    
+    # สร้าง blob client สำหรับอัพโหลดไฟล์
+    blob_client = container_client.get_blob_client(new_filename)
+
+    try:
+        # อ่านข้อมูลไฟล์จาก UploadFile และอัปโหลดไปยัง Blob Storage โดยตรง
+        file_content = await file.read()  # อ่านไฟล์เป็น bytes
+        
+        # ใช้ io.BytesIO แทนการเขียนไฟล์ลงดิสก์
+        blob_client.upload_blob(io.BytesIO(file_content), overwrite=True)  # อัปโหลดไฟล์โดยตรงไปยัง Azure
+
+        # สร้าง URL ของไฟล์ที่อัพโหลด
+        file_url = f"https://ergostorageblob.blob.core.windows.net/{container_name}/{new_filename}"
+
+        # ถ้าต้องการบันทึก URL ลงฐานข้อมูล คุณสามารถทำตามนี้ได้
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM dbo.Users_Table WHERE user_id = ?", (user_id,))
+        query = """
+            UPDATE dbo.Users_Table 
+            SET image = ? 
+            WHERE user_id = ?
+        """
+        cursor.execute(query, (file_url, user_id))  # แก้ลำดับพารามิเตอร์ให้ถูกต้อง
+        conn.commit()
+
+        return {"message": "image uploaded successfully", "image": file_url, "user_id": user_id}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload image: {e}")
 
 # ฟังก์ชันดึงข้อมูลโพสต์จากฐานข้อมูล
 @blob_router.get("/get_posts/")
