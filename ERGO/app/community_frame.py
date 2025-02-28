@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import os
+import io
 import cv2
 import requests 
 from datetime import datetime 

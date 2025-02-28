@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 from PIL import Image, ImageTk
 import os
+import io
 import requests
 import webbrowser
 import subprocess  # เพิ่มการนำเข้า subprocess
