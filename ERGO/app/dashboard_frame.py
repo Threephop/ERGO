@@ -38,12 +38,10 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         self.notebook.add(self.tab1, text="Active")  
         self.notebook.add(self.tab2, text="Like")  
-        self.notebook.add(self.tab3, text="Calories")  # เพิ่ม Tab 3
 
         # ✅ วาง widget ในแต่ละแท็บ
         self.create_content(self.tab1, "Active", "#000000")
         self.create_content(self.tab2, "Like", "#000000")
-        self.create_content(self.tab3, "Calories", "#000000")
 
     def create_content(self, parent, text, color):
         """ สร้าง Label แสดงข้อความในแต่ละแท็บ """

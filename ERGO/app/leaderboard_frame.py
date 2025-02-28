@@ -18,7 +18,7 @@ class LeaderboardFrame(tk.Frame):
 
         # ปุ่มแท็บ
         self.tab_buttons = {}
-        for idx, tab_name in enumerate(["Calorie", "Active", "Popular"]):
+        for idx, tab_name in enumerate(["Active", "Popular"]):
             btn = tk.Button(
                 tabs_frame,
                 text=tab_name,
@@ -35,20 +35,11 @@ class LeaderboardFrame(tk.Frame):
 
         # Default Tab Content
         self.tab_frames = {
-            "Calorie": self.create_calorie_frame(),
             "Active": self.create_active_frame(),
             "Popular": self.create_popular_frame(),
         }
 
-        self.switch_tab("Calorie")  # เริ่มต้นที่แท็บแรก
-
-    def create_calorie_frame(self):
-        frame = tk.Frame(self, bg="white")
-        self.calorie_label = tk.Label(frame, text="Loading...", font=("Arial", 18), bg="white", fg="#4B0082")
-        self.calorie_label.pack(pady=10)
-        self.calorie_list_frame = tk.Frame(frame, bg="white")
-        self.calorie_list_frame.pack(pady=5)
-        return frame
+        self.switch_tab("Active")  # เริ่มต้นที่แท็บแรก
 
     def create_active_frame(self):
         frame = tk.Frame(self, bg="white")
@@ -100,13 +91,7 @@ class LeaderboardFrame(tk.Frame):
         else:
             stats = data.get("stats", [])
 
-            if tab_name == "Calorie":
-                sorted_stats = sorted(stats, key=lambda x: x["kcal_burned"], reverse=True)  # เรียงจากมากไปน้อย
-                top_user = sorted_stats[0]["username"] if sorted_stats else "N/A"
-                self.calorie_label.config(text=f"Most Calories Burned: {top_user}")
-                self.display_users(self.calorie_list_frame, sorted_stats)
-
-            elif tab_name == "Active":
+            if tab_name == "Active":
                 sorted_stats = sorted(stats, key=lambda x: x["hours_used"], reverse=True)  # เรียงจากมากไปน้อย
                 top_user = sorted_stats[0]["username"] if sorted_stats else "N/A"
                 self.active_label.config(text=f"Most Active Hours: {top_user}")
@@ -126,7 +111,7 @@ class LeaderboardFrame(tk.Frame):
         for idx, user in enumerate(stats):
             name_label = tk.Label(
                 frame,
-                text=f"{idx+1}. {user['username']} | {user['hours_used']} hrs | {user['kcal_burned']} kcal | {user['like_count_id']} likes",
+                text=f"{idx+1}. {user['username']} | {user['hours_used']} hrs | {user['like_count_id']} likes",
                 font=("Arial", 12),
                 bg="white",
                 fg="black",

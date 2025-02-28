@@ -374,6 +374,34 @@ class CommunityFrame(tk.Frame):
 
     def post_video(self, filepath):
         try:
+            # ✅ 1. เรียก API เช็คการเชื่อมต่อกับ Blob Storage
+            container_name = "ergo"  # แก้ไขเป็นชื่อ Container จริง
+            check_blob_url = f"http://localhost:8000/check_blob_storage/?container_name={container_name}"
+            response = requests.get(check_blob_url)
+
+            if response.status_code == 200:
+                data = response.json()
+                print(f"✅ เชื่อมต่อกับ Blob Storage สำเร็จ: {data['message']}")
+            else:
+                print("❌ ไม่สามารถเชื่อมต่อกับ Blob Storage ได้")
+                messagebox.showerror("Error", "ไม่สามารถเชื่อมต่อกับ Blob Storage ได้ กรุณาลองใหม่อีกครั้ง")
+                return
+            
+            # ✅ 2. อัปโหลดวิดีโอไปยัง Azure Blob Storage
+            upload_url = "http://localhost:8000/upload_video/"
+            with open(filepath, "rb") as file:
+                files = {"file": file}
+                upload_response = requests.post(upload_url, files=files)
+
+            if upload_response.status_code == 200:
+                video_url = upload_response.json().get("video_url")
+                print(f"✅ วิดีโอถูกอัปโหลดไปยัง Azure Blob Storage: {video_url}")
+            else:
+                print(f"❌ อัปโหลดวิดีโอล้มเหลว: {upload_response.json()}")
+                messagebox.showerror("Error", "อัปโหลดวิดีโอไปยัง Blob Storage ล้มเหลว กรุณาลองใหม่อีกครั้ง")
+                return
+
+            # ✅ 3. สร้าง Bubble Frame สำหรับโพสต์วิดีโอ
             bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
             profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
             profile_label.pack(side="left", padx=5)
@@ -387,7 +415,7 @@ class CommunityFrame(tk.Frame):
             else:
                 tk.Label(bubble_frame, text="ไม่สามารถโหลดวิดีโอได้", font=("PTT 45 Pride", 12), bg="white").pack(side="left", padx=5)
 
-            username_label = tk.Label(bubble_frame, text="Username", font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
+            username_label = tk.Label(bubble_frame, text=self.username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="w", padx=5)
 
             # Like Section
@@ -401,7 +429,7 @@ class CommunityFrame(tk.Frame):
             like_button.image = like_icon
             like_button.heart_icon = heart_icon
             like_button.like_icon = like_icon
-            like_button.is_liked = False  # เริ่มต้นยังไม่กด Like
+            like_button.is_liked = False
 
             self.like_count = 0
             like_label = tk.Label(like_frame, text=f"{self.like_count} Likes", font=("PTT 45 Pride", 12), bg="white")
@@ -410,9 +438,11 @@ class CommunityFrame(tk.Frame):
             like_button.pack(side="top", pady=2)
             like_label.pack(side="top")
 
-
             # ปุ่มยกเลิกการส่ง
-            cancel_button = tk.Button(bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="white", command=lambda: self.cancel_single_message(bubble_frame))
+            cancel_button = tk.Button(
+                bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="white",
+                command=lambda: self.cancel_single_message(bubble_frame)
+            )
             cancel_button.pack(side="bottom", pady=5, anchor="center")
 
             bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
@@ -421,6 +451,8 @@ class CommunityFrame(tk.Frame):
 
         except Exception as e:
             messagebox.showerror("Error", f"Error posting video: {e}")
+
+
 
     def toggle_like(self, like_button, like_label):
         """ เปลี่ยนสถานะของปุ่ม Like และอัปเดตจำนวน Like """
@@ -522,10 +554,40 @@ class CommunityFrame(tk.Frame):
 
     def post_image(self, filepath):
         try:
-            image = Image.open(filepath)
+            # ✅ 1. เช็คการเชื่อมต่อกับ Blob Storage ก่อน
+            container_name = "ergo"  # แก้ไขเป็นชื่อ Container จริง
+            check_blob_url = f"http://localhost:8000/check_blob_storage/?container_name={container_name}"
+            response = requests.get(check_blob_url)
+
+            if response.status_code == 200:
+                data = response.json()
+                print(f"✅ เชื่อมต่อกับ Blob Storage สำเร็จ: {data['message']}")
+            else:
+                print("❌ ไม่สามารถเชื่อมต่อกับ Blob Storage ได้")
+                messagebox.showerror("Error", "ไม่สามารถเชื่อมต่อกับ Blob Storage ได้ กรุณาลองใหม่อีกครั้ง")
+                return
+
+            # ✅ 2. อัปโหลดรูปภาพไปยัง Azure Blob Storage
+            upload_url = "http://localhost:8000/upload_video/"
+            with open(filepath, "rb") as file:
+                files = {"file": file}
+                upload_response = requests.post(upload_url, files=files)
+
+            if upload_response.status_code == 200:
+                image_url = upload_response.json().get("image_url")
+                print(f"✅ รูปภาพถูกอัปโหลดไปยัง Azure Blob Storage: {image_url}")
+            else:
+                print(f"❌ อัปโหลดรูปภาพล้มเหลว: {upload_response.json()}")
+                messagebox.showerror("Error", "อัปโหลดรูปภาพไปยัง Blob Storage ล้มเหลว กรุณาลองใหม่อีกครั้ง")
+                return
+
+            # ✅ 3. ดึงรูปภาพจาก URL แทนการใช้ Local Path
+            image_data = requests.get(image_url).content
+            image = Image.open(io.BytesIO(image_data))
             image = image.resize((150, 150))
             image_tk = ImageTk.PhotoImage(image)
 
+            # ✅ 4. อัปเดต UI และแสดงผลรูปภาพที่อัปโหลด
             bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
             profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
             profile_label.pack(side="left", padx=5)
@@ -534,12 +596,12 @@ class CommunityFrame(tk.Frame):
             image_label.image = image_tk
             image_label.pack(side="left", padx=5)
 
-            username_label = tk.Label(bubble_frame, text="Username", font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
+            username_label = tk.Label(bubble_frame, text=self.username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="w", padx=5)
 
-            # ปุ่มยกเลิกการส่ง จะไปอยู่ด้านล่างตรงกลาง
+            # ปุ่มยกเลิกการส่ง
             cancel_button = tk.Button(bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="white", command=lambda: self.cancel_single_message(bubble_frame))
-            cancel_button.pack(side="bottom", pady=5, anchor="center")  # เปลี่ยนจาก "right" เป็น "bottom" และใช้ anchor="center"
+            cancel_button.pack(side="bottom", pady=5, anchor="center")
 
             bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
 
