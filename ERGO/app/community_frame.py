@@ -189,8 +189,11 @@ class CommunityFrame(tk.Frame):
             if response.status_code == 200:
                 messages = response.json().get("messages", [])
                 user_id = self.user_id  # user_id ของผู้ใช้ที่ล็อกอินอยู่
-                
+
                 print(f"✅ Logged-in user_id: {user_id}")  # เช็ค user_id
+
+                # 🔹 เรียง messages ตาม post_id จากมากไปน้อย (ล่าสุดอยู่ล่าง)
+                messages = sorted(messages, key=lambda x: x["post_id"])
 
                 for msg in messages:
                     username = msg.get("username", "Unknown")
@@ -205,7 +208,6 @@ class CommunityFrame(tk.Frame):
                             self.post_video(filepath, user_id, post_id, username)  # ส่ง username ไปให้ post_video
                         else:
                             self.post_video_another(filepath, user_id, post_id, username)  # ส่ง username ไปให้ post_video_another
-
                     else:  # ถ้าเป็นข้อความ
                         if message_owner_id == user_id:
                             self.add_message_bubble(post_id, username, content)
@@ -219,6 +221,7 @@ class CommunityFrame(tk.Frame):
                 print("⚠️ เกิดข้อผิดพลาด:", response.json())
         except Exception as e:
             print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
+
                 
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
