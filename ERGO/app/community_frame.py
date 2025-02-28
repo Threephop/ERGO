@@ -196,22 +196,30 @@ class CommunityFrame(tk.Frame):
                     username = msg.get("username", "Unknown")
                     post_id = msg.get("post_id")
                     content = msg.get("content")
-                    message_owner_id = msg.get("user_id")  # user_id ของเจ้าของโพสต์
-                    
-                    # print(f"📝 Post {post_id} by user_id: {message_owner_id}")  # ดูค่าของ user_id ในโพสต์
+                    message_owner_id = msg.get("user_id")
+                    filepath = msg.get("video_path", None)  # ดึง video_path ถ้ามี
 
-                    if message_owner_id == user_id:
-                        self.add_message_bubble(post_id, username, content)
-                    else:
-                        self.add_message_bubble_another(post_id, username, content)
+                    if filepath:  # ถ้าเป็นวิดีโอ
+                        print(f"filepath: {filepath}")  # เพิ่มการพิมพ์ filepath เพื่อตรวจสอบ
+                        if message_owner_id == user_id:
+                            self.post_video(filepath, user_id, post_id, username)  # ส่ง username ไปให้ post_video
+                        else:
+                            self.post_video_another(filepath, user_id, post_id, username)  # ส่ง username ไปให้ post_video_another
+
+                    else:  # ถ้าเป็นข้อความ
+                        if message_owner_id == user_id:
+                            self.add_message_bubble(post_id, username, content)
+                        else:
+                            self.add_message_bubble_another(post_id, username, content)
+
                 # ✅ เลื่อน scroll ลงไปที่ข้อความล่าสุด
-                self.update_idletasks() # อัปเดต UI ก่อนเลื่อนลงไปที่ข้อความล่าสุด
-                self.canvas.yview_moveto(1.0)  # เลื่อนลงไปที่ข้อความล่าสุด
+                self.update_idletasks() 
+                self.canvas.yview_moveto(1.0)
             else:
                 print("⚠️ เกิดข้อผิดพลาด:", response.json())
         except Exception as e:
             print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
-            
+                
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
         url = f"{self.api_base_url}/get_user_id/{user_email}"
@@ -372,54 +380,27 @@ class CommunityFrame(tk.Frame):
         
         bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
 
-
-    def post_video(self, filepath):
+        
+    def post_video(self, filepath, user_id, post_id, username):
         try:
-            # ✅ 1. เรียก API เช็คการเชื่อมต่อกับ Blob Storage
-            container_name = "ergo"  # แก้ไขเป็นชื่อ Container จริง
-            check_blob_url = f"http://localhost:8000/check_blob_storage/?container_name={container_name}"
-            response = requests.get(check_blob_url)
+            print(f"ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอ")
 
-            if response.status_code == 200:
-                data = response.json()
-                print(f"✅ เชื่อมต่อกับ Blob Storage สำเร็จ: {data['message']}")
-            else:
-                print("❌ ไม่สามารถเชื่อมต่อกับ Blob Storage ได้")
-                messagebox.showerror("Error", "ไม่สามารถเชื่อมต่อกับ Blob Storage ได้ กรุณาลองใหม่อีกครั้ง")
-                return
-            
-            # ✅ 2. อัปโหลดวิดีโอไปยัง Azure Blob Storage
-            upload_url = "http://localhost:8000/upload_video/"
-            with open(filepath, "rb") as file:
-                files = {"file": file}
-                upload_response = requests.post(upload_url, files=files)
-
-            if upload_response.status_code == 200:
-                video_url = upload_response.json().get("video_url")
-                print(f"✅ วิดีโอถูกอัปโหลดไปยัง Azure Blob Storage: {video_url}")
-            else:
-                print(f"❌ อัปโหลดวิดีโอล้มเหลว: {upload_response.json()}")
-                messagebox.showerror("Error", "อัปโหลดวิดีโอไปยัง Blob Storage ล้มเหลว กรุณาลองใหม่อีกครั้ง")
-                return
-
-            # ✅ 3. สร้าง Bubble Frame สำหรับโพสต์วิดีโอ
             bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
             profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
-            profile_label.pack(side="left", padx=5)
+            profile_label.pack(side="right", padx=5)
 
             thumbnail = self.get_video_thumbnail(filepath)
             if thumbnail:
                 video_label = tk.Label(bubble_frame, image=thumbnail, bg="white", cursor="hand2")
                 video_label.image = thumbnail
-                video_label.pack(side="left", padx=5)
+                video_label.pack(side="right", padx=5)
                 video_label.bind("<Button-1>", lambda e: self.play_video(filepath))
             else:
                 tk.Label(bubble_frame, text="ไม่สามารถโหลดวิดีโอได้", font=("PTT 45 Pride", 12), bg="white").pack(side="left", padx=5)
 
-            username_label = tk.Label(bubble_frame, text=self.username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
-            username_label.pack(anchor="w", padx=5)
+            username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
+            username_label.pack(anchor="e", padx=5)
 
-            # Like Section
             like_frame = tk.Frame(bubble_frame, bg="white")
             like_frame.pack(expand=True, anchor="center", pady=5)
 
@@ -439,10 +420,9 @@ class CommunityFrame(tk.Frame):
             like_button.pack(side="top", pady=2)
             like_label.pack(side="top")
 
-            # ปุ่มยกเลิกการส่ง
             cancel_button = tk.Button(
                 bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="white",
-                command=lambda: self.cancel_single_message(bubble_frame)
+                command=lambda: self.cancel_single_message(bubble_frame, post_id)
             )
             cancel_button.pack(side="bottom", pady=5, anchor="center")
 
@@ -452,8 +432,59 @@ class CommunityFrame(tk.Frame):
 
         except Exception as e:
             messagebox.showerror("Error", f"Error posting video: {e}")
+            
+    def post_video_another(self, filepath, user_id, post_id, username):
+        try:
+            print(f"ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอที่โพสต์โดยผู้ใช้อื่น")
 
+            bubble_frame = tk.Frame(self.scrollable_frame, bg="lightgray", pady=5, padx=10)
+            
+            profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="lightgray")
+            profile_label.pack(side="left", padx=5)
 
+            thumbnail = self.get_video_thumbnail(filepath)
+            if thumbnail:
+                video_label = tk.Label(bubble_frame, image=thumbnail, bg="lightgray", cursor="hand2")
+                video_label.image = thumbnail
+                video_label.pack(side="left", padx=5)
+                video_label.bind("<Button-1>", lambda e: self.play_video(filepath))
+            else:
+                tk.Label(bubble_frame, text="ไม่สามารถโหลดวิดีโอได้", font=("PTT 45 Pride", 12), bg="lightgray").pack(side="left", padx=5)
+
+            username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="lightgray")
+            username_label.pack(anchor="w", padx=5)
+
+            like_frame = tk.Frame(bubble_frame, bg="lightgray")
+            like_frame.pack(expand=True, anchor="center", pady=5)
+
+            like_icon = self.load_resized_image("Like.png", (20, 20))
+            heart_icon = self.load_resized_image("heart.png", (20, 20))
+
+            like_button = tk.Button(like_frame, image=like_icon, bd=0, bg="lightgray")
+            like_button.image = like_icon
+            like_button.heart_icon = heart_icon
+            like_button.like_icon = like_icon
+            like_button.is_liked = False
+
+            self.like_count = 0
+            like_label = tk.Label(like_frame, text=f"{self.like_count} Likes", font=("PTT 45 Pride", 12), bg="lightgray")
+
+            like_button.config(command=lambda: self.toggle_like(like_button, like_label))
+            like_button.pack(side="top", pady=2)
+            like_label.pack(side="top")
+
+            cancel_button = tk.Button(
+                bubble_frame, text="ยกเลิกการส่ง", fg="red", font=("PTT 45 Pride", 12), bd=0, bg="lightgray",
+                command=lambda: self.cancel_single_message(bubble_frame, post_id)
+            )
+            cancel_button.pack(side="bottom", pady=5, anchor="center")
+
+            bubble_frame.pack(anchor="e", fill="x", padx=5, pady=5)
+            self.canvas.update_idletasks()
+            self.canvas.yview_moveto(1)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Error posting video by another user: {e}")
 
     def toggle_like(self, like_button, like_label):
         """ เปลี่ยนสถานะของปุ่ม Like และอัปเดตจำนวน Like """
@@ -472,6 +503,7 @@ class CommunityFrame(tk.Frame):
         try:
             cap = cv2.VideoCapture(filepath)
             if not cap.isOpened():
+                print(f"ไม่สามารถเปิดไฟล์วิดีโอ: {filepath}")
                 return None
 
             ret, frame = cap.read()
@@ -483,6 +515,7 @@ class CommunityFrame(tk.Frame):
                 image = image.resize((150, 150), Image.Resampling.LANCZOS)
                 return ImageTk.PhotoImage(image)
             else:
+                print(f"ไม่สามารถอ่านเฟรมจากไฟล์วิดีโอ: {filepath}")
                 return None
         except Exception as e:
             print(f"Error generating video thumbnail: {e}")
@@ -493,7 +526,7 @@ class CommunityFrame(tk.Frame):
             os.startfile(filepath)
         except Exception as e:
             messagebox.showerror("Error", f"Error playing video: {e}")
-
+            
     def open_camera(self):
         try:
             video_path = os.path.join(self.icon_dir, "recorded_video.avi")
@@ -545,13 +578,32 @@ class CommunityFrame(tk.Frame):
     def open_folder(self):
         filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png"), ("Video files", "*.mp4 *.avi *.mkv")])
         if filepath:
-            self.post_media(filepath)
+            # ✅ อัปโหลดไฟล์ครั้งเดียว และรับ `post_id`
+            upload_url = "http://localhost:8000/upload_file/"
+            with open(filepath, "rb") as file:
+                files = {"file": file}
+                params = {"user_id": self.user_id}
+                upload_response = requests.post(upload_url, files=files, params=params)
 
-    def post_media(self, filepath):
+            if upload_response.status_code == 200:
+                response_data = upload_response.json()
+                post_id = response_data.get("post_id")
+                if post_id is not None:
+                    print(f"✅ ได้รับ post_id: {post_id}")
+                    self.post_media(filepath, post_id)  # ✅ ส่ง post_id ต่อให้ post_media
+                else:
+                    messagebox.showerror("Error", "ไม่สามารถดึง post_id ได้")
+            else:
+                messagebox.showerror("Error", "อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
+
+
+    def post_media(self, filepath, post_id):
+        username = self.username  # ดึงค่า username จาก instance variable
         if filepath.lower().endswith(('mp4', 'avi', 'mkv')):
-            self.post_video(filepath)
+            self.post_video(filepath, self.user_id, post_id, username)  # ส่ง username ไปให้ post_video
         else:
             self.post_image(filepath)
+
 
     def post_image(self, filepath):
         try:
