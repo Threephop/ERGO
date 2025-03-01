@@ -11,10 +11,11 @@ import os
 import requests
 import datetime
 import subprocess
+import re
 
 # Microsoft App Configuration
-CLIENT_ID = "e05e1663-bc57-4c87-ab60-d41463b12dcb"
-AUTHORITY = "https://login.microsoftonline.com/8c1832ea-a96d-413e-bf7d-9fe4d608e00b"
+CLIENT_ID = "f9501308-381e-4b28-9ebc-3ad41d097035"
+AUTHORITY = "https://login.microsoftonline.com/07ccde08-c35c-4742-8db5-a19e6ff0c054"
 REDIRECT_URI = "http://localhost:3000"
 SCOPES = ["User.Read"]
 icon_dir = os.path.join(os.path.dirname(__file__), "icon")
@@ -32,6 +33,14 @@ def change_taskbar_icon(window, icon_path):
 # API endpoint for adding user data to the database
 API_ENDPOINT = "http://localhost:8000/add-user"
 
+def clean_email(email):
+    """ แก้ไขอีเมลที่เป็น #EXT# ให้เป็นรูปแบบที่ถูกต้อง """
+    if email and "#EXT#" in email:
+        email_match = re.search(r"(.+?)_([^_]+)#EXT#@", email)
+        if email_match:
+            return f"{email_match.group(1)}@{email_match.group(2)}"
+    return email
+
 # Function to send username and email to API
 def send_user_data(username, email, created_at):
     try:
@@ -45,17 +54,17 @@ def send_user_data(username, email, created_at):
         messagebox.showerror("Error", f"Error communicating with API: {e}")
 
 def get_user_id_from_db(email):
-    url = f"http://127.0.0.1:8000/get_user_id/{email}"  # เรียก API ที่เขียนใน FastAPI
+    """ ค้นหา user_id จากอีเมลในฐานข้อมูล """
+    url = f"http://127.0.0.1:8000/get_user_id/{email}"
     response = requests.get(url)
-    
     if response.status_code == 200:
         data = response.json()
         return data.get("user_id")
-    
-    return None  # ถ้าไม่เจอ user_id
+    return None
 
 # ฟังก์ชัน Log in
 def login():
+    """ ฟังก์ชัน Log in ผ่าน Microsoft """
     app = PublicClientApplication(CLIENT_ID, authority=AUTHORITY)
     try:
         auth_result = app.acquire_token_interactive(scopes=SCOPES)
@@ -67,35 +76,41 @@ def login():
             response = requests.get(graph_endpoint, headers=headers)
             if response.status_code == 200:
                 user_data = response.json()
-                email = user_data.get("mail") or user_data.get("userPrincipalName")  # ดึงอีเมลที่ใช้ล็อกอิน
+
+                # ✅ ดึงอีเมลให้ถูกต้อง
+                email = (
+                    user_data.get("mail") or
+                    (user_data.get("otherMails")[0] if user_data.get("otherMails") else None) or
+                    user_data.get("userPrincipalName")
+                )
+                email = clean_email(email)  # แก้ไขอีเมลบัญชีองค์กรให้ถูกต้อง
+
                 username = user_data.get("displayName")
 
                 if email and username:
                     created_at = datetime.datetime.utcnow().isoformat()
-                    role = 0 # 0 = User, 1 = Admin
+                    role = 0  # 0 = User, 1 = Admin
 
-                    # 🔹 เรียก API `/add-user` เพื่อเพิ่มผู้ใช้ก่อน
+                    # 🔹 เพิ่มผู้ใช้เข้า Database
                     add_user_response = requests.post(
-                        "http://127.0.0.1:8000/add-user",
+                        API_ENDPOINT,
                         params={"username": username, "email": email, "role": role, "create_at": created_at}
                     )
 
                     if add_user_response.status_code == 200:
                         print("✅ User added successfully!")
 
-                        # 🔹 ค้นหา user_id หลังจากเพิ่มข้อมูล
-                        user_id = get_user_id_from_db(email)  
+                        # 🔹 ค้นหา user_id
+                        user_id = get_user_id_from_db(email)
 
                         if user_id:
-                            messagebox.showinfo("Login Success", f"Welcome {username}! Email: {email}")
+                            messagebox.showinfo("Login Success", f"Welcome {username}!\nEmail: {email}")
 
-                            # ✅ ส่ง email ไป main.py แทน user_id
                             root.destroy()  # ปิดหน้าต่าง Login
-                            # เปิดหน้าต่าง Main โดยส่งค่า email ไป
-                            main_app = App(email)  # เรียกคลาส App จาก main.py
+                            main_app = App(email)  # ส่ง email ไปยัง main.py
                             main_app.mainloop()
                         else:
-                            messagebox.showerror("Error", "User ID not found in the database after adding.")
+                            messagebox.showerror("Error", "User ID not found in the database.")
                     else:
                         messagebox.showerror("Error", "Failed to add user.")
                 else:
@@ -118,7 +133,7 @@ def guest():
 # ฟังก์ชัน Logout
 def logout():
     try:
-        logout_url = "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
+        logout_url = "https://login.microsoftonline.com/common/oauth2/nativeclient/logout"
         webbrowser.open(logout_url)  # เปิดหน้าต่างเบราว์เซอร์เพื่อทำการ logout
 
         # แจ้งเตือนผู้ใช้ว่าทำการ Logout สำเร็จ
