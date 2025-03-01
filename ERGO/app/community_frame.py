@@ -669,7 +669,8 @@ class CommunityFrame(tk.Frame):
     def post_media(self, filepath, post_id):
         username = self.username  # ดึงค่า username จาก instance variable
         if filepath.lower().endswith(('mp4', 'avi', 'mkv')):
-            self.post_video(filepath, self.user_id, post_id, username)  # ส่ง username ไปให้ post_video
+            like_count = 0  # หรือดึงค่า like_count จากฐานข้อมูลถ้ามี
+            self.post_video(filepath, self.user_id, post_id, username, like_count)
         else:
             self.post_image(filepath)
 

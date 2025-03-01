@@ -112,7 +112,7 @@ def post_message(user_id: int, content: str, create_at: str):
 
 # ฟังก์ชันดึงข้อความทั้งหมดจาก community
 @api_router.get("/get-messages")
-def get_messages():
+def get_messages(user_id: int = Query(None)):  # รับ user_id ของผู้ใช้ที่ล็อกอิน
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -120,16 +120,19 @@ def get_messages():
         SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path, 
                COUNT(l.like_id) AS like_count, 
                CASE 
-                   WHEN l.user_id IS NOT NULL THEN 1 
+                   WHEN EXISTS (
+                       SELECT 1 FROM dbo.Like_Table l2 
+                       WHERE l2.post_id = c.post_id AND l2.user_id = ?
+                   ) THEN 1 
                    ELSE 0 
                END AS liked_by_user
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
-        LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id AND l.user_id = c.user_id -- ถ้า user_id ของโพสต์ตรงกับผู้ที่กด like
-        GROUP BY c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path, l.user_id
+        LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  -- ดึงไลก์ของทุกคน
+        GROUP BY c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path
         ORDER BY c.create_at
-    """)
-    
+    """, (user_id,))  # ใช้ user_id ของคนที่ล็อกอินมาตรวจสอบว่าเขาไลก์โพสต์ไหน
+
     messages = cursor.fetchall()
     conn.close()
 
@@ -141,11 +144,12 @@ def get_messages():
             "user_id": row[3], 
             "username": row[4], 
             "video_path": row[5], 
-            "like_count": row[6],  # จำนวน like
-            "liked_by_user": row[7]  # ถ้าผู้ใช้กด like หรือไม่
+            "like_count": row[6],  # จำนวนไลก์ทั้งหมด
+            "liked_by_user": row[7]  # ผู้ใช้ที่ล็อกอินไลก์โพสต์นี้หรือไม่
         }
         for row in messages
     ]}
+
 
 
 @api_router.delete("/delete-message/{post_id}")
