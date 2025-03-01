@@ -479,3 +479,34 @@ def export_dashboard(email: str):
 
     # ส่งชื่อไฟล์ที่ได้ไปยัง frontend
     return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@api_router.get("/get_monthly_usage_stats/{user_id}")
+def get_monthly_usage_stats(user_id: int):
+    """ดึงข้อมูลการใช้งานรายเดือนของผู้ใช้"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบว่ามี user_id ในฐานข้อมูลหรือไม่
+    cursor.execute("SELECT * FROM dbo.DashboardMonth_Table WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if row:
+        return {
+            "January": row[2] if row[2] is not None else 0,
+            "February": row[3] if row[3] is not None else 0,
+            "March": row[4] if row[4] is not None else 0,
+            "April": row[5] if row[5] is not None else 0,
+            "May": row[6] if row[6] is not None else 0,
+            "June": row[7] if row[7] is not None else 0,
+            "July": row[8] if row[8] is not None else 0,
+            "August": row[9] if row[9] is not None else 0,
+            "September": row[10] if row[10] is not None else 0,
+            "October": row[11] if row[11] is not None else 0,
+            "November": row[12] if row[12] is not None else 0,
+            "December": row[13] if row[13] is not None else 0,
+        }
+    else:
+        raise HTTPException(status_code=404, detail="No monthly usage data found for this user")
+

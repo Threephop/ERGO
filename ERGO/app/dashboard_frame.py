@@ -108,58 +108,152 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         except requests.exceptions.RequestException:
             return None
 
-    def create_chart(self, parent):
-        """Function to create bar chart"""
-        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        active_hours = self.fetch_usage_data()  
+    def fetch_monthly_usage_data(self):
+        """ดึงข้อมูล active_hours รายเดือนจาก API"""
+        if self.user_id is None:
+            print("No user_id found.")
+            return [0] * 12  # ค่าเริ่มต้นเป็นศูนย์
 
-        # Chart Frame
-        chart_frame = ttk.LabelFrame(parent, text="Statistics", padding=(10, 10))
-        chart_frame.pack(padx=10, pady=10, fill="both", expand=True)
+        url = f"{self.api_base_url}/get_monthly_usage_stats/{self.user_id}"
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                return [
+                    data.get("January", 0), data.get("February", 0), data.get("March", 0),
+                    data.get("April", 0), data.get("May", 0), data.get("June", 0),
+                    data.get("July", 0), data.get("August", 0), data.get("September", 0),
+                    data.get("October", 0), data.get("November", 0), data.get("December", 0)
+                ]
+            else:
+                print("Error fetching data:", response.status_code)
+        except Exception as e:
+            print("Exception:", e)
+        return [0] * 12  # ค่าเริ่มต้นเป็นศูนย์
 
-        # Create chart
-        fig, ax = plt.subplots(figsize=(12, 4))
-        bars = ax.bar(days, active_hours, color="#1f6eb0", width=0.4)
+    def update_chart(self, filter_option):
+        """อัปเดตกราฟตามค่าที่เลือก"""
+        if filter_option == "Week":
+            days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            active_hours = self.fetch_usage_data()
+            xlabel = "Week"
+            title = "Activity Over the Week"
+            rotation_angle = 0  # ไม่ต้องหมุนข้อความ
+            fontsize = 10  # ปรับขนาดตัวอักษร
+        else:
+            days = ["January", "February", "March", "April", "May", "June", 
+                    "July", "August", "September", "October", "November", "December"]
+            active_hours = self.fetch_monthly_usage_data()
+            xlabel = "Month"
+            title = "Activity Over the Year"
+            rotation_angle = 30  # หมุนข้อความเพื่อให้แสดงเต็มที่
+            fontsize = 7  # ลดขนาดตัวอักษร
 
-        ax.set_xlabel("Week", fontsize=12)
-        ax.set_ylabel("Active (hours)", fontsize=12)
-        ax.set_title("Activity Over the Week", fontsize=14)
+        self.ax.clear()
+        bars = self.ax.bar(days, active_hours, color="#1f6eb0", width=0.4)
 
-        ax.set_xticks(range(len(days)))
-        ax.set_xticklabels(days, rotation=0, ha="center", fontsize=9)
+        self.ax.set_ylabel("Active (hours)", fontsize=12)
+        self.ax.set_title(title, fontsize=14)
+
+        self.ax.set_xticks(range(len(days)))
+        self.ax.set_xticklabels(days, rotation=rotation_angle, ha="right", fontsize=fontsize)  # ✅ ปรับขนาดตัวหนังสือ
 
         for bar in bars:
             yval = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2, yval, round(yval, 2), ha="center", va="bottom", fontsize=10)
+            self.ax.text(bar.get_x() + bar.get_width() / 2, yval, round(yval, 2), ha="center", va="bottom", fontsize=8)
 
-        canvas = FigureCanvasTkAgg(fig, master=chart_frame)
-        canvas_widget = canvas.get_tk_widget()
-        canvas_widget.pack(fill="both", expand=True)
+        self.canvas.draw()
 
     def create_activity_details(self, parent, user_email):
-        """Function to create activity details section"""
+        """สร้าง Activity Table"""
+
+        # ✅ เช็คว่ามี Activity Table แล้วหรือยัง
+        if hasattr(self, "activity_frame"):
+            return  # ❌ ถ้ามีแล้ว ไม่ต้องสร้างใหม่
+
+        # ✅ สร้าง Frame ของ Activity Table
+        self.activity_frame = ttk.LabelFrame(parent, text="Activity", padding=(10, 10))
+        self.activity_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # ✅ สร้าง Treeview ครั้งเดียว
+        self.tree = ttk.Treeview(self.activity_frame, columns=(), show="headings")
+        self.tree.pack(fill="both", expand=True)
+
+        # ✅ อัปเดตตาราง (Week เป็นค่าเริ่มต้น)
+        self.update_activity_table("Week", user_email)
+
+ 
+    def create_chart(self, parent):
+        """สร้างกราฟพร้อมตัวเลือก Filter"""
+        self.chart_frame = ttk.LabelFrame(parent, text="Statistics", padding=(10, 10))
+        self.chart_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # ✅ สร้าง Filter Dropdown
+        self.filter_var = tk.StringVar(value="Week")  
+        self.filter_dropdown = ttk.Combobox(self.chart_frame, textvariable=self.filter_var, state="readonly", 
+                                            values=["Week", "Month"], width=10)
+        self.filter_dropdown.pack(pady=5)
+
+        # ✅ อัปเดตทั้งกราฟและตารางเมื่อเลือก Filter ใหม่
+        self.filter_dropdown.bind("<<ComboboxSelected>>", lambda e: self.on_filter_change())
+
+        # ✅ สร้างกราฟ
+        self.fig, self.ax = plt.subplots(figsize=(12, 4))
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.chart_frame)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(fill="both", expand=True)
+
+        # ✅ สร้าง Activity Table ก่อนเรียก update_activity_table()
+        self.create_activity_details(parent, self.user_email)
+
+        # ✅ แสดงข้อมูลเริ่มต้น (Week)
+        self.update_chart("Week")
+
+    def on_filter_change(self):
+        """อัปเดตทั้งกราฟและตารางเมื่อเปลี่ยน Filter"""
+        filter_option = self.filter_var.get()
+        self.update_chart(filter_option)
+        self.update_activity_table(filter_option, self.user_email)
+
+    
+    def update_activity_table(self, filter_option, user_email):
+        """อัปเดต Activity Table ตาม filter (Week/Month)"""
+
+        # ✅ เช็คว่ามีตารางเก่าอยู่หรือไม่ ถ้ามีให้ลบทิ้งก่อน
+        if hasattr(self, "tree"):
+            self.tree.destroy()  # ลบ Treeview เก่าออก
+
+        # ✅ สร้าง Treeview ใหม่
+        self.tree = ttk.Treeview(self.activity_frame, columns=(), show="headings")
+        self.tree.pack(fill="both", expand=True)
+
+        # ✅ กำหนดชื่อคอลัมน์ตาม filter
+        if filter_option == "Week":
+            columns = ["Username", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            api_url = f"{self.api_base_url}/get_activity_details/?email={user_email}"
+        else:
+            columns = ["Username", "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"]
+            api_url = f"{self.api_base_url}/get_monthly_activity_details/?email={user_email}"
+
+        self.tree["columns"] = columns
+
+        for col in columns:
+            self.tree.heading(col, text=col)  # ตั้งชื่อ Header ใหม่
+            self.tree.column(col, width=100, anchor="center")  # ปรับขนาดให้พอดี
+
+        # ✅ ดึงข้อมูลจาก API
+        response = requests.get(api_url)
         
-        # เรียก API เพื่อดึงข้อมูล activity details
-        url = f"http://127.0.0.1:8000/get_activity_details/?email={user_email}"
-        response = requests.get(url)
-        
-        # ถ้าเรียก API แล้วได้รับข้อมูลมา
         if response.status_code == 200:
             activity_data = response.json()
-            details = activity_data.get("activity_details", ["", "", "", "", "", "", "", ""])
+            details = activity_data.get("activity_details", [])
         else:
-            details = ["", "", "", "", "", "", "", ""]  # กรณีไม่ได้รับข้อมูลจาก API
-        
-        # สร้าง LabelFrame สำหรับแสดงข้อมูล
-        activity_frame = ttk.LabelFrame(parent, text="Activity", padding=(10, 10))
-        activity_frame.pack(padx=10, pady=10, fill="both", expand=True)
+            details = []
 
-        labels = ["Username", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        
-        # แสดงข้อมูลใน LabelFrame
-        for i, (label, detail) in enumerate(zip(labels, details)):
-            ttk.Label(activity_frame, text=label, font=("PTT 45 Pride", 12, "bold")).grid(row=0, column=i, padx=5, pady=5)
-            ttk.Label(activity_frame, text=detail, font=("PTT 45 Pride", 12)).grid(row=1, column=i, padx=5, pady=5)
+        # ✅ ใส่ข้อมูลใหม่ลงตาราง
+        if details:
+            self.tree.insert("", "end", values=details)  # ใส่ข้อมูลในแต่ละแถว
 
     def export_excel_active(self):
         """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
