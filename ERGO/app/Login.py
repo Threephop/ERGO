@@ -15,7 +15,7 @@ import re
 
 # Microsoft App Configuration
 CLIENT_ID = "f9501308-381e-4b28-9ebc-3ad41d097035"
-AUTHORITY = "https://login.microsoftonline.com/07ccde08-c35c-4742-8db5-a19e6ff0c054"
+AUTHORITY = "https://login.microsoftonline.com/common"
 REDIRECT_URI = "http://localhost:3000"
 SCOPES = ["User.Read"]
 icon_dir = os.path.join(os.path.dirname(__file__), "icon")
