@@ -204,14 +204,21 @@ class CommunityFrame(tk.Frame):
                     filepath = msg.get("video_path", None)  # ดึง video_path ถ้ามี
                     like_count = msg.get("like_count", 0)  # จำนวน like
 
-                
-
-                    # ดำเนินการแสดงข้อความหรือวิดีโอ
-                    if filepath:  # ถ้าเป็นวิดีโอ
+                    # ถ้าเป็นโพสต์วิดีโอ
+                    if filepath:  
                         if message_owner_id == user_id:
                             self.post_video(filepath, user_id, post_id, username, like_count)
                         else:
                             self.post_video_another(filepath, user_id, post_id, username, like_count)
+                        
+                        # ✅ ตรวจสอบว่ามี like_label แล้วหรือยัง
+                        if post_id not in self.like_labels:
+                            print(f"⚠️ ไม่พบ like_label ใน self.like_labels สำหรับ post_id: {post_id}, กำลังสร้างใหม่")
+                            like_label = tk.Label(self.scrollable_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="white")
+                            self.like_labels[post_id] = like_label
+
+                        # ✅ อัปเดตจำนวนไลก์
+                        self.add_like_count(post_id, like_count)
                     else:  # ถ้าเป็นข้อความ
                         if message_owner_id == user_id:
                             self.add_message_bubble(post_id, username, content)
@@ -225,7 +232,7 @@ class CommunityFrame(tk.Frame):
                 print("⚠️ เกิดข้อผิดพลาด:", response.json())
         except Exception as e:
             print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
-                
+                    
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
         url = f"{self.api_base_url}/get_user_id/{user_email}"
@@ -407,10 +414,7 @@ class CommunityFrame(tk.Frame):
             username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="e", padx=5)
 
-            # Update the like count
-            self.add_like_count(post_id, like_count)
-
-            # Create like frame and like button
+            # 🔹 สร้าง Like Frame
             like_frame = tk.Frame(bubble_frame, bg="white")
             like_frame.pack(side="right", anchor="e", pady=5)
 
@@ -422,15 +426,20 @@ class CommunityFrame(tk.Frame):
             like_button.heart_icon = heart_icon
             like_button.like_icon = like_icon
             like_button.is_liked = False
-            like_button.like_count = like_count  # Set initial like count
+            like_button.like_count = like_count  # ตั้งค่าเริ่มต้นให้ like_count
             like_label = tk.Label(like_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="white")
 
             like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id))
-
             like_button.pack(side="top", pady=2)
             like_label.pack(side="top")
 
-            # Cancel button to remove the post
+            # ✅ บันทึก like_label ลง self.like_labels
+            self.like_labels[post_id] = like_label
+
+            # ✅ อัปเดตจำนวนไลก์
+            self.add_like_count(post_id, like_count)
+
+            # ปุ่มยกเลิกโพสต์
             cancel_button = tk.Button(
                 bubble_frame, 
                 text="ยกเลิกการส่ง", 
@@ -451,7 +460,7 @@ class CommunityFrame(tk.Frame):
 
     def post_video_another(self, filepath, user_id, post_id, username, like_count):
         try:
-            print(f"ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอที่โพสต์โดยผู้ใช้อื่น")
+            print(f"📌 ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอที่โพสต์โดยผู้ใช้อื่น")
 
             bubble_frame = tk.Frame(self.scrollable_frame, bg="#ffffff", pady=5, padx=10)
             
@@ -470,10 +479,7 @@ class CommunityFrame(tk.Frame):
             username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="#ffffff")
             username_label.pack(anchor="w", padx=5)
 
-            # Update the like count
-            self.add_like_count(post_id, like_count)
-
-            # Create like frame and like button
+            # ✅ สร้าง Like Frame และ Like Button
             like_frame = tk.Frame(bubble_frame, bg="#ffffff")
             like_frame.pack(expand=True, anchor="w", pady=5)
 
@@ -485,20 +491,26 @@ class CommunityFrame(tk.Frame):
             like_button.heart_icon = heart_icon
             like_button.like_icon = like_icon
             like_button.is_liked = False
-            like_button.like_count = like_count  # Set initial like count here
+            like_button.like_count = like_count
+
             like_label = tk.Label(like_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="#ffffff")
 
             like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id))
             like_button.pack(side="left", pady=2)
             like_label.pack(side="left")
 
+            # ✅ บันทึก like_label ลง self.like_labels
+            self.like_labels[post_id] = like_label
+
+            # ✅ อัปเดตจำนวนไลก์
+            self.add_like_count(post_id, like_count)
+
             bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
             self.canvas.update_idletasks()
             self.canvas.yview_moveto(1)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error posting video by another user: {e}")
-
+            messagebox.showerror("Error", f"❌ Error posting video by another user: {e}")
 
 
     def toggle_like(self, like_button, like_label, post_id, user_id):
@@ -547,11 +559,14 @@ class CommunityFrame(tk.Frame):
     def add_like_count(self, post_id, like_count):
         """ แสดงจำนวน Like ของโพสต์ """
         try:
-            like_count_label = self.like_labels[post_id]
-            like_count_label.config(text=f"{like_count} Likes")
-            
+            if post_id in self.like_labels:
+                like_count_label = self.like_labels[post_id]
+                like_count_label.config(text=f"{like_count} Likes")
+            else:
+                print(f"⚠️ ไม่พบ like_label สำหรับ post_id: {post_id}")
         except Exception as e:
-            print(f"Error in add_like_count: {e}")
+            print(f"❌ Error in add_like_count: {e}")
+
 
     def get_video_thumbnail(self, filepath):
         try:
