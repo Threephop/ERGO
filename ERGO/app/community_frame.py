@@ -6,6 +6,7 @@ import io
 import cv2
 import requests 
 from datetime import datetime 
+import threading
 
 class CommunityFrame(tk.Frame):
     def __init__(self, parent, user_email):
@@ -181,55 +182,59 @@ class CommunityFrame(tk.Frame):
         y = self.winfo_y() + (self.winfo_height() // 2) - (150 // 2)
         popup.geometry(f"+{x}+{y}")
         
-    def load_messages(self): 
-        for widget in self.scrollable_frame.winfo_children():
-            widget.destroy()
+    def load_messages(self):
+        def fetch():
+            for widget in self.scrollable_frame.winfo_children():
+                widget.destroy()
 
-        try:
-            response = requests.get("http://localhost:8000/get-messages")
-            if response.status_code == 200:
-                messages = response.json().get("messages", [])
-                user_id = self.user_id  # user_id ของผู้ใช้ที่ล็อกอินอยู่
+            try:
+                response = requests.get("http://localhost:8000/get-messages")
+                if response.status_code == 200:
+                    messages = response.json().get("messages", [])
+                    user_id = self.user_id  # user_id ของผู้ใช้ที่ล็อกอินอยู่
 
-                print(f"✅ Logged-in user_id: {user_id}")  # เช็ค user_id
+                    print(f"✅ Logged-in user_id: {user_id}")  # เช็ค user_id
 
-                # เรียง messages ตาม post_id จากมากไปน้อย (ล่าสุดอยู่ล่าง)
-                messages = sorted(messages, key=lambda x: x["post_id"])
+                    # เรียง messages ตาม post_id จากมากไปน้อย (ล่าสุดอยู่ล่าง)
+                    messages = sorted(messages, key=lambda x: x["post_id"])
 
-                for msg in messages:
-                    username = msg.get("username", "Unknown")
-                    post_id = msg.get("post_id")
-                    content = msg.get("content")
-                    message_owner_id = msg.get("user_id")
-                    filepath = msg.get("video_path", None)  
-                    like_count = msg.get("like_count", 0)  # จำนวน like
+                    for msg in messages:
+                        username = msg.get("username", "Unknown")
+                        post_id = msg.get("post_id")
+                        content = msg.get("content")
+                        message_owner_id = msg.get("user_id")
+                        filepath = msg.get("video_path", None)  
+                        like_count = msg.get("like_count", 0)  # จำนวน like
 
-                    # เรียก API เพื่อตรวจสอบว่าโพสต์นี้ถูกไลค์โดยผู้ใช้หรือไม่
-                    is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id})
-                    if is_liked_response.status_code == 200:
-                        is_liked = is_liked_response.json().get("liked_by_user", False)
-                    else:
-                        is_liked = False  # ถ้าการเช็คไม่สำเร็จ ให้ตั้งค่าเป็น False
-
-                    # ถ้าเป็นโพสต์วิดีโอ
-                    if filepath:  
-                        if message_owner_id == user_id:
-                            self.post_video(filepath, user_id, post_id, username, like_count, is_liked)
+                        # เรียก API เพื่อตรวจสอบว่าโพสต์นี้ถูกไลค์โดยผู้ใช้หรือไม่
+                        is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id})
+                        if is_liked_response.status_code == 200:
+                            is_liked = is_liked_response.json().get("liked_by_user", False)
                         else:
-                            self.post_video_another(filepath, user_id, post_id, username, like_count, is_liked)
-                    else:  
-                        if message_owner_id == user_id:
-                            self.add_message_bubble(post_id, username, content)
-                        else:
-                            self.add_message_bubble_another(post_id, username, content)
+                            is_liked = False  # ถ้าการเช็คไม่สำเร็จ ให้ตั้งค่าเป็น False
 
-                # เลื่อน scroll ลงไปที่ข้อความล่าสุด
-                self.update_idletasks() 
-                self.canvas.yview_moveto(1.0)
-            else:
-                print("⚠️ เกิดข้อผิดพลาด:", response.json())
-        except Exception as e:
-            print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
+                        # ถ้าเป็นโพสต์วิดีโอ
+                        if filepath:  
+                            if message_owner_id == user_id:
+                                self.post_video(filepath, user_id, post_id, username, like_count, is_liked)
+                            else:
+                                self.post_video_another(filepath, user_id, post_id, username, like_count, is_liked)
+                        else:  
+                            if message_owner_id == user_id:
+                                self.add_message_bubble(post_id, username, content)
+                            else:
+                                self.add_message_bubble_another(post_id, username, content)
+
+                    # เลื่อน scroll ลงไปที่ข้อความล่าสุด
+                    self.update_idletasks() 
+                    self.canvas.yview_moveto(1.0)
+                else:
+                    print("⚠️ เกิดข้อผิดพลาด:", response.json())
+            except Exception as e:
+                print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
+            
+        thread = threading.Thread(target=fetch, daemon=True)
+        thread.start()
 
                     
     def fetch_user_id(self, user_email):
