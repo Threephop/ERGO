@@ -230,6 +230,27 @@ async def create_like(post_id: int, user_id: int, action: str):
 
     return {"message": message}
 
+@api_router.get("/check-like")
+def check_like(post_id: int, user_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ตรวจสอบว่าผู้ใช้ได้กดไลก์โพสต์นี้หรือไม่
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM dbo.Like_Table 
+        WHERE post_id = ? AND user_id = ?
+    """, (post_id, user_id))
+
+    like_count = cursor.fetchone()[0]  # ได้จำนวนที่ตรงกับเงื่อนไข
+
+    # ถ้า count > 0 หมายความว่า user_id ได้ไลก์โพสต์นี้
+    is_liked = like_count > 0
+
+    conn.close()
+
+    return {"post_id": post_id, "user_id": user_id, "is_liked": is_liked}
+
 
 @api_router.get("/showstat")
 def get_usage_stats():

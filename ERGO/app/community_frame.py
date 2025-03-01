@@ -181,7 +181,7 @@ class CommunityFrame(tk.Frame):
         y = self.winfo_y() + (self.winfo_height() // 2) - (150 // 2)
         popup.geometry(f"+{x}+{y}")
         
-    def load_messages(self):
+    def load_messages(self): 
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
@@ -193,7 +193,7 @@ class CommunityFrame(tk.Frame):
 
                 print(f"✅ Logged-in user_id: {user_id}")  # เช็ค user_id
 
-                # 🔹 เรียง messages ตาม post_id จากมากไปน้อย (ล่าสุดอยู่ล่าง)
+                # เรียง messages ตาม post_id จากมากไปน้อย (ล่าสุดอยู่ล่าง)
                 messages = sorted(messages, key=lambda x: x["post_id"])
 
                 for msg in messages:
@@ -201,37 +201,36 @@ class CommunityFrame(tk.Frame):
                     post_id = msg.get("post_id")
                     content = msg.get("content")
                     message_owner_id = msg.get("user_id")
-                    filepath = msg.get("video_path", None)  # ดึง video_path ถ้ามี
+                    filepath = msg.get("video_path", None)  
                     like_count = msg.get("like_count", 0)  # จำนวน like
+
+                    # เรียก API เพื่อตรวจสอบว่าโพสต์นี้ถูกไลค์โดยผู้ใช้หรือไม่
+                    is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id})
+                    if is_liked_response.status_code == 200:
+                        is_liked = is_liked_response.json().get("liked_by_user", False)
+                    else:
+                        is_liked = False  # ถ้าการเช็คไม่สำเร็จ ให้ตั้งค่าเป็น False
 
                     # ถ้าเป็นโพสต์วิดีโอ
                     if filepath:  
                         if message_owner_id == user_id:
-                            self.post_video(filepath, user_id, post_id, username, like_count)
+                            self.post_video(filepath, user_id, post_id, username, like_count, is_liked)
                         else:
-                            self.post_video_another(filepath, user_id, post_id, username, like_count)
-                        
-                        # ✅ ตรวจสอบว่ามี like_label แล้วหรือยัง
-                        if post_id not in self.like_labels:
-                            print(f"⚠️ ไม่พบ like_label ใน self.like_labels สำหรับ post_id: {post_id}, กำลังสร้างใหม่")
-                            like_label = tk.Label(self.scrollable_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="white")
-                            self.like_labels[post_id] = like_label
-
-                        # ✅ อัปเดตจำนวนไลก์
-                        self.add_like_count(post_id, like_count)
-                    else:  # ถ้าเป็นข้อความ
+                            self.post_video_another(filepath, user_id, post_id, username, like_count, is_liked)
+                    else:  
                         if message_owner_id == user_id:
                             self.add_message_bubble(post_id, username, content)
                         else:
                             self.add_message_bubble_another(post_id, username, content)
 
-                # ✅ เลื่อน scroll ลงไปที่ข้อความล่าสุด
+                # เลื่อน scroll ลงไปที่ข้อความล่าสุด
                 self.update_idletasks() 
                 self.canvas.yview_moveto(1.0)
             else:
                 print("⚠️ เกิดข้อผิดพลาด:", response.json())
         except Exception as e:
             print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
+
                     
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
@@ -394,7 +393,7 @@ class CommunityFrame(tk.Frame):
         bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
 
         
-    def post_video(self, filepath, user_id, post_id, username, like_count):
+    def post_video(self, filepath, user_id, post_id, username, like_count, is_liked):
         try:
             print(f"ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอ")
 
@@ -414,7 +413,7 @@ class CommunityFrame(tk.Frame):
             username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="e", padx=5)
 
-            # 🔹 สร้าง Like Frame
+            # สร้าง Like Frame
             like_frame = tk.Frame(bubble_frame, bg="white")
             like_frame.pack(side="right", anchor="e", pady=5)
 
@@ -425,18 +424,18 @@ class CommunityFrame(tk.Frame):
             like_button.image = like_icon
             like_button.heart_icon = heart_icon
             like_button.like_icon = like_icon
-            like_button.is_liked = False
-            like_button.like_count = like_count  # ตั้งค่าเริ่มต้นให้ like_count
+            like_button.is_liked = is_liked  # ใช้ is_liked ที่ได้จาก API
+            like_button.like_count = like_count
             like_label = tk.Label(like_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="white")
 
-            like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id))
+            like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id, like_button.is_liked))
             like_button.pack(side="top", pady=2)
             like_label.pack(side="top")
 
-            # ✅ บันทึก like_label ลง self.like_labels
+            # บันทึก like_label ลง self.like_labels
             self.like_labels[post_id] = like_label
 
-            # ✅ อัปเดตจำนวนไลก์
+            # อัปเดตจำนวนไลก์
             self.add_like_count(post_id, like_count)
 
             # ปุ่มยกเลิกโพสต์
@@ -458,7 +457,7 @@ class CommunityFrame(tk.Frame):
         except Exception as e:
             messagebox.showerror("Error", f"Error posting video: {e}")
 
-    def post_video_another(self, filepath, user_id, post_id, username, like_count):
+    def post_video_another(self, filepath, user_id, post_id, username, like_count, is_liked):
         try:
             print(f"📌 ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอที่โพสต์โดยผู้ใช้อื่น")
 
@@ -490,12 +489,12 @@ class CommunityFrame(tk.Frame):
             like_button.image = like_icon
             like_button.heart_icon = heart_icon
             like_button.like_icon = like_icon
-            like_button.is_liked = False
+            like_button.is_liked = is_liked  # ใช้ is_liked ที่ได้จาก API
             like_button.like_count = like_count
 
             like_label = tk.Label(like_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="#ffffff")
 
-            like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id))
+            like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id, like_button.is_liked))
             like_button.pack(side="left", pady=2)
             like_label.pack(side="left")
 
@@ -513,27 +512,29 @@ class CommunityFrame(tk.Frame):
             messagebox.showerror("Error", f"❌ Error posting video by another user: {e}")
 
 
-    def toggle_like(self, like_button, like_label, post_id, user_id):
+    def toggle_like(self, like_button, like_label, post_id, user_id, is_liked):
         """ เปลี่ยนสถานะของปุ่ม Like และอัปเดตจำนวน Like พร้อมกับส่งข้อมูลไปยัง FastAPI """
-        
-        # ตรวจสอบว่า Like แล้วหรือยัง
-        if like_button.is_liked:
+
+        # ใช้ค่า is_liked ที่รับมาแทนการเช็คจาก like_button
+        if is_liked:
             # ถ้ายกเลิก Like
             like_button.config(image=like_button.like_icon, bg="white")
             like_button.like_count -= 1
             like_button.is_liked = False
-            # ส่งคำขอยกเลิก Like ไปยัง API
-            self.send_like(post_id, user_id, action="unlike")
+            action = "unlike"
         else:
             # ถ้ายังไม่ Like
             like_button.config(image=like_button.heart_icon, bg="white")
             like_button.like_count += 1
             like_button.is_liked = True
-            # ส่งคำขอ Like ไปยัง API
-            self.send_like(post_id, user_id, action="like")
+            action = "like"
+
+        # ส่งคำขอไปยัง API
+        self.send_like(post_id, user_id, action)
 
         # อัปเดตจำนวน Like ใน label
         like_label.config(text=f"{like_button.like_count} Likes")
+
 
     def send_like(self, post_id, user_id, action):
         """ ส่งคำขอ Like หรือ Unlike ไปยัง API """
@@ -670,7 +671,7 @@ class CommunityFrame(tk.Frame):
         username = self.username  # ดึงค่า username จาก instance variable
         if filepath.lower().endswith(('mp4', 'avi', 'mkv')):
             like_count = 0  # หรือดึงค่า like_count จากฐานข้อมูลถ้ามี
-            self.post_video(filepath, self.user_id, post_id, username, like_count)
+            self.post_video(filepath, self.user_id, post_id, username, like_count, is_liked=False)
         else:
             self.post_image(filepath)
 
