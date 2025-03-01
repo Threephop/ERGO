@@ -112,16 +112,27 @@ def post_message(user_id: int, content: str, create_at: str):
 
 # ฟังก์ชันดึงข้อความทั้งหมดจาก community
 @api_router.get("/get-messages")
-def get_messages():
+def get_messages(user_id: int = Query(None)):  # รับ user_id ของผู้ใช้ที่ล็อกอิน
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path
+        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path, 
+               COUNT(l.like_id) AS like_count, 
+               CASE 
+                   WHEN EXISTS (
+                       SELECT 1 FROM dbo.Like_Table l2 
+                       WHERE l2.post_id = c.post_id AND l2.user_id = ?
+                   ) THEN 1 
+                   ELSE 0 
+               END AS liked_by_user
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
+        LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  -- ดึงไลก์ของทุกคน
+        GROUP BY c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path
         ORDER BY c.create_at
-    """)
+    """, (user_id,))  # ใช้ user_id ของคนที่ล็อกอินมาตรวจสอบว่าเขาไลก์โพสต์ไหน
+
     messages = cursor.fetchall()
     conn.close()
 
@@ -132,10 +143,13 @@ def get_messages():
             "create_at": row[2], 
             "user_id": row[3], 
             "username": row[4], 
-            "video_path": row[5]  # ✅ เพิ่ม video_path
+            "video_path": row[5], 
+            "like_count": row[6],  # จำนวนไลก์ทั้งหมด
+            "liked_by_user": row[7]  # ผู้ใช้ที่ล็อกอินไลก์โพสต์นี้หรือไม่
         }
         for row in messages
     ]}
+
 
 
 @api_router.delete("/delete-message/{post_id}")
@@ -172,6 +186,71 @@ async def delete_message(post_id: int, request: Request):
     
     finally:
         conn.close()
+        
+# API สำหรับการกด Like
+@api_router.post("/like")
+async def create_like(post_id: int, user_id: int, action: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ตรวจสอบค่า action ว่าเป็น 'like' หรือ 'unlike'
+    if action == "like":
+        # ตรวจสอบว่า User นี้กด Like ไปแล้วหรือยัง
+        cursor.execute("""
+            SELECT * FROM dbo.Like_Table
+            WHERE post_id = ? AND user_id = ?
+        """, (post_id, user_id))
+        existing_like = cursor.fetchone()
+
+        if existing_like:
+            raise HTTPException(status_code=400, detail="User has already liked this post.")
+        
+        # เพิ่ม Like ใหม่
+        cursor.execute("""
+            INSERT INTO dbo.Like_Table (post_id, user_id, create_at)
+            VALUES (?, ?, GETDATE())
+        """, (post_id, user_id))
+        conn.commit()
+        message = "Like added successfully."
+
+    elif action == "unlike":
+        # ถ้าจะยกเลิก Like
+        cursor.execute("""
+            DELETE FROM dbo.Like_Table
+            WHERE post_id = ? AND user_id = ?
+        """, (post_id, user_id))
+        conn.commit()
+        message = "Like removed successfully."
+
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action. Expected 'like' or 'unlike'.")
+
+    # ปิดการเชื่อมต่อฐานข้อมูล
+    conn.close()
+
+    return {"message": message}
+
+@api_router.get("/check-like")
+def check_like(post_id: int, user_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ตรวจสอบว่าผู้ใช้ได้กดไลก์โพสต์นี้หรือไม่
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM dbo.Like_Table 
+        WHERE post_id = ? AND user_id = ?
+    """, (post_id, user_id))
+
+    like_count = cursor.fetchone()[0]  # ได้จำนวนที่ตรงกับเงื่อนไข
+
+    # ถ้า count > 0 หมายความว่า user_id ได้ไลก์โพสต์นี้
+    is_liked = like_count > 0
+
+    conn.close()
+
+    return {"post_id": post_id, "user_id": user_id, "is_liked": is_liked}
+
 
 @api_router.get("/showstat")
 def get_usage_stats():
