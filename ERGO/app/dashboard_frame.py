@@ -9,6 +9,8 @@ import urllib.parse
 import re
 import os
 import requests
+from PIL import Image, ImageTk
+
 
 class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
     def __init__(self, parent, user_email):
@@ -161,6 +163,27 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         self.canvas.draw()
 
+    def fetch_user_videos(self):
+        """ ดึงวิดีโอที่ผู้ใช้เคยอัปโหลดจาก API """
+        if self.user_id is None:
+            return []
+
+        url = f"{self.api_base_url}/get_user_videos/?user_id={self.user_id}"
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                videos = data.get("videos", [])
+
+                # ✅ Debug: ตรวจสอบว่ามีข้อมูลวิดีโอหรือไม่
+                print("Fetched videos:", videos)
+
+                return videos
+        except Exception as e:
+            print("Error fetching videos:", e)
+
+        return []
+
     def create_activity_details(self, parent, user_email):
         """สร้าง Activity Table"""
 
@@ -206,6 +229,70 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         # ✅ แสดงข้อมูลเริ่มต้น (Week)
         self.update_chart("Week")
+
+    def create_video_list(self, parent):
+        """สร้าง UI แสดงวิดีโอและ Like Count"""
+        videos = self.fetch_user_videos()
+
+        video_frame = ttk.LabelFrame(parent, text="My Videos", padding=(10, 5))
+        video_frame.pack(padx=10, pady=5, fill="both", expand=True)
+
+        if not videos:
+            tk.Label(video_frame, text="No videos uploaded", font=("Arial", 12), bg="white").pack(pady=10)
+            return
+
+        for video in videos:
+            post_id = video.get("post_id", "N/A")
+            video_url = video.get("video_url", "")
+            thumbnail_url = video.get("thumbnail_url", "")
+            like_count = video.get("like_count", 0)
+
+            # ✅ Debug: ตรวจสอบว่าค่าที่ได้จาก API เป็นอะไร
+            print(f"Processing post_id: {post_id}, video_url: {video_url}, thumbnail_url: {thumbnail_url}")
+
+            if not video_url:
+                print(f"⚠️ Missing video URL for post_id: {post_id}")
+                continue  # ข้ามวิดีโอที่ไม่มี URL
+
+            # ✅ โหลด Thumbnail จาก URL
+            thumbnail = self.get_video_thumbnail(thumbnail_url)
+            if thumbnail:
+                video_label = tk.Label(video_frame, image=thumbnail, bg="white", cursor="hand2")
+                video_label.image = thumbnail
+                video_label.pack(side="top", pady=5)
+                video_label.bind("<Button-1>", lambda e, url=video_url: self.play_video(url))
+
+            # ✅ แสดงจำนวน Likes
+            like_label = tk.Label(video_frame, text=f"❤️ {like_count} Likes", font=("Arial", 12), bg="white")
+            like_label.pack(pady=2)
+
+    def create_content(self, parent, text, color):
+        label = tk.Label(parent, text=text, font=("PTT 45 Pride", 14), fg=color, bg="white")
+        label.pack(pady=5)
+
+        if text == "Active":
+            self.create_chart(self.tab1)
+            self.create_activity_details(self.tab1, self.user_email)
+            self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
+            self.export_button.pack(pady=2)
+        elif text == "Like":
+            self.create_video_list(parent)  # ✅ เพิ่ม UI แสดงวิดีโอ
+
+    def get_video_thumbnail(self, thumbnail_url):
+        """โหลด Thumbnail จาก URL"""
+        try:
+            response = requests.get(thumbnail_url, stream=True)
+            if response.status_code == 200:
+                with open("temp_thumbnail.jpg", "wb") as f:
+                    f.write(response.content)
+
+                img = Image.open("temp_thumbnail.jpg")
+                img = img.resize((150, 100), Image.Resampling.LANCZOS)
+                return ImageTk.PhotoImage(img)
+        except Exception as e:
+            print("Error loading thumbnail:", e)
+        return None
+
 
     def on_filter_change(self):
         """อัปเดตทั้งกราฟและตารางเมื่อเปลี่ยน Filter"""
@@ -280,3 +367,9 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
                 messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
         except requests.exceptions.RequestException:
             messagebox.showerror("Error", "Failed to connect to the server")
+    
+    def play_video(self, video_url):
+        """เปิดวิดีโอใน Web Browser"""
+        import webbrowser
+        webbrowser.open(video_url)
+

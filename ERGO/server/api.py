@@ -626,3 +626,32 @@ def get_profile_url(user_id: int):
 
     finally:
         conn.close()  # ปิดการเชื่อมต่อฐานข้อมูล
+
+@api_router.get("/get_user_videos/")
+def get_user_videos(user_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT post_id, video_path, image_path, 
+               (SELECT COUNT(*) FROM dbo.Like_Table WHERE post_id = c.post_id) AS like_count
+        FROM dbo.CommunityPosts_Table c
+        WHERE c.user_id = ?
+    """
+    cursor.execute(query, (user_id,))
+    videos = cursor.fetchall()
+    conn.close()
+
+    # ✅ Debug เพื่อตรวจสอบว่ามีข้อมูลจริงหรือไม่
+    print(f"Videos fetched for user_id {user_id}: {videos}")
+
+    return {
+        "videos": [
+            {
+                "post_id": row[0],
+                "video_url": row[1],  
+                "thumbnail_url": row[2],  
+                "like_count": row[3]
+            } for row in videos if row[1]  # ✅ ตรวจสอบว่า video_url ไม่ใช่ None
+        ]
+    }
