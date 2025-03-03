@@ -10,6 +10,7 @@ import re
 import os
 import requests
 from PIL import Image, ImageTk
+import cv2
 
 
 class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
@@ -210,19 +211,70 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         # ✅ แสดงข้อมูลเริ่มต้น (Week)
         self.update_chart("Week")
 
-    def create_video_list(self, parent):
-        """ สร้าง UI แสดงวิดีโอของผู้ใช้ """
-        # ✅ Frame สำหรับแสดงวิดีโอ
-        self.video_frame = ttk.LabelFrame(parent, text="My Videos", padding=(10, 5))
-        self.video_frame.pack(padx=10, pady=5, fill="both", expand=True)
+  
 
-        # ✅ ปุ่ม Refresh
-        refresh_button = tk.Button(self.video_frame, text="🔄 Refresh", command=self.refresh_Like,
-                                   bg="#d63384", fg="white", font=("Arial", 10, "bold"))
+    def get_video_thumbnail(self, video_url, save_path=None):
+        """ ดึง Thumbnail จากเฟรมแรกของวิดีโอและบันทึกไฟล์ """
+        try:
+            cap = cv2.VideoCapture(video_url)
+            success, frame = cap.read()
+            cap.release()
+
+            if success:
+                if save_path:  # ✅ ถ้ามี save_path ให้บันทึกไฟล์
+                    cv2.imwrite(save_path, frame)
+
+                img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                img = img.resize((150, 100), Image.Resampling.LANCZOS)
+                return ImageTk.PhotoImage(img)
+
+        except Exception as e:
+            print(f"❌ Error loading thumbnail: {e}")
+        
+        return None  # ✅ ถ้าล้มเหลวให้คืนค่า None
+
+
+    def create_video_list(self, parent, videos=None):
+        """ สร้าง UI แสดงวิดีโอของผู้ใช้ และ Like Count """
+
+        # ✅ ถ้า videos ไม่มี ให้ดึงข้อมูลจาก API
+        if videos is None:
+            videos = self.get_user_videos()
+
+        # ✅ สร้าง LabelFrame
+        video_frame = ttk.LabelFrame(parent, text="My Videos", padding=(10, 5))
+        video_frame.pack(padx=10, pady=5, fill="both", expand=True)
+
+        # ✅ ปุ่ม Refresh เฉพาะ My Videos
+        refresh_button = tk.Button(video_frame, text="🔄 Refresh", command=self.refresh_Like, 
+                                bg="#d63384", fg="white", font=("Arial", 10, "bold"))
         refresh_button.pack(pady=5, anchor="ne")
 
-        # ✅ โหลดวิดีโอ
-        self.load_videos()
+        # ✅ ถ้าไม่มีวิดีโอ แสดงข้อความ
+        if not videos:
+            tk.Label(video_frame, text="No videos uploaded", font=("Arial", 12), bg="white").pack(pady=10)
+            return
+
+        # ✅ วนลูปแสดงวิดีโอและ Like Count
+        for video in videos:
+            post_id = video.get("post_id", "N/A")
+            video_url = video.get("video_url", "")
+            like_count = video.get("like_count", 0)
+
+            # ✅ ดึง Thumbnail จากวิดีโอ
+            thumbnail_path = f"thumbnail_{post_id}.jpg"
+            thumbnail = self.get_video_thumbnail(video_url, save_path=thumbnail_path)
+
+            if thumbnail:
+                video_label = tk.Label(video_frame, image=thumbnail, bg="white", cursor="hand2")
+                video_label.image = thumbnail
+                video_label.pack(pady=5)
+                video_label.bind("<Button-1>", lambda e, url=video_url: self.play_video(url))
+
+            # ✅ แสดงจำนวน Like
+            like_label = tk.Label(video_frame, text=f"❤  {like_count} Likes", font=("Arial", 12), bg="white")
+            like_label.pack(pady=2)
+
 
     def load_videos(self):
         """ โหลดวิดีโอของผู้ใช้จาก API """

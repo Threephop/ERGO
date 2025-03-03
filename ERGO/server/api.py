@@ -660,21 +660,36 @@ def get_user_videos(user_id: int):
 @api_router.get("/refresh_Like/")
 def refresh_Like(user_id: int):
     """ รีโหลดข้อมูลโพสต์ของผู้ใช้ทั้งหมด คล้ายกับที่ทำใน Commu """
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    query = """
-        SELECT post_id, video_path AS video_url, 
-               COUNT(l.like_id) AS like_count
-        FROM dbo.CommunityPosts_Table c
-        LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  
-        WHERE c.user_id = ?
-        GROUP BY c.post_id, c.video_path
-    """
+        # ✅ เช็คว่ามี user_id นี้อยู่ในระบบหรือไม่
+        cursor.execute("SELECT COUNT(*) FROM dbo.Users_Table WHERE user_id = ?", (user_id,))
+        user_exists = cursor.fetchone()[0]
+
+        if user_exists == 0:
+            return {"message": "User not found", "videos": []}  # 🔹 แจ้งเตือนถ้าไม่พบ user
+
+        # ✅ ดึงวิดีโอของผู้ใช้จากฐานข้อมูล
+        query = """
+            SELECT c.post_id, c.video_path AS video_url, 
+                   COUNT(l.like_id) AS like_count
+            FROM dbo.CommunityPosts_Table c
+            LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  
+            WHERE c.user_id = ?
+            GROUP BY c.post_id, c.video_path
+        """
+        
+        cursor.execute(query, (user_id,))
+        videos = cursor.fetchall()
+        conn.close()
+
+        if not videos:
+            return {"message": "No videos found", "videos": []}  # 🔹 ป้องกัน `NoneType`
+
+        return {"videos": [{"post_id": row[0], "video_url": row[1], "like_count": row[2]} for row in videos]}
     
-    cursor.execute(query, (user_id,))
-    videos = cursor.fetchall()
-    conn.close()
-
-    return {"videos": [{"post_id": row[0], "video_url": row[1], "like_count": row[2]} for row in videos]}
+    except pyodbc.Error as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
