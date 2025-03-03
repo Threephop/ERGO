@@ -16,6 +16,8 @@ pip install uvicorn
 pip install fastapi
 pip install pandas
 pip install openpyxl
+pip install azure-storage-blob
+pip install sqlalchemy
 
 ---RUN API---
 python -m uvicorn api:app --reload
@@ -41,7 +43,7 @@ pip install -r requirements.txt
 1. pip install ...
 2. Run API in terminal
 cd ERGO\server
-python -m uvicorn api:app --reload
+python -m uvicorn main:app --reload
 3. Run app
 cd ERGO\app
 python Login.py

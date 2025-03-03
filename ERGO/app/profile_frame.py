@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 from PIL import Image, ImageTk
 import os
+import io
 import requests
 import webbrowser
 import subprocess  # เพิ่มการนำเข้า subprocess
@@ -11,6 +12,8 @@ class ProfileFrame(tk.Frame):
         super().__init__(parent, bg="white")
 
         self.app_instance = app_instance
+        self.logout_called = False  # ป้องกัน Logout ซ้ำ
+        self.timer_stopped = False  # ป้องกัน stop_timer() ทำงานซ้ำ
 
         # กำหนดไดเรกทอรีสำหรับไอคอน
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
@@ -87,7 +90,7 @@ class ProfileFrame(tk.Frame):
             messagebox.showerror("Error", "ไม่สามารถโหลดรูปภาพได้")
 
     def change_profile_picture(self, event=None):
-        """ ให้ผู้ใช้เลือกภาพใหม่ และอัปเดตโปรไฟล์ทันที """
+        """ ให้ผู้ใช้เลือกภาพใหม่ และอัปโหลดไปยัง Azure Blob Storage """
         file_path = filedialog.askopenfilename(
             title="เลือกภาพโปรไฟล์",
             filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif;*.bmp")]
@@ -95,19 +98,45 @@ class ProfileFrame(tk.Frame):
 
         if file_path:
             try:
-                # บันทึกภาพใหม่แทนที่ profile.png
-                image = Image.open(file_path)
+                # ✅ 1. เช็คการเชื่อมต่อกับ Azure Blob Storage ก่อน
+                container_name = "ergo"  # 🔹 แก้เป็นชื่อ Container จริง
+                check_blob_url = f"http://localhost:8000/check_blob_storage/?container_name={container_name}"
+                response = requests.get(check_blob_url)
+
+                if response.status_code == 200:
+                    data = response.json()
+                    print(f"✅ เชื่อมต่อกับ Blob Storage สำเร็จ: {data['message']}")
+                else:
+                    print("❌ ไม่สามารถเชื่อมต่อกับ Blob Storage ได้")
+                    messagebox.showerror("Error", "ไม่สามารถเชื่อมต่อกับ Blob Storage ได้ กรุณาลองใหม่อีกครั้ง")
+                    return
+
+                # ✅ 2. อัปโหลดรูปภาพไปยัง Azure Blob Storage
+                upload_url = "http://localhost:8000/upload_video/"
+                with open(file_path, "rb") as file:
+                    files = {"file": file}
+                    upload_response = requests.post(upload_url, files=files)
+
+                if upload_response.status_code == 200:
+                    profile_url = upload_response.json().get("profile_url")
+                    print(f"✅ รูปโปรไฟล์ถูกอัปโหลดไปยัง Azure Blob Storage: {profile_url}")
+                else:
+                    print(f"❌ อัปโหลดรูปโปรไฟล์ล้มเหลว: {upload_response.json()}")
+                    messagebox.showerror("Error", "อัปโหลดรูปโปรไฟล์ไปยัง Blob Storage ล้มเหลว กรุณาลองใหม่อีกครั้ง")
+                    return
+
+                # ✅ 3. ดึงรูปภาพจาก URL มาแสดงแทนที่ภาพเดิม
+                image_data = requests.get(profile_url).content
+                image = Image.open(io.BytesIO(image_data))
                 image = image.resize((100, 100), Image.Resampling.LANCZOS)
-                image.save(self.default_profile_path)
+                self.profile_image = ImageTk.PhotoImage(image)
 
-                # โหลดภาพใหม่ที่บันทึกแล้ว
-                self.load_profile_image(self.default_profile_path)
-
-                # อัปเดตภาพใน Canvas
+                # ✅ 4. อัปเดตโปรไฟล์ใน Canvas
                 self.canvas.itemconfig(self.profile_pic, image=self.profile_image)
-                
+                print("✅ เปลี่ยนรูปโปรไฟล์สำเร็จ!")
+
             except Exception as e:
-                messagebox.showerror("Error", f"ไม่สามารถบันทึกหรือโหลดรูปภาพได้: {e}")
+                messagebox.showerror("Error", f"ไม่สามารถอัปโหลดรูปโปรไฟล์ได้: {e}")
     
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
@@ -163,26 +192,72 @@ class ProfileFrame(tk.Frame):
 
         return False  # ถ้าอัปเดตไม่สำเร็จ ให้ return False
 
-
     def logout(self):
+        """ ฟังก์ชัน Logout ที่ทำให้ stop_timer() ทำงาน """
+        print("🔹 logout() ถูกเรียก!")  
+
+        if self.logout_called:
+            print("⚠️ logout() ถูกเรียกซ้ำ! ไม่ทำงานอีก")
+            return
+        self.logout_called = True  # ป้องกันการกด Logout ซ้ำ
+
+        print("📢 แสดง Messagebox ยืนยัน Logout...")
+        confirmed = messagebox.askyesno("Logout", "Are you sure you want to log out?")
+
+        if not confirmed:
+            print("❌ ผู้ใช้กดยกเลิก Logout")
+            self.logout_called = False  # Reset ค่า ถ้าผู้ใช้กดยกเลิก
+            return
+        print("✅ ผู้ใช้ยืนยัน Logout")
+
+        # ✅ เรียก stop_timer() ก่อน Logout
+        if self.app_instance:
+            try:
+                print("⏳ เรียก stop_timer()...")
+                if hasattr(self.app_instance, "stop_timer"):  # เช็คว่า stop_timer() มีอยู่ใน app_instance หรือไม่
+                    self.app_instance.stop_timer()
+                    print("✅ stop_timer() ทำงานสำเร็จ!")
+                else:
+                    print("⚠️ stop_timer() ไม่มีอยู่ใน app_instance")
+                    messagebox.showerror("Error", "stop_timer() ไม่มีอยู่ใน app_instance")
+                    self.logout_called = False
+                    return
+            except Exception as e:
+                print(f"❌ stop_timer() มีปัญหา: {e}")
+                messagebox.showerror("Error", f"stop_timer() มีปัญหา: {e}")
+                self.logout_called = False
+                return
+
         try:
-            # เปิดเบราว์เซอร์เพื่อทำการ logout จาก Microsoft
+            # เปิดเบราว์เซอร์ไปที่หน้า Logout ของ Microsoft
             logout_url = "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
+            print(f"🌐 เปิด URL: {logout_url}")
             webbrowser.open(logout_url)
 
-            # แจ้งเตือนผู้ใช้ว่าทำการ Logout สำเร็จ
-            messagebox.showinfo("Logout", "You have been logged out. Restarting login flow.")
-            # เรียก stop_timer() ก่อนออกจากระบบ
-            if self.app_instance:
-                self.app_instance.stop_timer()
-            # ปิดหน้าต่าง Main
-            self.master.destroy()
+            # แสดง Messagebox แจ้งเตือนว่า Logout สำเร็จ
+            messagebox.showinfo("Logout", "You have been logged out.")
+            print("✅ Messagebox แสดงสำเร็จ!")
 
-            # เปิดหน้าต่าง Login ใหม่
-            self.open_login()
+            # ปิดแอปทั้งหมดแล้วเปิด Login ใหม่
+            self.master.after(500, self.close_app)
 
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred during logout: {e}")
+            print(f"❌ เกิดข้อผิดพลาด: {e}")
+            self.logout_called = False  # Reset ค่าเผื่อมีข้อผิดพลาด
+
+
+    def close_app(self):
+        """ ปิดแอปและเปิด Login ใหม่ """
+        print("🚪 close_app() ถูกเรียกแล้ว!")
+        if self.master.winfo_exists():
+            print("🛑 ปิดหน้าต่างหลัก")
+            self.master.quit()
+            self.master.destroy()
+
+        print("🔄 เรียก open_login()")
+        self.open_login()
+
 
     def open_login(self):
         """เปิดหน้าต่าง Login ใหม่โดยไม่ต้องนำเข้า LoginApp"""
@@ -190,18 +265,22 @@ class ProfileFrame(tk.Frame):
         import os
 
         # ตรวจสอบว่าไฟล์ Login.py อยู่ในตำแหน่งที่ถูกต้อง
-        login_py_path = os.path.join(os.path.dirname(__file__), "Login.py")
+        login_py_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "Login.py"))
         if not os.path.exists(login_py_path):
             messagebox.showerror("Error", "Cannot find Login.py")
             return
 
-        # สร้างหน้าต่าง Login ใหม่
         try:
-            # สร้างกระบวนการใหม่เพื่อรัน Login.py
+            print(f"✅ เปิด Login.py ที่พาธ: {login_py_path}")
             python_executable = sys.executable  # ใช้ Python interpreter เดียวกัน
-            subprocess.Popen([python_executable, login_py_path])
+            subprocess.Popen([python_executable, login_py_path], shell=True)  # ใช้ shell=True ช่วยให้ทำงานได้ดีขึ้น
+
+            print("🛑 บังคับปิดแอปหลักด้วย sys.exit()")
+            sys.exit()  # ปิดแอปหลักไปเลย
+
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open Login: {e}")
+
 
 if __name__ == "__main__":
     root = tk.Tk()  

@@ -15,6 +15,7 @@ import time
 import os
 import requests
 import sys
+import threading
 
 def change_windows_taskbar_icon(window, icon_windows_path):
     try:
@@ -25,6 +26,9 @@ def change_windows_taskbar_icon(window, icon_windows_path):
 class App(tk.Tk):
     def __init__(self, user_email):
         super().__init__()
+
+        self.running = True
+
         # กำหนด path สำหรับไอคอนทั้งหมด
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
         self.icon_windows_path = os.path.join(self.icon_dir, "windows_icon.ico")
@@ -55,7 +59,7 @@ class App(tk.Tk):
         #     self.username = data['users'][3]
         
         self.user_email = user_email
-        
+    
         # 🔹 ดึงรายชื่อ users จาก API
         response = requests.get("http://127.0.0.1:8000/users")
         if response.status_code == 200:
@@ -411,11 +415,6 @@ class App(tk.Tk):
     def show_popup(self):
         PopupFrame(self) 
 
-    def on_closing(self):
-        """Function to handle the window close event"""
-        self.stop_timer()  # หยุดจับเวลา 
-        plt.close()  # ปิด figure ของ matplotlib
-        self.quit()   # ปิดหน้าต่าง Tkinter
         
     def update_language(self, language):
         self.selected_language = language
@@ -487,6 +486,23 @@ class App(tk.Tk):
         except Exception as e:
             print(f"❌ Error sending data: {e}")
     
+    # เริ่ม Task เบื้องหลัง
+        self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
+        self.bg_thread.start()
+
+    def on_closing(self):
+        """ซ่อน UI และให้ Background Task ทำงานต่อ"""
+        self.running = False  # ✅ หยุด Background Task
+        self.withdraw()  # ซ่อนหน้าต่างหลัก
+        self.stop_timer()  # หยุดจับเวลา
+        print("App is running in the background...")
+
+    def background_task(self):
+        """ทำงานต่อแม้ UI ถูกซ่อน"""
+        while self.running:
+            print("Background task running...")
+            time.sleep(5) # หยุดเพื่อป้องกันการใช้ CPU มากเกินไป แสเดงว่าเป็นวินาที
+        print("Background task stopped.")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

@@ -1,25 +1,19 @@
-from fastapi import FastAPI, HTTPException, Form, Request, Query
+from fastapi import FastAPI, HTTPException, Form, Request, Query, UploadFile, File
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 from datetime import datetime
 from db_config import get_db_connection  # นำเข้า get_db_connection จาก db_config.py
 import sqlite3
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter
 from fastapi.responses import FileResponse
 import pyodbc
 import pandas as pd
 import os
 
-app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # หรือกำหนดเฉพาะ domain ที่อนุญาต
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+api_router = APIRouter()
 
 # ฟังก์ชันที่ดึงข้อมูลผู้ใช้งาน
-@app.get("/users")
+@api_router.get("/users")
 def get_users():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -35,7 +29,7 @@ def get_users():
 
     return {"users": users_list}
 
-@app.get("/get_user_id/{email}")
+@api_router.get("/get_user_id/{email}")
 def get_user_id(email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -51,7 +45,7 @@ def get_user_id(email: str):
     return {"error": "User not found"}
 
 # 📌 API ค้นหา role จาก email
-@app.get("/get_user_role/{email}")
+@api_router.get("/get_user_role/{email}")
 def get_user_role(email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -67,7 +61,7 @@ def get_user_role(email: str):
     return {"error": "User not found"}
     
 # ฟังก์ชันที่เพิ่มผู้ใช้งาน
-@app.post("/add-user")
+@api_router.post("/add-user")
 def add_user(username: str, email: str, role: int, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -91,7 +85,7 @@ def add_user(username: str, email: str, role: int, create_at: str):
     return {"message": message}
     
 # ฟังก์ชันที่ดึงรายชื่อตารางทั้งหมดในฐานข้อมูล
-@app.post("/post-message")
+@api_router.post("/post-message")
 def post_message(user_id: int, content: str, create_at: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -117,14 +111,13 @@ def post_message(user_id: int, content: str, create_at: str):
 
 
 # ฟังก์ชันดึงข้อความทั้งหมดจาก community
-@app.get("/get-messages")
+@api_router.get("/get-messages")
 def get_messages():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ดึง user_id ของเจ้าของโพสต์มาด้วย
     cursor.execute("""
-        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username
+        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
         ORDER BY c.create_at
@@ -133,11 +126,19 @@ def get_messages():
     conn.close()
 
     return {"messages": [
-        {"post_id": row[0], "content": row[1], "create_at": row[2], "user_id": row[3], "username": row[4]}
+        {
+            "post_id": row[0], 
+            "content": row[1], 
+            "create_at": row[2], 
+            "user_id": row[3], 
+            "username": row[4], 
+            "video_path": row[5]  # ✅ เพิ่ม video_path
+        }
         for row in messages
     ]}
 
-@app.delete("/delete-message/{post_id}")
+
+@api_router.delete("/delete-message/{post_id}")
 async def delete_message(post_id: int, request: Request):
     # รับข้อมูล JSON ที่ส่งมาจาก client (คาดว่า {"user_id": <user_id>})
     data = await request.json()
@@ -172,19 +173,23 @@ async def delete_message(post_id: int, request: Request):
     finally:
         conn.close()
 
-@app.get("/showstat")
+@api_router.get("/showstat")
 def get_usage_stats():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ใช้ LEFT JOIN เพื่อดึง user ทั้งหมด แม้ว่าจะไม่มีข้อมูลใน UsageStats_Table
+    # ใช้ LEFT JOIN กับ UsageStats_Table และคำนวณจำนวนไลก์จาก Like_Table
     cursor.execute("""
         SELECT u.user_id, u.username, 
                COALESCE(us.hours_used, 0) AS hours_used, 
-               COALESCE(us.kcal_burned, 0) AS kcal_burned, 
-               COALESCE(us.like_count_id, 0) AS like_count_id
+               COALESCE(like_counts.like_count, 0) AS like_count
         FROM dbo.Users_Table u
         LEFT JOIN dbo.UsageStats_Table us ON u.user_id = us.user_id
+        LEFT JOIN (
+            SELECT user_id, COUNT(*) AS like_count
+            FROM dbo.Like_Table
+            GROUP BY user_id
+        ) like_counts ON u.user_id = like_counts.user_id
     """)
 
     stats = cursor.fetchall()
@@ -197,8 +202,7 @@ def get_usage_stats():
                 "user_id": row[0],
                 "username": row[1],
                 "hours_used": row[2],
-                "kcal_burned": row[3],
-                "like_count_id": row[4]
+                "like_count": row[3]
             } 
             for row in stats
         ]
@@ -206,7 +210,7 @@ def get_usage_stats():
 
 
 # API รับค่าจากแอปและอัปเดต hours_used ใน UsageStats_Table
-@app.get("/update_app_time/")
+@api_router.get("/update_app_time/")
 def update_app_time(email: str, app_time: float):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -279,7 +283,7 @@ def update_app_time(email: str, app_time: float):
     }
 
 
-@app.get("/get_usage_stats/{user_id}")
+@api_router.get("/get_usage_stats/{user_id}")
 def get_usage_stats(user_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -337,7 +341,7 @@ def get_usage_stats(user_id: int):
             "Sunday": row[6]
         }
 
-@app.get("/get_activity_details/")
+@api_router.get("/get_activity_details/")
 def get_activity_details(email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -393,7 +397,7 @@ def get_activity_details(email: str):
 
 
 # 🔄 ฟังก์ชันสำหรับอัปเดตชื่อผู้ใช้ (รับค่าเป็น Form Data)
-@app.post("/update_username/")
+@api_router.post("/update_username/")
 def update_username(
     user_id: int = Form(...),  # รับค่า user_id จาก Form Data
     new_username: str = Form(...)  # รับค่า new_username จาก Form Data
@@ -431,7 +435,7 @@ def get_unique_filename(directory, filename, extension):
 
     return file_path
 
-@app.get("/export_dashboard_active/")
+@api_router.get("/export_dashboard_active/")
 def export_dashboard(email: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -475,3 +479,34 @@ def export_dashboard(email: str):
 
     # ส่งชื่อไฟล์ที่ได้ไปยัง frontend
     return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@api_router.get("/get_monthly_usage_stats/{user_id}")
+def get_monthly_usage_stats(user_id: int):
+    """ดึงข้อมูลการใช้งานรายเดือนของผู้ใช้"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบว่ามี user_id ในฐานข้อมูลหรือไม่
+    cursor.execute("SELECT * FROM dbo.DashboardMonth_Table WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if row:
+        return {
+            "January": row[2] if row[2] is not None else 0,
+            "February": row[3] if row[3] is not None else 0,
+            "March": row[4] if row[4] is not None else 0,
+            "April": row[5] if row[5] is not None else 0,
+            "May": row[6] if row[6] is not None else 0,
+            "June": row[7] if row[7] is not None else 0,
+            "July": row[8] if row[8] is not None else 0,
+            "August": row[9] if row[9] is not None else 0,
+            "September": row[10] if row[10] is not None else 0,
+            "October": row[11] if row[11] is not None else 0,
+            "November": row[12] if row[12] is not None else 0,
+            "December": row[13] if row[13] is not None else 0,
+        }
+    else:
+        raise HTTPException(status_code=404, detail="No monthly usage data found for this user")
+

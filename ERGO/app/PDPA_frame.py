@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 import webbrowser
 import os
+import re
 
 class PopupFrame(ctk.CTkToplevel):
     def __init__(self, parent):
@@ -34,62 +35,63 @@ class PopupFrame(ctk.CTkToplevel):
         canvas.configure(yscrollcommand=scrollbar_canvas.set)
 
         check_frame = ctk.CTkFrame(canvas, fg_color="white")
-        canvas.create_window((0, 0), window=check_frame, anchor="nw", width=1100)
+        canvas.create_window((0, 0), window=check_frame, anchor="nw", width=800)
 
-        # ข้อความข้อตกลง
-        check_texts = [
-            "1. จุดประสงค์ของการจัดเก็บข้อมูล (Purpose of Data Collection)\n\n"
-            "แอปพลิเคชันจะจัดเก็บและบันทึกวิดีโอที่ผู้ใช้ถ่ายทำผ่านแอป เพื่อให้สามารถแชร์และดูซ้ำได้ในกลุ่มแชทภายในแอป\n"
-            "การจัดเก็บข้อมูลนี้มีวัตถุประสงค์เพื่อสนับสนุนประสบการณ์การใช้งาน และเพิ่มประสิทธิภาพในการสื่อสารระหว่างผู้ใช้\n",
-            "2. การจัดเก็บและใช้ข้อมูล (Data Storage and Usage)\n\n"
-            "ข้อมูลที่จัดเก็บประกอบด้วย วิดีโอที่ผู้ใช้บันทึกผ่านแอป รวมถึงข้อมูลวันที่และเวลาที่บันทึก\n"
-            "การเก็บข้อมูลตำแหน่ง (Location) จะทำก็ต่อเมื่อได้รับความยินยอมจากผู้ใช้เท่านั้น\n",
-            "3. สิทธิ์ของผู้ใช้ (User Rights)\n\n"
-            "ผู้ใช้มีสิทธิ์ในการเข้าถึง แก้ไข หรือขอลบวิดีโอที่บันทึกไว้ในระบบของแอปได้ตลอดเวลา นอกจากนี้\n"
-            "ผู้ใช้สามารถเพิกถอนความยินยอมในการเก็บข้อมูลส่วนบุคคลได้ทุกเมื่อผ่านการติดต่อ\n",
-            "4. วิธีการจัดเก็บและระยะเวลาการเก็บข้อมูล (Data Storage and Retention Period)\n\n"
-            "วิดีโอทั้งหมดที่บันทึกผ่านแอปจะถูกจัดเก็บในเซิร์ฟเวอร์ของแอปเป็นระยะเวลา 5 วัน\n"
-            "หลังจากนั้นวิดีโอจะถูกลบโดยอัตโนมัติ\n",
-            "5. การแชร์ข้อมูลกับบุคคลที่สาม (Data Sharing with Third Parties)\n\n"
-            "แอปนี้จะไม่เผยแพร่หรือแบ่งปันวิดีโอที่บันทึกโดยผู้ใช้กับบุคคลภายนอกโดยไม่ได้รับความยินยอมล่วงหน้า\n"
-            "ข้อมูลจะถูกจัดเก็บไว้ในระบบเซิร์ฟเวอร์ที่ปลอดภัยและมีการเข้ารหัสเพื่อป้องกันการเข้าถึงโดยไม่ได้รับอนุญาต\n",
-            "6. การป้องกันความปลอดภัยของข้อมูล (Data Security)\n\n"
-            "วิดีโอและข้อมูลเมตาที่จัดเก็บไว้ในระบบเซิร์ฟเวอร์ของแอปจะได้รับการเข้ารหัสเพื่อป้องกันการเข้าถึงโดยไม่ได้รับอนุญาต\n"
-            "แอปนี้ใช้เทคโนโลยีป้องกันการโจมตีทางไซเบอร์และมาตรการความปลอดภัยที่ได้มาตรฐานสากล\n",
-            "7. วิธีการขอความยินยอม (Consent Request Mechanism)\n\n"
-            "แอปนี้มีการจัดเก็บวิดีโอที่บันทึกโดยผู้ใช้ เพื่อการจัดเก็บและการแชร์ในกลุ่มแชทภายในแอปเท่านั้น\n"
-            "วิดีโอจะถูกจัดเก็บเป็นระยะเวลา 5 วัน และจะถูกลบโดยอัตโนมัติหากเกินระยะเวลาดังกล่าว \n"
-            "คุณมีสิทธิ์ในการลบวิดีโอหรือเพิกถอนความยินยอมได้ตลอดเวลา\n"
-            "อ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา [ลิงก์นโยบายความเป็นส่วนตัว]\n"
-            "กด (ยอมรับ) เพื่อยอมรับเงื่อนไขการเก็บข้อมูลส่วนบุคคล\n",
-            "8. การติดต่อสอบถาม (Contact Information)\n\n"
-            "หากต้องการสอบถามเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัว หรือขอใช้สิทธิ์ตาม PDPA โปรดติดต่อ\n"
-            "0-3849-3720 ทีมงานของเราพร้อมให้บริการและดูแลข้อมูลส่วนบุคคลของคุณอย่างเต็มความสามารถ\n"
-        ]
+        # โหลดข้อความจากไฟล์ pdpa.txt
+        pdpa_file_path = os.path.join(os.path.dirname(__file__), "text/pdpa.txt")
+        try:
+            with open(pdpa_file_path, "r", encoding="utf-8") as file:
+                pdpa_content = file.read()
+            
+            # ใช้ Regular Expression เพื่อจับตัวเลขข้อ + เนื้อหาไว้ด้วยกัน
+            check_texts = re.findall(r'(\d+\.\s.*?)(?=\n\d+\.|\Z)', pdpa_content, re.DOTALL)
+        except FileNotFoundError:
+            check_texts = ["ไม่สามารถโหลดเนื้อหา PDPA ได้ กรุณาตรวจสอบไฟล์ pdpa.txt"]
 
-        # เพิ่ม CheckBox และ Label แยกกันเพื่อให้ข้อความขึ้นบรรทัดใหม่ได้
+        # เพิ่ม CheckBox และ Label
         self.check_vars = []
+        self.check_boxes = []
+
         for i, text in enumerate(check_texts):
             var = ctk.BooleanVar()
             self.check_vars.append(var)
 
-            check_box = ctk.CTkCheckBox(check_frame, text="", variable=var, fg_color="white",
-                width=20, height=40, checkbox_width=20, checkbox_height=20)
+            # สร้าง Frame ย่อยสำหรับวาง CheckBox และข้อความให้ชิดกัน
+            item_frame = ctk.CTkFrame(check_frame, fg_color="white")
+            item_frame.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
-            check_box.grid(row=i, column=0, sticky="nw", padx=10, pady=5)
+            # สร้าง CheckBox
+            check_box = ctk.CTkCheckBox(item_frame, text="", variable=var, 
+                                        width=20, height=40, checkbox_width=20, checkbox_height=20,
+                                        fg_color="gray")  # ตั้งค่าเริ่มต้นเป็นสีเทา
+            check_box.pack(side="left", padx=(0, 5))
 
-            label = ctk.CTkLabel(check_frame, text=text, font=("PTT 45 Pride", 16), text_color="black", fg_color="white",
-                wraplength=800,  width=600, justify="left")  # ปรับ wraplength และ width
-            label.grid(row=i, column=1, sticky="w", padx=10, pady=5)
+            # บันทึก CheckBox ไว้ในรายการ
+            self.check_boxes.append(check_box)
+
+            # ฟังก์ชันเปลี่ยนสี Checkbox เป็นสีเขียวเมื่อเลือก
+            def update_checkbox_color(var=var, checkbox=check_box):
+                if var.get():
+                    checkbox.configure(fg_color="green")  # เปลี่ยนเป็นสีเขียวเมื่อถูกติ๊ก
+                else:
+                    checkbox.configure(fg_color="gray")  # สีเริ่มต้น
+
+            # กำหนดให้ CheckBox เรียกฟังก์ชัน update_checkbox_color ทุกครั้งที่มีการกด
+            check_box.configure(command=lambda v=var, c=check_box: update_checkbox_color(v, c))
+
+            # สร้าง Label อยู่ใน item_frame เดียวกับ CheckBox
+            label = ctk.CTkLabel(item_frame, text=text, font=("PTT 45 Pride", 16), text_color="black", fg_color="white",
+                                 wraplength=700, width=700, justify="left", anchor="w")
+            label.pack(side="left")
 
         # ปุ่มเลือกทั้งหมด
         select_all_button = ctk.CTkButton(self, text="เลือกทั้งหมด", command=self.select_all,
-        font=("PTT 45 Pride", 12), fg_color="#2ea6f4", text_color="white")
+                                          font=("PTT 45 Pride", 12), fg_color="#2ea6f4", text_color="white")
         select_all_button.place(x=250, y=600)
 
         # ปุ่มยกเลิกการเลือกทั้งหมด
         deselect_all_button = ctk.CTkButton(self, text="ยกเลิกการเลือกทั้งหมด", command=self.deselect_all,
-        font=("PTT 45 Pride", 12), fg_color="#FF9800", text_color="white")
+                                            font=("PTT 45 Pride", 12), fg_color="#FF9800", text_color="white")
         deselect_all_button.place(x=400, y=600)
 
         # ปรับขนาด Canvas ตามเนื้อหา
@@ -97,12 +99,6 @@ class PopupFrame(ctk.CTkToplevel):
             canvas.configure(scrollregion=canvas.bbox("all"))
 
         check_frame.bind("<Configure>", update_scrollregion)
-
-        # การเลื่อน Scrollbar ด้วยเมาส์
-        def on_mouse_wheel(event):
-            canvas.yview_scroll(-1 * (event.delta // 120), "units")
-
-        canvas.bind_all("<MouseWheel>", on_mouse_wheel)
 
         # เปิดลิงก์
         def open_link(event):
@@ -122,7 +118,6 @@ class PopupFrame(ctk.CTkToplevel):
                                       font=("PTT 45 Pride", 12), fg_color="#FF5959", text_color="white")
         reject_button.place(x=550, y=600)
 
-        # Disable parent interaction while popup is open
         self.transient(parent)
         self.grab_set()
 
@@ -134,10 +129,12 @@ class PopupFrame(ctk.CTkToplevel):
 
     # ฟังก์ชันเลือกทั้งหมด
     def select_all(self):
-        for var in self.check_vars:
+        for var, checkbox in zip(self.check_vars, self.check_boxes):
             var.set(True)
+            checkbox.configure(fg_color="green")  # เปลี่ยนเป็นสีเขียว
+
     # ฟังก์ชันยกเลิกการเลือกทั้งหมด
     def deselect_all(self):
-        for var in self.check_vars:
+        for var, checkbox in zip(self.check_vars, self.check_boxes):
             var.set(False)
-
+            checkbox.configure(fg_color="gray")  # กลับเป็นสีเทา
