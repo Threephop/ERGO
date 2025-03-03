@@ -6,6 +6,7 @@ import io
 import requests
 import webbrowser
 import subprocess  # เพิ่มการนำเข้า subprocess
+import threading
 
 class ProfileFrame(tk.Frame):
     def __init__(self, parent, user_email, app_instance):
@@ -33,7 +34,7 @@ class ProfileFrame(tk.Frame):
         self.canvas = tk.Canvas(self, width=100, height=100, bg="#ffffff", highlightthickness=0)
         self.profile_pic = self.canvas.create_image(50, 50, image=self.profile_image, tags="profile_pic")
         self.canvas.place(relx=0.4, rely=0.2, anchor="center")
-        self.canvas.tag_bind("profile_pic", "<Button-1>", lambda event: self.change_profile_picture(event, self.user_id))
+        self.canvas.tag_bind("profile_pic", "<Button-1>", self.change_profile_picture)
 
         
         # 🔹 ดึงรายชื่อ users จาก API
@@ -79,98 +80,115 @@ class ProfileFrame(tk.Frame):
 
     
     def load_profile_image(self, user_id):
-        """ โหลดรูปโปรไฟล์จาก URL ถ้ามี หรือใช้ค่า default """
-        try:
-            # ✅ ดึง URL ของรูปโปรไฟล์จาก API
-            response = requests.get(f"http://localhost:8000/get_profile_image/?user_id={user_id}")
-
-            if response.status_code == 200:
-                profile_url = response.json().get("profile_url")
-            else:
-                profile_url = None
-            
-            # ✅ ตรวจสอบว่า URL ใช้ได้หรือไม่
-            if profile_url:
-                image_response = requests.get(profile_url)
-                if image_response.status_code == 200:
-                    image_data = image_response.content
-                    image = Image.open(io.BytesIO(image_data))
-                else:
-                    print(f"⚠️ รูปโปรไฟล์ไม่พบใน Storage: {profile_url}")
-                    profile_url = None  # ตั้งให้เป็น None เพื่อใช้รูป Default
-            else:
-                print("⚠️ ไม่มี URL รูปใน Database")
-
-            # ✅ ถ้าไม่มี URL หรือรูปหายไป ให้ใช้ค่าเริ่มต้น
-            if not profile_url:
-                image_path = self.default_profile_path
-                if not os.path.exists(image_path):
-                    raise FileNotFoundError("❌ ไม่พบไฟล์ภาพเริ่มต้น")
-                image = Image.open(image_path)
-
-            # ✅ ปรับขนาดและแสดงผลรูปโปรไฟล์
-            image = image.resize((100, 100), Image.Resampling.LANCZOS)
-            self.profile_image = ImageTk.PhotoImage(image)
-
-        except Exception as e:
-            print(f"❌ เกิดข้อผิดพลาดในการโหลดภาพ: {e}")
-            messagebox.showerror("Error", "ไม่สามารถโหลดรูปภาพได้")
-
-    def change_profile_picture(self, event=None, user_id=None):
-        """ ให้ผู้ใช้เลือกภาพใหม่ และอัปโหลดไปยัง Azure Blob Storage """
-        file_path = filedialog.askopenfilename(
-            title="เลือกภาพโปรไฟล์",
-            filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif;*.bmp")]
-        )
-
-        if file_path:
+        def fetch():
+            """ โหลดรูปโปรไฟล์จาก URL ถ้ามี หรือใช้ค่า default """
             try:
-                # ✅ 1. เช็คการเชื่อมต่อกับ Azure Blob Storage ก่อน
-                container_name = "image-profile"  # 🔹 แก้เป็นชื่อ Container จริง
-                check_blob_url = f"http://localhost:8000/check_blob_storage/?container_name={container_name}"
-                response = requests.get(check_blob_url)
-
-                if response.status_code == 200:
-                    data = response.json()
-                    print(f"✅ เชื่อมต่อกับ Blob Storage สำเร็จ: {data['message']}")
+                response = requests.get(f"http://localhost:8000/get_profile_image/?user_id={user_id}")
+                profile_url = response.json().get("profile_url") if response.status_code == 200 else None
+                
+                if profile_url:
+                    image_response = requests.get(profile_url)
+                    if image_response.status_code == 200:
+                        image_data = image_response.content
+                        image = Image.open(io.BytesIO(image_data))
+                    else:
+                        print(f"⚠️ รูปโปรไฟล์ไม่พบใน Storage: {profile_url}")
+                        profile_url = None  
                 else:
-                    print("❌ ไม่สามารถเชื่อมต่อกับ Blob Storage ได้")
-                    messagebox.showerror("Error", "ไม่สามารถเชื่อมต่อกับ Blob Storage ได้ กรุณาลองใหม่อีกครั้ง")
-                    return
+                    print("⚠️ ไม่มี URL รูปใน Database")
 
-                # ✅ 2. อัปโหลดรูปภาพไปยัง Azure Blob Storage พร้อมส่ง user_id
-                upload_url = f"http://localhost:8000/upload_profile/?user_id={user_id}"
+                if not profile_url:
+                    image_path = self.default_profile_path
+                    if not os.path.exists(image_path):
+                        raise FileNotFoundError("❌ ไม่พบไฟล์ภาพเริ่มต้น")
+                    image = Image.open(image_path)
+
+                image = image.resize((100, 100), Image.Resampling.LANCZOS)
+                profile_image = ImageTk.PhotoImage(image)
+
+                # ✅ ใช้ Tkinter `after()` เพื่ออัปเดต UI ใน main thread
+                self.after(0, lambda: self.update_profile_image(profile_image))
+
+            except Exception as e:
+                print(f"❌ เกิดข้อผิดพลาดในการโหลดภาพ: {e}")
+                self.after(0, lambda: messagebox.showerror("Error", "ไม่สามารถโหลดรูปภาพได้"))
+
+        thread = threading.Thread(target=fetch, daemon=True)
+        thread.start()
+
+    def update_profile_image(self, profile_image):
+        """ ฟังก์ชันสำหรับอัปเดตรูปโปรไฟล์ใน UI (Main Thread) """
+        self.profile_image = profile_image
+        self.canvas.itemconfig(self.profile_pic, image=self.profile_image)
+
+    def change_profile_picture(self, event=None):
+        """ ใช้ threading เพื่อให้อัปโหลดรูปทำงานใน background thread """
+        
+        def upload_profile_picture():
+            """ ฟังก์ชันอัปโหลดรูปใน thread แยก """
+            if self.user_id is None:
+                messagebox.showerror("Error", "ไม่พบ user_id กรุณาลองใหม่")
+                return
+
+            file_path = filedialog.askopenfilename(
+                title="เลือกภาพโปรไฟล์",
+                filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif;*.bmp")]
+            )
+
+            if not file_path:
+                return  # ผู้ใช้กดยกเลิก ไม่ต้องทำอะไรต่อ
+
+            try:
+                # ✅ 1. ดึง URL ของรูปโปรไฟล์เก่าจาก API
+                response = requests.get(f"http://localhost:8000/get_profile_image/", params={"user_id": self.user_id})
+                profile_url = response.json().get("profile_url") if response.status_code == 200 else None
+
+                # ✅ 2. ลบรูปโปรไฟล์เก่า ถ้ามี
+                if profile_url:
+                    delete_response = requests.delete(
+                        "http://localhost:8000/delete_old_profile/",
+                        params={"user_id": self.user_id, "profile_url": profile_url}
+                    )
+                    print(delete_response.json().get("message"))
+
+                # ✅ 3. อัปโหลดรูปภาพใหม่ไปยัง Azure Blob Storage
+                upload_url = f"http://localhost:8000/upload_profile/?user_id={self.user_id}"
                 with open(file_path, "rb") as file:
                     files = {"file": file}
                     upload_response = requests.post(upload_url, files=files)
 
                 if upload_response.status_code == 200:
-                    profile_url = upload_response.json().get("profile_url", None)
-                    if not profile_url:
-                        print(f"❌ ไม่พบ URL ของรูปที่อัปโหลด: {upload_response.json()}")
-                        messagebox.showerror("Error", "ไม่พบ URL ของรูปที่อัปโหลด กรุณาลองใหม่")
+                    new_profile_url = upload_response.json().get("profile_url", None)
+                    if not new_profile_url:
+                        self.after(0, lambda: messagebox.showerror("Error", "ไม่พบ URL ของรูปที่อัปโหลด กรุณาลองใหม่"))
                         return
-
-                    print(f"✅ รูปโปรไฟล์ถูกอัปโหลดไปยัง Azure Blob Storage: {profile_url}")
+                    print(f"✅ รูปโปรไฟล์ถูกอัปโหลดไปยัง Azure Blob Storage: {new_profile_url}")
                 else:
-                    print(f"❌ อัปโหลดรูปโปรไฟล์ล้มเหลว: {upload_response.json()}")
-                    messagebox.showerror("Error", "อัปโหลดรูปโปรไฟล์ไปยัง Blob Storage ล้มเหลว กรุณาลองใหม่อีกครั้ง")
+                    self.after(0, lambda: messagebox.showerror("Error", "อัปโหลดรูปโปรไฟล์ล้มเหลว กรุณาลองใหม่อีกครั้ง"))
                     return
 
-                # ✅ 3. ดึงรูปภาพจาก URL มาแสดงแทนที่ภาพเดิม
-                image_data = requests.get(profile_url).content
+                # ✅ 4. โหลดรูปภาพใหม่และอัปเดต UI
+                image_data = requests.get(new_profile_url).content
                 image = Image.open(io.BytesIO(image_data))
                 image = image.resize((100, 100), Image.Resampling.LANCZOS)
-                self.profile_image = ImageTk.PhotoImage(image)
+                new_profile_image = ImageTk.PhotoImage(image)
 
-                # ✅ 4. อัปเดตโปรไฟล์ใน Canvas
-                self.canvas.itemconfig(self.profile_pic, image=self.profile_image)
-                print("✅ เปลี่ยนรูปโปรไฟล์สำเร็จ!")
+                # ✅ ใช้ `after()` เพื่อให้ UI อัปเดตใน main thread
+                self.after(0, lambda: self.update_profile_image(new_profile_image))
 
             except Exception as e:
-                messagebox.showerror("Error", f"ไม่สามารถอัปโหลดรูปโปรไฟล์ได้: {e}")
+                self.after(0, lambda: messagebox.showerror("Error", f"ไม่สามารถอัปโหลดรูปโปรไฟล์ได้: {e}"))
 
-    
+        # ✅ รัน `upload_profile_picture()` ใน background thread
+        thread = threading.Thread(target=upload_profile_picture, daemon=True)
+        thread.start()
+
+    def update_profile_image(self, new_profile_image):
+        """ ฟังก์ชันอัปเดต UI จาก main thread """
+        self.profile_image = new_profile_image
+        self.canvas.itemconfig(self.profile_pic, image=self.profile_image)
+        print("✅ เปลี่ยนรูปโปรไฟล์สำเร็จ!")
+
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
         url = f"{self.api_base_url}/get_user_id/{user_email}"
