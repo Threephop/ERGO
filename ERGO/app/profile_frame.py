@@ -28,7 +28,7 @@ class ProfileFrame(tk.Frame):
             self.load_profile_image(self.user_id)
         else:
             print("⚠️ ไม่พบ user_id, ใช้รูปเริ่มต้นแทน")
-            self.load_profile_image(None)  # ใช้ default image
+            self.load_profile_image(self.default_profile_path)  
 
         # Canvas แสดงภาพโปรไฟล์ (คลิกเพื่อเปลี่ยน)
         self.canvas = tk.Canvas(self, width=100, height=100, bg="#ffffff", highlightthickness=0)
