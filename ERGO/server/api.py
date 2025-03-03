@@ -627,31 +627,54 @@ def get_profile_url(user_id: int):
     finally:
         conn.close()  # ปิดการเชื่อมต่อฐานข้อมูล
 
-@api_router.get("/get_user_videos/")
+@api_router.get("/get_user_videos/{user_id}")
 def get_user_videos(user_id: int):
+    """ ดึงข้อมูลวิดีโอของผู้ใช้จากฐานข้อมูล """
     conn = get_db_connection()
     cursor = conn.cursor()
 
     query = """
-        SELECT post_id, video_path, image_path, 
-               (SELECT COUNT(*) FROM dbo.Like_Table WHERE post_id = c.post_id) AS like_count
-        FROM dbo.CommunityPosts_Table c
-        WHERE c.user_id = ?
+    SELECT post_id, video_path AS video_url, image_path AS thumbnail_url, 
+           (SELECT COUNT(*) FROM dbo.Like_Table WHERE post_id = c.post_id) AS like_count
+    FROM dbo.CommunityPosts_Table c
+    WHERE user_id = ?
     """
     cursor.execute(query, (user_id,))
     videos = cursor.fetchall()
-    conn.close()
 
-    # ✅ Debug เพื่อตรวจสอบว่ามีข้อมูลจริงหรือไม่
-    print(f"Videos fetched for user_id {user_id}: {videos}")
+    conn.close()
 
     return {
         "videos": [
             {
                 "post_id": row[0],
-                "video_url": row[1],  
-                "thumbnail_url": row[2],  
+                "video_url": row[1],
+                "thumbnail_url": row[2] if row[2] else None,
                 "like_count": row[3]
-            } for row in videos if row[1]  # ✅ ตรวจสอบว่า video_url ไม่ใช่ None
+            }
+            for row in videos
         ]
     }
+
+
+@api_router.get("/refresh_Like/")
+def refresh_Like(user_id: int):
+    """ รีโหลดข้อมูลโพสต์ของผู้ใช้ทั้งหมด คล้ายกับที่ทำใน Commu """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT post_id, video_path AS video_url, 
+               COUNT(l.like_id) AS like_count
+        FROM dbo.CommunityPosts_Table c
+        LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  
+        WHERE c.user_id = ?
+        GROUP BY c.post_id, c.video_path
+    """
+    
+    cursor.execute(query, (user_id,))
+    videos = cursor.fetchall()
+    conn.close()
+
+    return {"videos": [{"post_id": row[0], "video_url": row[1], "like_count": row[2]} for row in videos]}
+
