@@ -98,6 +98,7 @@ class ProfileFrame(tk.Frame):
                     print("⚠️ ไม่มี URL รูปใน Database")
 
                 if not profile_url:
+                    # ใช้รูปโปรไฟล์เริ่มต้น
                     image_path = self.default_profile_path
                     if not os.path.exists(image_path):
                         raise FileNotFoundError("❌ ไม่พบไฟล์ภาพเริ่มต้น")
@@ -111,7 +112,17 @@ class ProfileFrame(tk.Frame):
 
             except Exception as e:
                 print(f"❌ เกิดข้อผิดพลาดในการโหลดภาพ: {e}")
-                self.after(0, lambda: messagebox.showerror("Error", "ไม่สามารถโหลดรูปภาพได้"))
+                # ใช้รูปโปรไฟล์เริ่มต้นหากเกิดข้อผิดพลาดในการโหลดรูป
+                image_path = self.default_profile_path
+                if os.path.exists(image_path):
+                    image = Image.open(image_path)
+                    image = image.resize((100, 100), Image.Resampling.LANCZOS)
+                    profile_image = ImageTk.PhotoImage(image)
+
+                    # ✅ ใช้ Tkinter `after()` เพื่ออัปเดต UI ใน main thread
+                    self.after(0, lambda: self.update_profile_image(profile_image))
+                else:
+                    self.after(0, lambda: messagebox.showerror("Error", "ไม่สามารถโหลดรูปภาพได้"))
 
         thread = threading.Thread(target=fetch, daemon=True)
         thread.start()
