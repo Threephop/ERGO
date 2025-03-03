@@ -330,7 +330,7 @@ class CommunityFrame(tk.Frame):
         text_bubble = ctk.CTkLabel(
             bubble_frame,
             text=message,
-            font=("PTT 45 Pride", 16),
+            font=("PTT 45 Pride", 18),
             fg_color="#a3d977",  # สีพื้นหลังของข้อความ
             text_color="black",  # สีตัวอักษร
             corner_radius=20,
