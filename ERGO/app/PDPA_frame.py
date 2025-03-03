@@ -38,37 +38,51 @@ class PopupFrame(ctk.CTkToplevel):
         canvas.create_window((0, 0), window=check_frame, anchor="nw", width=800)
 
         # โหลดข้อความจากไฟล์ pdpa.txt
-        pdpa_file_path = os.path.join(os.path.dirname(__file__), "text\pdpa.txt")
+        pdpa_file_path = os.path.join(os.path.dirname(__file__), "text/pdpa.txt")
         try:
             with open(pdpa_file_path, "r", encoding="utf-8") as file:
                 pdpa_content = file.read()
             
-            # ใช้ Regular Expression เพื่อแยกแต่ละข้อออกจากกันโดยใช้ตัวเลขลำดับ
-            check_texts = re.split(r'(?=\d+\.\s)', pdpa_content.strip())  # แยกตามรูปแบบ "1. " "2. " "3. " เป็นต้น
-            check_texts = [text.strip() for text in check_texts if text.strip()]  # ลบช่องว่างหน้า-หลัง
+            # ใช้ Regular Expression เพื่อจับตัวเลขข้อ + เนื้อหาไว้ด้วยกัน
+            check_texts = re.findall(r'(\d+\.\s.*?)(?=\n\d+\.|\Z)', pdpa_content, re.DOTALL)
         except FileNotFoundError:
             check_texts = ["ไม่สามารถโหลดเนื้อหา PDPA ได้ กรุณาตรวจสอบไฟล์ pdpa.txt"]
 
         # เพิ่ม CheckBox และ Label
         self.check_vars = []
+        self.check_boxes = []
+
         for i, text in enumerate(check_texts):
             var = ctk.BooleanVar()
             self.check_vars.append(var)
 
-            # CheckBox
-            check_box = ctk.CTkCheckBox(check_frame, text="", variable=var, fg_color="white",
-                                        width=20, height=40, checkbox_width=20, checkbox_height=20)
-            check_box.grid(row=i, column=0, sticky="w", padx=(5, 10), pady=5)  # ปรับ padx ให้ Checkbox มีระยะพอดี
+            # สร้าง Frame ย่อยสำหรับวาง CheckBox และข้อความให้ชิดกัน
+            item_frame = ctk.CTkFrame(check_frame, fg_color="white")
+            item_frame.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
-            # Label ที่ชิดซ้ายสุด
-            label = ctk.CTkLabel(check_frame, text=text, font=("PTT 45 Pride", 16), text_color="black", fg_color="white",
-                                wraplength=700, width=600, justify="left", anchor="w")  # ใช้ anchor="w" ให้ชิดซ้าย
-            label.grid(row=i, column=1, sticky="w", padx=0, pady=5)  # ปรับให้ Label ตรงกับ CheckBox
+            # สร้าง CheckBox
+            check_box = ctk.CTkCheckBox(item_frame, text="", variable=var, 
+                                        width=20, height=40, checkbox_width=20, checkbox_height=20,
+                                        fg_color="gray")  # ตั้งค่าเริ่มต้นเป็นสีเทา
+            check_box.pack(side="left", padx=(0, 5))
 
-        # ตั้งค่า column 1 (Label) ให้เป็นตัวหลักของข้อความ เพื่อให้ข้อความไม่ล้ำไปด้านขวา
-        check_frame.grid_columnconfigure(1, weight=1)
+            # บันทึก CheckBox ไว้ในรายการ
+            self.check_boxes.append(check_box)
 
+            # ฟังก์ชันเปลี่ยนสี Checkbox เป็นสีเขียวเมื่อเลือก
+            def update_checkbox_color(var=var, checkbox=check_box):
+                if var.get():
+                    checkbox.configure(fg_color="green")  # เปลี่ยนเป็นสีเขียวเมื่อถูกติ๊ก
+                else:
+                    checkbox.configure(fg_color="gray")  # สีเริ่มต้น
 
+            # กำหนดให้ CheckBox เรียกฟังก์ชัน update_checkbox_color ทุกครั้งที่มีการกด
+            check_box.configure(command=lambda v=var, c=check_box: update_checkbox_color(v, c))
+
+            # สร้าง Label อยู่ใน item_frame เดียวกับ CheckBox
+            label = ctk.CTkLabel(item_frame, text=text, font=("PTT 45 Pride", 16), text_color="black", fg_color="white",
+                                 wraplength=700, width=700, justify="left", anchor="w")
+            label.pack(side="left")
 
         # ปุ่มเลือกทั้งหมด
         select_all_button = ctk.CTkButton(self, text="เลือกทั้งหมด", command=self.select_all,
@@ -85,12 +99,6 @@ class PopupFrame(ctk.CTkToplevel):
             canvas.configure(scrollregion=canvas.bbox("all"))
 
         check_frame.bind("<Configure>", update_scrollregion)
-
-        # การเลื่อน Scrollbar ด้วยเมาส์
-        def on_mouse_wheel(event):
-            canvas.yview_scroll(-1 * (event.delta // 120), "units")
-
-        canvas.bind_all("<MouseWheel>", on_mouse_wheel)
 
         # เปิดลิงก์
         def open_link(event):
@@ -110,7 +118,6 @@ class PopupFrame(ctk.CTkToplevel):
                                       font=("PTT 45 Pride", 12), fg_color="#FF5959", text_color="white")
         reject_button.place(x=550, y=600)
 
-        # Disable parent interaction while popup is open
         self.transient(parent)
         self.grab_set()
 
@@ -122,10 +129,12 @@ class PopupFrame(ctk.CTkToplevel):
 
     # ฟังก์ชันเลือกทั้งหมด
     def select_all(self):
-        for var in self.check_vars:
+        for var, checkbox in zip(self.check_vars, self.check_boxes):
             var.set(True)
+            checkbox.configure(fg_color="green")  # เปลี่ยนเป็นสีเขียว
 
     # ฟังก์ชันยกเลิกการเลือกทั้งหมด
     def deselect_all(self):
-        for var in self.check_vars:
+        for var, checkbox in zip(self.check_vars, self.check_boxes):
             var.set(False)
+            checkbox.configure(fg_color="gray")  # กลับเป็นสีเทา
