@@ -27,7 +27,7 @@ class ProfileFrame(tk.Frame):
         self.canvas = tk.Canvas(self, width=100, height=100, bg="#ffffff", highlightthickness=0)
         self.profile_pic = self.canvas.create_image(50, 50, image=self.profile_image, tags="profile_pic")
         self.canvas.place(relx=0.4, rely=0.2, anchor="center")
-        self.canvas.tag_bind("profile_pic", "<Button-1>", self.change_profile_picture)  # คลิกเปลี่ยนรูป
+        self.canvas.tag_bind("profile_pic", "<Button-1>", lambda event: self.change_profile_picture(event, self.user_id))
 
         self.user_email = user_email
         self.api_base_url = "http://127.0.0.1:8000"
@@ -89,7 +89,7 @@ class ProfileFrame(tk.Frame):
             print(f"เกิดข้อผิดพลาดในการโหลดภาพ: {e}")
             messagebox.showerror("Error", "ไม่สามารถโหลดรูปภาพได้")
 
-    def change_profile_picture(self, event=None):
+    def change_profile_picture(self, event=None, user_id=None):
         """ ให้ผู้ใช้เลือกภาพใหม่ และอัปโหลดไปยัง Azure Blob Storage """
         file_path = filedialog.askopenfilename(
             title="เลือกภาพโปรไฟล์",
@@ -99,7 +99,7 @@ class ProfileFrame(tk.Frame):
         if file_path:
             try:
                 # ✅ 1. เช็คการเชื่อมต่อกับ Azure Blob Storage ก่อน
-                container_name = "ergo"  # 🔹 แก้เป็นชื่อ Container จริง
+                container_name = "image-profile"  # 🔹 แก้เป็นชื่อ Container จริง
                 check_blob_url = f"http://localhost:8000/check_blob_storage/?container_name={container_name}"
                 response = requests.get(check_blob_url)
 
@@ -111,14 +111,19 @@ class ProfileFrame(tk.Frame):
                     messagebox.showerror("Error", "ไม่สามารถเชื่อมต่อกับ Blob Storage ได้ กรุณาลองใหม่อีกครั้ง")
                     return
 
-                # ✅ 2. อัปโหลดรูปภาพไปยัง Azure Blob Storage
-                upload_url = "http://localhost:8000/upload_video/"
+                # ✅ 2. อัปโหลดรูปภาพไปยัง Azure Blob Storage พร้อมส่ง user_id
+                upload_url = f"http://localhost:8000/upload_profile/?user_id={user_id}"
                 with open(file_path, "rb") as file:
                     files = {"file": file}
                     upload_response = requests.post(upload_url, files=files)
 
                 if upload_response.status_code == 200:
-                    profile_url = upload_response.json().get("profile_url")
+                    profile_url = upload_response.json().get("profile_url", None)
+                    if not profile_url:
+                        print(f"❌ ไม่พบ URL ของรูปที่อัปโหลด: {upload_response.json()}")
+                        messagebox.showerror("Error", "ไม่พบ URL ของรูปที่อัปโหลด กรุณาลองใหม่")
+                        return
+
                     print(f"✅ รูปโปรไฟล์ถูกอัปโหลดไปยัง Azure Blob Storage: {profile_url}")
                 else:
                     print(f"❌ อัปโหลดรูปโปรไฟล์ล้มเหลว: {upload_response.json()}")
@@ -137,6 +142,7 @@ class ProfileFrame(tk.Frame):
 
             except Exception as e:
                 messagebox.showerror("Error", f"ไม่สามารถอัปโหลดรูปโปรไฟล์ได้: {e}")
+
     
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
