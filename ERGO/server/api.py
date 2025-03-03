@@ -482,7 +482,8 @@ def get_activity_details(email: str):
         d.wednesday, 
         d.thursday, 
         d.friday, 
-        d.saturday
+        d.saturday,
+        d.sunday  -- เพิ่มคอมม่าเพื่อแยกคอลัมน์
     FROM dbo.Dashboard_Table d
     JOIN dbo.Users_Table u ON d.user_id = u.user_id
     WHERE u.outlook_mail = ?
@@ -503,7 +504,8 @@ def get_activity_details(email: str):
         data[3],  # Wednesday
         data[4],  # Thursday
         data[5],  # Friday
-        data[6]   # Saturday
+        data[6],   # Saturday
+        data[7]   # Sunday
     ]
 
     conn.close()
