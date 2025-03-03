@@ -72,9 +72,9 @@ async def upload_video(user_id: int, file: UploadFile = File(...), container_nam
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload video: {e}")
     
-# API สำหรับอัปโหลดไฟล์วิดีโอไปยัง Blob Storage
+# API สำหรับอัปโหลดรูปไปยัง Blob Storage
 @blob_router.post("/upload_profile/")
-async def upload_video(user_id: int, file: UploadFile = File(...), container_name: str = "ergo"):
+async def upload_video(user_id: int, file: UploadFile = File(...), container_name: str = "image-profile"): # เก็บรูปโปรไฟล์ใน container
     # ตรวจสอบว่าไฟล์ถูกส่งมาหรือไม่
     if file is None:
         raise HTTPException(status_code=400, detail="No file uploaded")

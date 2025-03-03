@@ -510,3 +510,25 @@ def get_monthly_usage_stats(user_id: int):
     else:
         raise HTTPException(status_code=404, detail="No monthly usage data found for this user")
 
+@api_router.get("/get_profile_url/{user_id}")
+def get_profile_url(user_id: int):
+    """ ดึง URL รูปโปรไฟล์จากฐานข้อมูล """
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 🔹 ค้นหา URL รูปโปรไฟล์จาก Users_Table
+        cursor.execute("SELECT image FROM dbo.Users_Table WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+
+        if row and row[0]:  # ถ้ามีข้อมูล URL
+            return {"profile_url": row[0]}
+        else:
+            raise HTTPException(status_code=404, detail="❌ ไม่พบรูปโปรไฟล์ของผู้ใช้ในฐานข้อมูล")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"❌ เกิดข้อผิดพลาดระหว่างดึงข้อมูล: {e}")
+
+    finally:
+        conn.close()  # ปิดการเชื่อมต่อฐานข้อมูล
