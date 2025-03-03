@@ -10,7 +10,9 @@ import subprocess  # เพิ่มการนำเข้า subprocess
 class ProfileFrame(tk.Frame):
     def __init__(self, parent, user_email, app_instance):
         super().__init__(parent, bg="white")
-
+        self.user_email = user_email
+        self.api_base_url = "http://127.0.0.1:8000"
+        self.user_id = self.fetch_user_id(user_email)  # ดึง user_id จาก API
         self.app_instance = app_instance
         self.logout_called = False  # ป้องกัน Logout ซ้ำ
         self.timer_stopped = False  # ป้องกัน stop_timer() ทำงานซ้ำ
@@ -21,7 +23,11 @@ class ProfileFrame(tk.Frame):
 
         # โหลดภาพโปรไฟล์เริ่มต้น
         self.profile_image = None
-        self.load_profile_image(self.default_profile_path)
+        if self.user_id:
+            self.load_profile_image(self.user_id)
+        else:
+            print("⚠️ ไม่พบ user_id, ใช้รูปเริ่มต้นแทน")
+            self.load_profile_image(None)  # ใช้ default image
 
         # Canvas แสดงภาพโปรไฟล์ (คลิกเพื่อเปลี่ยน)
         self.canvas = tk.Canvas(self, width=100, height=100, bg="#ffffff", highlightthickness=0)
@@ -29,9 +35,6 @@ class ProfileFrame(tk.Frame):
         self.canvas.place(relx=0.4, rely=0.2, anchor="center")
         self.canvas.tag_bind("profile_pic", "<Button-1>", lambda event: self.change_profile_picture(event, self.user_id))
 
-        self.user_email = user_email
-        self.api_base_url = "http://127.0.0.1:8000"
-        self.user_id = self.fetch_user_id(user_email)  # ดึง user_id จาก API
         
         # 🔹 ดึงรายชื่อ users จาก API
         response = requests.get("http://127.0.0.1:8000/users")
@@ -75,18 +78,33 @@ class ProfileFrame(tk.Frame):
         self.logout_button.place(relx=0.8, rely=0.05, anchor="ne")
 
     
-    def load_profile_image(self, image_path):
-        """ โหลดและปรับขนาดภาพโปรไฟล์ """
+    def load_profile_image(self, user_id):
+        """ โหลดรูปโปรไฟล์จาก URL ถ้ามี หรือใช้ค่า default """
         try:
-            if not os.path.exists(image_path):
-                image_path = self.default_profile_path  # ใช้ค่าเริ่มต้นถ้าไม่มีไฟล์
+            # ✅ ดึง URL ของรูปโปรไฟล์จาก API
+            response = requests.get(f"http://localhost:8000/get_profile_image/?user_id={user_id}")
+            if response.status_code == 200:
+                profile_url = response.json().get("profile_url")
+            else:
+                profile_url = None
+            
+            # ✅ ถ้ามี URL รูปใน Database ให้ใช้ URL
+            if profile_url:
+                image_data = requests.get(profile_url).content
+                image = Image.open(io.BytesIO(image_data))
+            else:
+                # ✅ ถ้าไม่มี URL ให้ใช้ค่าเริ่มต้น
+                image_path = self.default_profile_path
+                if not os.path.exists(image_path):
+                    raise FileNotFoundError("ไม่พบไฟล์ภาพเริ่มต้น")
+                image = Image.open(image_path)
 
-            image = Image.open(image_path)
+            # ✅ ปรับขนาดและแสดงผลรูปโปรไฟล์
             image = image.resize((100, 100), Image.Resampling.LANCZOS)
             self.profile_image = ImageTk.PhotoImage(image)
 
         except Exception as e:
-            print(f"เกิดข้อผิดพลาดในการโหลดภาพ: {e}")
+            print(f"❌ เกิดข้อผิดพลาดในการโหลดภาพ: {e}")
             messagebox.showerror("Error", "ไม่สามารถโหลดรูปภาพได้")
 
     def change_profile_picture(self, event=None, user_id=None):
