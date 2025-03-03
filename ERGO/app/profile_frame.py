@@ -83,20 +83,29 @@ class ProfileFrame(tk.Frame):
         try:
             # ✅ ดึง URL ของรูปโปรไฟล์จาก API
             response = requests.get(f"http://localhost:8000/get_profile_image/?user_id={user_id}")
+
             if response.status_code == 200:
                 profile_url = response.json().get("profile_url")
             else:
                 profile_url = None
             
-            # ✅ ถ้ามี URL รูปใน Database ให้ใช้ URL
+            # ✅ ตรวจสอบว่า URL ใช้ได้หรือไม่
             if profile_url:
-                image_data = requests.get(profile_url).content
-                image = Image.open(io.BytesIO(image_data))
+                image_response = requests.get(profile_url)
+                if image_response.status_code == 200:
+                    image_data = image_response.content
+                    image = Image.open(io.BytesIO(image_data))
+                else:
+                    print(f"⚠️ รูปโปรไฟล์ไม่พบใน Storage: {profile_url}")
+                    profile_url = None  # ตั้งให้เป็น None เพื่อใช้รูป Default
             else:
-                # ✅ ถ้าไม่มี URL ให้ใช้ค่าเริ่มต้น
+                print("⚠️ ไม่มี URL รูปใน Database")
+
+            # ✅ ถ้าไม่มี URL หรือรูปหายไป ให้ใช้ค่าเริ่มต้น
+            if not profile_url:
                 image_path = self.default_profile_path
                 if not os.path.exists(image_path):
-                    raise FileNotFoundError("ไม่พบไฟล์ภาพเริ่มต้น")
+                    raise FileNotFoundError("❌ ไม่พบไฟล์ภาพเริ่มต้น")
                 image = Image.open(image_path)
 
             # ✅ ปรับขนาดและแสดงผลรูปโปรไฟล์

@@ -150,6 +150,7 @@ def signup():
 # ฟังก์ชัน Guest
 def guest():
     messagebox.showinfo("Guest", "Guest clicked!")
+    launch_main_app(email = None)
 
 # ฟังก์ชัน Logout
 def logout():
