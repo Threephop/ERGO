@@ -128,10 +128,10 @@ def get_messages(user_id: int = Query(None)):  # รับ user_id ของผ�
                END AS liked_by_user
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
-        LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  -- ดึงไลก์ของทุกคน
+        LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  
         GROUP BY c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path
         ORDER BY c.create_at
-    """, (user_id,))  # ใช้ user_id ของคนที่ล็อกอินมาตรวจสอบว่าเขาไลก์โพสต์ไหน
+    """, (user_id,))
 
     messages = cursor.fetchall()
     conn.close()
@@ -144,8 +144,8 @@ def get_messages(user_id: int = Query(None)):  # รับ user_id ของผ�
             "user_id": row[3], 
             "username": row[4], 
             "video_path": row[5], 
-            "like_count": row[6],  # จำนวนไลก์ทั้งหมด
-            "liked_by_user": row[7]  # ผู้ใช้ที่ล็อกอินไลก์โพสต์นี้หรือไม่
+            "like_count": row[6],  
+            "liked_by_user": row[7]  # เพิ่ม liked_by_user ที่ตรวจสอบว่า user ได้กดไลก์แล้วหรือยัง
         }
         for row in messages
     ]}
@@ -250,6 +250,21 @@ def check_like(post_id: int, user_id: int):
     conn.close()
 
     return {"post_id": post_id, "user_id": user_id, "is_liked": is_liked}
+
+@api_router.get("/get_profile_image")
+async def get_profile_image(user_id: int):
+    """ API ดึง URL รูปโปรไฟล์ของผู้ใช้จาก Database """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    query = "SELECT image FROM dbo.Users_Table WHERE user_id = ?"
+    cursor.execute(query, (user_id,))
+    row = cursor.fetchone()
+
+    if row and row[0]:  # ถ้ามีค่าในคอลัมน์ image
+        return {"profile_url": row[0]}
+    
+    return {"profile_url": None}  # ถ้าไม่มีรูป
 
 
 @api_router.get("/showstat")
