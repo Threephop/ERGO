@@ -46,20 +46,17 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
     def create_content(self, parent, text, color):
         """ สร้าง Label แสดงข้อความในแต่ละแท็บ """
         label = tk.Label(parent, text=text, font=("PTT 45 Pride", 14), fg=color, bg="white")
-        label.pack(pady=10) 
+        label.pack(pady=5)  # ลด pady ที่นี่
 
-        # ✅ วาง widget ต่างๆ ใน tab1
         if text == "Active":  # เฉพาะแท็บ "Active" ที่จะสร้างกราฟและปุ่ม Export
             self.create_chart(self.tab1)  # ส่ง self.tab1 ไปเป็น parent
             self.create_activity_details(self.tab1, self.user_email)  # เรียกใช้แค่ใน tab1
 
             # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
             self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
-            self.export_button.pack(pady=10)
+            self.export_button.pack(pady=2)  # ลด pady ที่นี่
         else:
-            # สำหรับแท็บอื่นๆ ไม่ต้องสร้างกราฟหรือปุ่ม Export
             pass
-
 
         
     def fetch_user_id(self, user_email):
@@ -172,21 +169,22 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             return  # ❌ ถ้ามีแล้ว ไม่ต้องสร้างใหม่
 
         # ✅ สร้าง Frame ของ Activity Table
-        self.activity_frame = ttk.LabelFrame(parent, text="Activity", padding=(10, 10))
-        self.activity_frame.pack(padx=10, pady=10, fill="both", expand=True)
+        self.activity_frame = ttk.LabelFrame(parent, text="Activity", padding=(5, 1))  # ปรับค่า padding เพื่อให้พื้นที่ในแกน Y แคบลง
+        self.activity_frame.pack(padx=10, pady=2, fill="both", expand=True)
 
         # ✅ สร้าง Treeview ครั้งเดียว
         self.tree = ttk.Treeview(self.activity_frame, columns=(), show="headings")
-        self.tree.pack(fill="both", expand=True)
+        self.tree.pack(fill="both", expand=True, pady=(0, 10))  # ปรับ pady ที่ Treeview เพื่อจัดการพื้นที่ว่างในแนว Y
 
         # ✅ อัปเดตตาราง (Week เป็นค่าเริ่มต้น)
         self.update_activity_table("Week", user_email)
 
+
  
     def create_chart(self, parent):
         """สร้างกราฟพร้อมตัวเลือก Filter"""
-        self.chart_frame = ttk.LabelFrame(parent, text="Statistics", padding=(10, 10))
-        self.chart_frame.pack(padx=10, pady=10, fill="both", expand=True)
+        self.chart_frame = ttk.LabelFrame(parent, text="Statistics", padding=(10, 5))
+        self.chart_frame.pack(padx=10, pady=5, fill="both", expand=True)
 
         # ✅ สร้าง Filter Dropdown
         self.filter_var = tk.StringVar(value="Week")  
@@ -198,7 +196,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         self.filter_dropdown.bind("<<ComboboxSelected>>", lambda e: self.on_filter_change())
 
         # ✅ สร้างกราฟ
-        self.fig, self.ax = plt.subplots(figsize=(12, 4))
+        self.fig, self.ax = plt.subplots(figsize=(12, 3))
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.chart_frame)
         self.canvas_widget = self.canvas.get_tk_widget()
         self.canvas_widget.pack(fill="both", expand=True)
@@ -240,7 +238,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         for col in columns:
             self.tree.heading(col, text=col)  # ตั้งชื่อ Header ใหม่
-            self.tree.column(col, width=100, anchor="center")  # ปรับขนาดให้พอดี
+            self.tree.column(col, width=10, anchor="center")  # ปรับขนาดให้พอดี
 
         # ✅ ดึงข้อมูลจาก API
         response = requests.get(api_url)
