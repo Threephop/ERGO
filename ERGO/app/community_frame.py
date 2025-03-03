@@ -254,27 +254,51 @@ class CommunityFrame(tk.Frame):
         return None  # ถ้าหาไม่เจอให้ return None
             
     def cancel_single_message(self, bubble_frame, post_id):
-        # ฟังก์ชัน callback เมื่อผู้ใช้กดยืนยันการลบ
+        """ ฟังก์ชันยกเลิก (ลบ) ข้อความและลบวิดีโอจาก Storage ถ้ามี """
+
         def on_ok():
             try:
+                # ✅ 1. เรียก API เพื่อตรวจสอบว่ามีวิดีโอในโพสต์นี้หรือไม่
+                video_response = requests.get(
+                    f"http://localhost:8000/get_video_path",
+                    params={"post_id": post_id}
+                )
+
+                if video_response.status_code == 200:
+                    video_path = video_response.json().get("video_path")
+                    if video_path:
+                        # ✅ 2. ลบวิดีโอออกจาก Storage
+                        delete_video_response = requests.delete(
+                            f"http://localhost:8000/delete_video",
+                            params={"post_id": post_id, "video_url": video_path}  # ส่ง post_id และ video_url ใน query string
+                        )
+
+                        if delete_video_response.status_code == 200:
+                            print(f"✅ วิดีโอถูกลบออกจาก Storage: {video_path}")
+                        else:
+                            print(f"⚠️ ไม่สามารถลบวิดีโอได้: {delete_video_response.json()}")
+
+                # ✅ 3. ลบโพสต์ออกจากฐานข้อมูล
                 response = requests.delete(
                     f"http://localhost:8000/delete-message/{post_id}",
-                    json={"user_id": self.user_id}  # ส่ง user_id ไปด้วยเพื่อยืนยันสิทธิ์ในการลบ
+                    json={"user_id": self.user_id}
                 )
+
                 if response.status_code == 200:
-                    print("ลบข้อความสำเร็จ!")
-                    bubble_frame.destroy()  # ลบ UI หลังจากลบข้อมูลในฐานข้อมูลสำเร็จ
+                    print("✅ ลบข้อความสำเร็จ!")
+                    bubble_frame.destroy()  # ✅ อัปเดต UI
                 else:
-                    print("เกิดข้อผิดพลาด:", response.json())
+                    print("⚠️ เกิดข้อผิดพลาดในการลบโพสต์:", response.json())
+
             except Exception as e:
-                print("เชื่อมต่อ API ไม่สำเร็จ:", e)
-        
-        # ฟังก์ชัน callback เมื่อผู้ใช้กดยกเลิกการลบ
+                print("❌ เชื่อมต่อ API ไม่สำเร็จ:", e)
+
         def on_cancel():
-            print("ยกเลิกการลบข้อความ")
-        
-        # แสดง popup ยืนยันการลบ
+            print("⛔ ยกเลิกการลบข้อความ")
+
+        # ✅ แสดง popup ยืนยันก่อนลบ
         self.show_confirm_popup("ยืนยันการลบ", "คุณต้องการลบข้อความนี้หรือไม่?", on_ok, on_cancel)
+
 
         
     def send_message(self):
