@@ -397,6 +397,50 @@ def update_app_time(email: str, app_time: float):
         "new_hours_used": new_hours
     }
 
+@api_router.get("/update_app_time_month/")
+def update_app_time_month(email: str, app_time: float):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 🔹 ค้นหา user_id จาก Users_Table
+    cursor.execute("SELECT user_id FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_id = user[0]
+    
+    # 🔹 ดึงชื่อเดือนปัจจุบัน
+    current_month = datetime.today().strftime('%B').lower()  # เช่น 'january', 'february', ...
+
+    # 🔹 ดึงค่าปัจจุบันของ hours_used จาก DashboardMonth_Table
+    cursor.execute(f"SELECT {current_month} FROM dbo.DashboardMonth_Table WHERE user_id = ?", (user_id,))
+    current_hours = cursor.fetchone()
+    
+    new_hours = (app_time / 3600)  # แปลงวินาทีเป็นชั่วโมง
+    
+    if current_hours and current_hours[0] is not None:
+        new_hours += float(current_hours[0])  # บวกเพิ่มถ้ามีค่าเดิมอยู่แล้ว
+        cursor.execute(
+            f"UPDATE dbo.DashboardMonth_Table SET {current_month} = ? WHERE user_id = ?",
+            (new_hours, user_id)
+        )
+    else:
+        # 🔹 ถ้าไม่มีข้อมูล ให้เพิ่มข้อมูลใหม่
+        cursor.execute(
+            f"INSERT INTO dbo.DashboardMonth_Table (user_id, {current_month}) VALUES (?, ?)",
+            (user_id, new_hours)
+        )
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "message": "App time updated successfully",
+        "new_hours_used": new_hours
+    }
 
 @api_router.get("/get_usage_stats/{user_id}")
 def get_usage_stats(user_id: int):

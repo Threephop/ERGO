@@ -468,6 +468,7 @@ class App(tk.Tk):
             elapsed_time = time.time() - self.start_time
             self.app_time = Decimal(f"{elapsed_time:.2f}")
             self.send_app_time()
+            self.send_app_time_month()
             print(f"App closed. Total usage time: {self.app_time} seconds")
         else:
             print("Timer was not started.")
@@ -489,6 +490,26 @@ class App(tk.Tk):
             print(f"❌ Error sending data: {e}")
     
     # เริ่ม Task เบื้องหลัง
+        self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
+        self.bg_thread.start()
+    
+    def send_app_time_month(self):
+        """ส่งค่าการใช้งานแอปไปยัง API"""
+        api_url = "http://127.0.0.1:8000/update_app_time_month/"  # เปลี่ยน endpoint
+        params = {
+            "email": self.user_email,
+            "app_time": float(self.app_time)  # แปลงเป็น float ก่อนส่ง
+        }
+        try:
+            response = requests.get(api_url, params=params)
+            if response.status_code == 200:
+                print("✅ App time updated successfully:", response.json())
+            else:
+                print("❌ Failed to update app time:", response.json())
+        except Exception as e:
+            print(f"❌ Error sending data: {e}")
+
+        # เริ่ม Task เบื้องหลัง
         self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
         self.bg_thread.start()
 
