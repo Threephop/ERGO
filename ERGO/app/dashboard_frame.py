@@ -9,6 +9,9 @@ import urllib.parse
 import re
 import os
 import requests
+from PIL import Image, ImageTk
+import cv2
+
 
 class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
     def __init__(self, parent, user_email):
@@ -160,6 +163,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             self.ax.text(bar.get_x() + bar.get_width() / 2, yval, round(yval, 2), ha="center", va="bottom", fontsize=8)
 
         self.canvas.draw()
+    
 
     def create_activity_details(self, parent, user_email):
         """สร้าง Activity Table"""
@@ -206,6 +210,152 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         # ✅ แสดงข้อมูลเริ่มต้น (Week)
         self.update_chart("Week")
+
+  
+
+    def get_video_thumbnail(self, video_url, save_path=None):
+        """ ดึง Thumbnail จากเฟรมแรกของวิดีโอและบันทึกไฟล์ """
+        try:
+            cap = cv2.VideoCapture(video_url)
+            success, frame = cap.read()
+            cap.release()
+
+            if success:
+                if save_path:  # ✅ ถ้ามี save_path ให้บันทึกไฟล์
+                    cv2.imwrite(save_path, frame)
+
+                img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                img = img.resize((150, 100), Image.Resampling.LANCZOS)
+                return ImageTk.PhotoImage(img)
+
+        except Exception as e:
+            print(f"❌ Error loading thumbnail: {e}")
+        
+        return None  # ✅ ถ้าล้มเหลวให้คืนค่า None
+
+
+    def create_video_list(self, parent, videos=None):
+        """ สร้าง UI แสดงวิดีโอของผู้ใช้ และ Like Count """
+
+        # ✅ ถ้า videos ไม่มี ให้ดึงข้อมูลจาก API
+        if videos is None:
+            videos = self.get_user_videos()
+
+        # ✅ สร้าง LabelFrame
+        video_frame = ttk.LabelFrame(parent, text="My Videos", padding=(10, 5))
+        video_frame.pack(padx=10, pady=5, fill="both", expand=True)
+
+        # ✅ ปุ่ม Refresh เฉพาะ My Videos
+        refresh_button = tk.Button(video_frame, text="🔄 Refresh", command=self.refresh_Like, 
+                                bg="#d63384", fg="white", font=("Arial", 10, "bold"))
+        refresh_button.pack(pady=5, anchor="ne")
+
+        # ✅ ถ้าไม่มีวิดีโอ แสดงข้อความ
+        if not videos:
+            tk.Label(video_frame, text="No videos uploaded", font=("Arial", 12), bg="white").pack(pady=10)
+            return
+
+        # ✅ วนลูปแสดงวิดีโอและ Like Count
+        for video in videos:
+            post_id = video.get("post_id", "N/A")
+            video_url = video.get("video_url", "")
+            like_count = video.get("like_count", 0)
+
+            # ✅ ดึง Thumbnail จากวิดีโอ
+            thumbnail_path = f"thumbnail_{post_id}.jpg"
+            thumbnail = self.get_video_thumbnail(video_url, save_path=thumbnail_path)
+
+            if thumbnail:
+                video_label = tk.Label(video_frame, image=thumbnail, bg="white", cursor="hand2")
+                video_label.image = thumbnail
+                video_label.pack(pady=5)
+                video_label.bind("<Button-1>", lambda e, url=video_url: self.play_video(url))
+
+            # ✅ แสดงจำนวน Like
+            like_label = tk.Label(video_frame, text=f"❤  {like_count} Likes", font=("Arial", 12), bg="white")
+            like_label.pack(pady=2)
+
+
+    def load_videos(self):
+        """ โหลดวิดีโอของผู้ใช้จาก API """
+        videos = self.get_user_videos()
+
+        if not videos:
+            tk.Label(self.video_frame, text="No videos uploaded", font=("Arial", 12), bg="white").pack(pady=10)
+            return
+
+        for video in videos:
+            post_id = video.get("post_id", "N/A")
+            video_url = video.get("video_url", "")
+            like_count = video.get("like_count", 0)
+
+            # ✅ แสดงวิดีโอและจำนวนไลก์
+            video_label = tk.Label(self.video_frame, text=f"🎥 Video {post_id}", font=("Arial", 10), bg="white")
+            video_label.pack(pady=2)
+
+            like_label = tk.Label(self.video_frame, text=f"❤ {like_count} Likes", font=("Arial", 10), bg="white")
+            like_label.pack(pady=2)
+
+    def create_content(self, parent, text, color):
+        """ สร้าง Label แสดงข้อความในแต่ละแท็บ """
+        
+        # ✅ สร้าง Label หัวข้อของแต่ละแท็บ
+        label = tk.Label(parent, text=text, font=("PTT 45 Pride", 14), fg=color, bg="white")
+        label.pack(pady=5)  # เว้นระยะห่างจากขอบบน
+
+        # ✅ ถ้าเป็นแท็บ "Active" ให้สร้างกราฟและปุ่ม Export
+        if text == "Active":
+            self.create_chart(parent)  # สร้างกราฟ
+            self.create_activity_details(parent, self.user_email)  # สร้างตาราง Activity
+
+            # 🔹 ปุ่ม Export Excel
+            export_button = tk.Button(parent, text="📊 Export Excel", command=self.export_excel_active,
+                                    bg="#007BFF", fg="white", font=("Arial", 10, "bold"))
+            export_button.pack(pady=5)  # จัดตำแหน่งปุ่ม
+
+        # ✅ ถ้าเป็นแท็บ "Like" ให้สร้างรายการวิดีโอของผู้ใช้
+        elif text == "Like":
+            self.create_video_list(parent)  # โหลดวิดีโอของผู้ใช้
+
+
+    def get_user_videos(self):
+        """ ดึงวิดีโอทั้งหมดของผู้ใช้จาก API """
+        if self.user_id is None:
+            print("❌ No user_id found.")
+            return []
+
+        url = f"{self.api_base_url}/get_user_videos/{self.user_id}"
+        try:
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                return response.json().get("videos", [])
+        except Exception as e:
+            print(f"❌ API error: {e}")
+        return []
+    def refresh_Like(self):
+        """ รีโหลดข้อมูล My Videos (Like Tab) ใหม่จาก API refresh_Like """
+        if self.user_id is None:
+            print("❌ No user_id found.")
+            return
+
+        url = f"{self.api_base_url}/refresh_Like/?user_id={self.user_id}"
+        
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()  # ตรวจสอบสถานะ HTTP
+            
+            data = response.json()
+            print(f"✅ Refreshed videos: {data}")  # Debug log
+            
+            # 🔹 ล้าง UI เก่าทั้งหมด
+            for widget in self.tab2.winfo_children():
+                widget.destroy()
+
+            # 🔹 โหลดข้อมูลใหม่
+            self.create_video_list(self.tab2, videos=data.get("videos", []))
+
+        except requests.exceptions.RequestException as e:
+            print(f"❌ API error: {e}")
 
     def on_filter_change(self):
         """อัปเดตทั้งกราฟและตารางเมื่อเปลี่ยน Filter"""
@@ -280,6 +430,12 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
                 messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
         except requests.exceptions.RequestException:
             messagebox.showerror("Error", "Failed to connect to the server")
+    
+    def play_video(self, video_url):
+        """เปิดวิดีโอใน Web Browser"""
+        import webbrowser
+        webbrowser.open(video_url)
+
             
     def export_excel_month(self):
         """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
