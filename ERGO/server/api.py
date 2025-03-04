@@ -469,10 +469,6 @@ def get_activity_details(email: str):
         conn.close()
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user[0] != 1:  # ถ้าไม่ใช่ Admin
-        conn.close()
-        raise HTTPException(status_code=403, detail="You don't have permission to access this data")
-
     # 🔹 ดึงข้อมูลจาก Users_Table และ Dashboard_Table
     query = """
     SELECT 
