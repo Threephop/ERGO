@@ -562,6 +562,59 @@ def get_activity_details(email: str):
     
     return {"activity_details": details}
 
+@api_router.get("/get_monthly_activity_details/")
+def get_monthly_activity_details(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบว่า user มีอยู่หรือไม่
+    cursor.execute("SELECT user_id, username FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_id, username = user
+
+    # 🔹 ดึงข้อมูลจาก DashboardMonth_Table
+    query = """
+    SELECT 
+        january, february, march, april, may, june, 
+        july, august, september, october, november, december
+    FROM dbo.DashboardMonth_Table
+    WHERE user_id = ?
+    """
+    
+    cursor.execute(query, (user_id,))
+    data = cursor.fetchone()
+
+    if not data:
+        conn.close()
+        raise HTTPException(status_code=404, detail="No monthly activity data found for this user")
+
+    # 🔹 จัดรูปแบบข้อมูลให้อยู่ใน JSON
+    details = {
+        "username": username,
+        "monthly_activity": {
+            "january": data[0] if data[0] is not None else 0,
+            "february": data[1] if data[1] is not None else 0,
+            "march": data[2] if data[2] is not None else 0,
+            "april": data[3] if data[3] is not None else 0,
+            "may": data[4]  if data[4] is not None else 0,
+            "june": data[5]  if data[5] is not None else 0,
+            "july": data[6]  if data[6] is not None else 0,
+            "august": data[7]  if data[7] is not None else 0,
+            "september": data[8]  if data[8] is not None else 0,
+            "october": data[9]  if data[9] is not None else 0,
+            "november": data[10]  if data[10] is not None else 0,
+            "december": data[11]  if data[11] is not None else 0
+        }
+    }
+
+    conn.close()
+    
+    return details
 
 # 🔄 ฟังก์ชันสำหรับอัปเดตชื่อผู้ใช้ (รับค่าเป็น Form Data)
 @api_router.post("/update_username/")
@@ -712,6 +765,7 @@ def get_monthly_usage_stats(user_id: int):
             "September": row[10] if row[10] is not None else 0,
             "October": row[11] if row[11] is not None else 0,
             "November": row[12] if row[12] is not None else 0,
+            "December": row[13] if row[13] is not None else 0,
             "December": row[13] if row[13] is not None else 0,
         }
     else:

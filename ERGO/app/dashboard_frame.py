@@ -372,10 +372,15 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         # ✅ ดึงข้อมูลจาก API
         response = requests.get(api_url)
-        
+
         if response.status_code == 200:
             activity_data = response.json()
-            details = activity_data.get("activity_details", [])
+            
+            if filter_option == "Week":
+                details = activity_data.get("activity_details", [])
+            else:  # 🛠 แก้ให้รองรับ Monthly Activity
+                monthly_data = activity_data.get("monthly_activity", {})
+                details = [activity_data.get("username", "")] + list(monthly_data.values())
         else:
             details = []
 
