@@ -95,8 +95,6 @@ class App(tk.Tk):
             
         
         self.show_popup()
-
-        
         
         # ฟังก์ชันที่จะได้รับค่าภาษา
         self.selected_language = "English"
@@ -126,9 +124,6 @@ class App(tk.Tk):
         # Sidebar
         self.sidebar = tk.Frame(self, bg="#221551", width=200, height=768)  # กำหนดความสูง
         self.sidebar.pack(side="left", fill="y")  # แพ็ค sidebar ทางด้านซ้าย
-
-        self.frames = {}
-        self.current_frame = None
 
         # Username Display with Profile Picture
         self.username_frame = tk.Frame(self.sidebar, bg="#221551", height=200)
