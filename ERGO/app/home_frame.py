@@ -33,7 +33,7 @@ class HomeFrame(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="white") 
         self.parent = parent
-        self.columns = max(2, self.winfo_width() // 250)  # ✅ ปรับค่าเริ่มต้น
+        self.columns = max(3, self.winfo_width() // 250)  # ✅ ปรับค่าเริ่มต้น
         self.init_ui()
         self.bind("<Configure>", self.on_resize)  # ตรวจจับการเปลี่ยนขนาดหน้าต่าง
 
