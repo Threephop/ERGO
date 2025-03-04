@@ -40,10 +40,10 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         self.notebook.add(self.tab2, text="Like")  
 
         # ✅ วาง widget ในแต่ละแท็บ
-        self.create_content(self.tab1, "Active", "#000000")
-        self.create_content(self.tab2, "Like", "#000000")
+        self.create_content(self.tab1, "Active", "#000000", role=self.user_role)
+        self.create_content(self.tab2, "Like", "#000000", role=self.user_role)
 
-    def create_content(self, parent, text, color):
+    def create_content(self, parent, text, color, role):
         """ สร้าง Label แสดงข้อความในแต่ละแท็บ """
         label = tk.Label(parent, text=text, font=("PTT 45 Pride", 14), fg=color, bg="white")
         label.pack(pady=5)  # ลด pady ที่นี่
@@ -51,10 +51,10 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         if text == "Active":  # เฉพาะแท็บ "Active" ที่จะสร้างกราฟและปุ่ม Export
             self.create_chart(self.tab1)  # ส่ง self.tab1 ไปเป็น parent
             self.create_activity_details(self.tab1, self.user_email)  # เรียกใช้แค่ใน tab1
-
-            # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
-            self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
-            self.export_button.pack(pady=2)  # ลด pady ที่นี่
+            if role == 1:
+                # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
+                self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
+                self.export_button.pack(pady=2)  # ลด pady ที่นี่
         else:
             pass
 
