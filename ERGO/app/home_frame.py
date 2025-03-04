@@ -33,7 +33,11 @@ class HomeFrame(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="white") 
         self.parent = parent
+        self.columns = max(2, self.winfo_width() // 250)  # ✅ ปรับค่าเริ่มต้น
         self.init_ui()
+        self.bind("<Configure>", self.on_resize)  # ตรวจจับการเปลี่ยนขนาดหน้าต่าง
+
+        self.after(100, self.on_resize)  # ✅ เรียก on_resize() ตั้งแต่แรก
 
     def init_ui(self):
         """สร้าง UI ใหม่ พร้อมปรับดีไซน์ปุ่ม"""
@@ -44,18 +48,20 @@ class HomeFrame(ctk.CTkFrame):
             self, text="🔄 Update Videos", 
             command=self.update_videos, fg_color="#007BFF", hover_color="#0056b3"
         )
-        self.update_button.pack(pady=5, padx=10, anchor="e")  # ชิดขวา (anchor="e")
-        
+        self.update_button.pack(pady=5, padx=10, anchor="e")  # ชิดขวา
+
         # 🔹 สร้าง Scrollable Frame
-        self.canvas = tk.Canvas(self, bg="white")  # ✅ กำหนดสีพื้นหลังเป็นขาว
+        self.canvas = tk.Canvas(self, bg="white")  
         self.scroll_y = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.frame = ctk.CTkFrame(self.canvas, fg_color="white")  # ✅ กำหนดพื้นหลังขาว
+        self.frame = ctk.CTkFrame(self.canvas, fg_color="white")  
 
         self.canvas.create_window((0, 0), window=self.frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scroll_y.set)
 
         self.scroll_y.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
+
+        self.canvas.bind_all("<MouseWheel>", self.on_mouse_wheel)  # เมาส์เลื่อน Scroll
 
         self.load_video_list()
         
@@ -96,23 +102,24 @@ class HomeFrame(ctk.CTkFrame):
                 print(f"✅ Already exists: {blob_name}")
                 
     def load_video_list(self):
-        """โหลดรายการวิดีโอและแสดงเป็น Thumbnail"""
+        """โหลดรายการวิดีโอและแสดงเป็น Thumbnail Grid"""
         for widget in self.frame.winfo_children():
             widget.destroy()
-        
+
         videos = []
         for folder in [DEFAULT_VIDEO_DIR, UPDATED_VIDEO_DIR]:
             if os.path.exists(folder):
                 videos.extend([os.path.join(folder, f) for f in os.listdir(folder) if f.endswith(('.mp4', '.avi'))])
 
         self.video_thumbnails = []
+
         for idx, video_path in enumerate(videos):
             thumbnail = self.get_video_thumbnail(video_path)
             if thumbnail:
                 self.video_thumbnails.append(thumbnail)
 
-                frame = ctk.CTkFrame(self.frame, corner_radius=10)  # 🔹 เพิ่มมุมโค้งมน
-                frame.grid(row=idx // 4, column=idx % 4, padx=15, pady=15)
+                frame = ctk.CTkFrame(self.frame, corner_radius=10)  
+                frame.grid(row=idx // self.columns, column=idx % self.columns, padx=15, pady=15)
 
                 label = tk.Label(frame, image=thumbnail)
                 label.pack()
@@ -123,6 +130,9 @@ class HomeFrame(ctk.CTkFrame):
                     fg_color="#28A745", hover_color="#1E7E34"
                 )
                 btn.pack(pady=5)
+
+        self.frame.update_idletasks()
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
     def play_selected_video(self):
         """เล่นวิดีโอที่เลือก"""
@@ -139,6 +149,16 @@ class HomeFrame(ctk.CTkFrame):
             play_video(video_path)
         else:
             print(f"❌ Error: Video file not found - {selected_video}")
+
+    def on_resize(self, event):
+        """ตรวจจับการเปลี่ยนขนาดหน้าต่างแล้วปรับจำนวนวิดีโอต่อแถว"""
+        width = event.width
+        self.columns = max(2, width // 250)  # ปรับจำนวนวิดีโอต่อแถวอัตโนมัติ
+        self.load_video_list()
+    
+    def on_mouse_wheel(self, event):
+        """ให้ Canvas ใช้เมาส์เลื่อน Scroll ได้"""
+        self.canvas.yview_scroll(-1 * (event.delta // 120), "units")
 
     def update_videos(self):
         """อัปเดตวิดีโอจาก Azure"""
