@@ -43,8 +43,8 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         self.notebook.add(self.tab2, text="Like")  
 
         # ✅ วาง widget ในแต่ละแท็บ
-        self.create_content(self.tab1, "Active", "#000000", role=self.user_role)
-        self.create_content(self.tab2, "Like", "#000000", role=self.user_role)
+        self.create_content(self.tab1, "Active", "#000000", self.user_role)
+        self.create_content(self.tab2, "Like", "#000000", self.user_role)
 
     def create_content(self, parent, text, color, role):
         """ สร้าง Label แสดงข้อความในแต่ละแท็บ """
@@ -58,6 +58,8 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
                 # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
                 self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
                 self.export_button.pack(pady=2)  # ลด pady ที่นี่
+        elif text == "Like":
+            self.create_video_list(self.tab2)
         else:
             pass
 
@@ -295,28 +297,6 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
             like_label = tk.Label(self.video_frame, text=f"❤ {like_count} Likes", font=("Arial", 10), bg="white")
             like_label.pack(pady=2)
-
-    def create_content(self, parent, text, color):
-        """ สร้าง Label แสดงข้อความในแต่ละแท็บ """
-        
-        # ✅ สร้าง Label หัวข้อของแต่ละแท็บ
-        label = tk.Label(parent, text=text, font=("PTT 45 Pride", 14), fg=color, bg="white")
-        label.pack(pady=5)  # เว้นระยะห่างจากขอบบน
-
-        # ✅ ถ้าเป็นแท็บ "Active" ให้สร้างกราฟและปุ่ม Export
-        if text == "Active":
-            self.create_chart(parent)  # สร้างกราฟ
-            self.create_activity_details(parent, self.user_email)  # สร้างตาราง Activity
-
-            # 🔹 ปุ่ม Export Excel
-            export_button = tk.Button(parent, text="📊 Export Excel", command=self.export_excel_active,
-                                    bg="#007BFF", fg="white", font=("Arial", 10, "bold"))
-            export_button.pack(pady=5)  # จัดตำแหน่งปุ่ม
-
-        # ✅ ถ้าเป็นแท็บ "Like" ให้สร้างรายการวิดีโอของผู้ใช้
-        elif text == "Like":
-            self.create_video_list(parent)  # โหลดวิดีโอของผู้ใช้
-
 
     def get_user_videos(self):
         """ ดึงวิดีโอทั้งหมดของผู้ใช้จาก API """
