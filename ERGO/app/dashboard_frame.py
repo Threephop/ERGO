@@ -280,3 +280,32 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
                 messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
         except requests.exceptions.RequestException:
             messagebox.showerror("Error", "Failed to connect to the server")
+            
+    def export_excel_month(self):
+        """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
+        if self.user_role != 1:
+            messagebox.showerror("Permission Denied", "You don't have permission to export data")
+            return
+
+        try:
+            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}")
+
+            if response.status_code == 200:
+                content_disposition = response.headers.get("Content-Disposition", "")
+                filename = content_disposition.split("filename=")[-1].strip("\"")
+
+                filename = urllib.parse.unquote(filename)
+                filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
+
+                if not filename:
+                    filename = "dashboard_month.xlsx"
+
+                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+                file_path = os.path.join(downloads_folder, filename)
+
+                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
+            else:
+                messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
+        except requests.exceptions.RequestException:
+            messagebox.showerror("Error", "Failed to connect to the server")
+
