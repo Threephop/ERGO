@@ -1,6 +1,8 @@
 import os  
 import cv2
 from tkinter import messagebox
+# ตัวแปรควบคุมสถานะการเล่นวิดีโอ
+video_playing = False
 
 def play_video(video_path):
     """เล่นวิดีโอจากไฟล์ที่กำหนด"""
@@ -25,4 +27,13 @@ def play_video(video_path):
             break
 
     cap.release()
-    cv2.destroyAllWindows()
+    
+    # ตรวจสอบว่าหน้าต่างยังคงเปิดอยู่ก่อนปิด
+    if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) >= 1:
+        print(f"Closing window: {window_name}")
+        cv2.destroyWindow(window_name)
+    else:
+        print("No window found, using destroyAllWindows()")
+        cv2.destroyAllWindows()
+
+    video_playing = False
