@@ -233,6 +233,13 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         
         return None  # ✅ ถ้าล้มเหลวให้คืนค่า None
 
+    def is_valid_url(self, url):
+        """ ตรวจสอบว่า URL สามารถเข้าถึงได้หรือไม่ """
+        try:
+            response = requests.head(url, allow_redirects=True, timeout=5)  # ใช้ HEAD request เพื่อเช็คว่า URL ใช้งานได้
+            return response.status_code == 200  # ถ้าสถานะ 200 แปลว่า URL ใช้งานได้
+        except requests.RequestException:
+            return False  # ถ้ามี error แปลว่า URL ใช้ไม่ได้
 
     def create_video_list(self, parent, videos=None):
         """ สร้าง UI แสดงวิดีโอของผู้ใช้ และ Like Count """
@@ -250,16 +257,24 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
                                 bg="#d63384", fg="white", font=("Arial", 10, "bold"))
         refresh_button.pack(pady=5, anchor="ne")
 
-        # ✅ ถ้าไม่มีวิดีโอ แสดงข้อความ
+        # ✅ ถ้าไม่มีวิดีโอ แสดงข้อความแล้วออกจากฟังก์ชันทันที
         if not videos:
             tk.Label(video_frame, text="No videos uploaded", font=("Arial", 12), bg="white").pack(pady=10)
             return
 
-        # ✅ วนลูปแสดงวิดีโอและ Like Count
+        # ✅ วนลูปแสดงวิดีโอ
         for video in videos:
             post_id = video.get("post_id", "N/A")
             video_url = video.get("video_url", "")
-            like_count = video.get("like_count", 0)
+
+            # ✅ ตรวจสอบว่า URL ใช้งานได้ไหม
+            if not self.is_valid_url(video_url):
+                print(f"❌ Video {post_id} is unavailable. Deleting from database...")
+                self.delete_video_from_db(post_id)  # ✅ ลบข้อมูลออกจากฐานข้อมูล
+                continue  # ข้ามวิดีโอที่เปิดไม่ได้
+
+            # ✅ ตรวจสอบค่า Like Count
+            like_count = video.get("like_count", None)
 
             # ✅ ดึง Thumbnail จากวิดีโอ
             thumbnail_path = f"thumbnail_{post_id}.jpg"
@@ -271,9 +286,25 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
                 video_label.pack(pady=5)
                 video_label.bind("<Button-1>", lambda e, url=video_url: self.play_video(url))
 
-            # ✅ แสดงจำนวน Like
-            like_label = tk.Label(video_frame, text=f"❤  {like_count} Likes", font=("Arial", 12), bg="white")
-            like_label.pack(pady=2)
+            # ✅ แสดงจำนวน Like เฉพาะวิดีโอที่เปิดได้
+            if like_count is not None:
+                like_label = tk.Label(video_frame, text=f"❤ {like_count} Likes", font=("Arial", 12), bg="white")
+                like_label.pack(pady=2)
+
+
+    def delete_video_from_db(self, post_id):
+        """ ลบวิดีโอออกจากฐานข้อมูลเมื่อ URL ใช้งานไม่ได้ """
+        url = f"{self.api_base_url}/delete-message/{post_id}"
+        payload = {"user_id": self.user_id}  # ✅ ส่ง user_id ไปด้วย
+
+        try:
+            response = requests.delete(url, json=payload, timeout=5)  # ใช้ DELETE request พร้อม JSON payload
+            if response.status_code == 200:
+                print(f"✅ Successfully deleted video {post_id} from database.")
+            else:
+                print(f"❌ Failed to delete video {post_id}: {response.json().get('detail', 'Unknown error')}")
+        except requests.RequestException as e:
+            print(f"❌ API error while deleting video {post_id}: {e}")
 
 
     def load_videos(self):
