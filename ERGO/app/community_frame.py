@@ -9,6 +9,9 @@ import cv2
 import requests 
 from datetime import datetime 
 import threading
+import matplotlib
+matplotlib.use("Agg")  # ปิด interactive mode
+
 
 class CommunityFrame(tk.Frame):
     def __init__(self, parent, user_email):
@@ -22,6 +25,12 @@ class CommunityFrame(tk.Frame):
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
         if not os.path.exists(self.icon_dir):
             os.makedirs(self.icon_dir)
+
+        self.profile_icon = self.load_resized_image("profile.png", (50, 50))  # รูปโปรไฟล์เริ่มต้น
+        self.profile_images = {}  # เก็บรูปโปรไฟล์ของทุกคน
+
+        # ✅ โหลดรูปโปรไฟล์ของทุกคนตั้งแต่เริ่มต้น
+        self.load_all_profiles()
 
         # สร้าง Canvas และ Scrollbar
         self.canvas = tk.Canvas(self, bg="#ffffff", highlightthickness=0)
@@ -44,13 +53,14 @@ class CommunityFrame(tk.Frame):
         self.canvas.grid(row=0, column=0, sticky="nsew")
         self.scrollbar.grid(row=0, column=1, sticky="ns")
 
+        # ✅ ทำให้ Canvas ปรับขนาดตาม Frame ได้
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        
         # ⭐ สร้าง Bottom Bar ⭐
         self.bottom_bar = tk.Frame(self, bg="#FFFFFF", padx=10, pady=8)  
         self.bottom_bar.grid(row=1, column=0, columnspan=2, sticky="ew")
 
-        # ✅ ทำให้ Canvas ปรับขนาดตาม Frame ได้
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
 
         # โหลดไอคอน
         self.camera_icon = self.load_resized_image("camera.png", (42, 39))
@@ -184,20 +194,71 @@ class CommunityFrame(tk.Frame):
         y = self.winfo_y() + (self.winfo_height() // 2) - (150 // 2)
         popup.geometry(f"+{x}+{y}")
         
+    def fetch_profile_images(self):
+        """ ดึงข้อมูลรูปโปรไฟล์ของทุกคนจาก API """
+        url = f"{self.api_base_url}/get_all_profiles/"
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                self.profile_images = data.get("profiles", {})
+            else:
+                print(f"⚠️ Failed to fetch profile images: {response.status_code}")
+                self.profile_images = {}
+        except Exception as e:
+            print(f"❌ Error fetching profile images: {e}")
+            self.profile_images = {}
+    
+    def load_all_profiles(self):
+        """ โหลดรูปโปรไฟล์ของทุก user ตั้งแต่เปิดแอป """
+        try:
+            response = requests.get(f"{self.api_base_url}/users")
+            if response.status_code == 200:
+                users = response.json().get("users", [])
+                for user in users:
+                    user_id = user.get("user_id")
+                    profile_url = user.get("profile_url", None)
+
+                    if user_id:
+                        if profile_url and profile_url.strip() and profile_url.lower() != "null":
+                            self.profile_images[user_id] = self.load_profile_image(profile_url)  # ✅ โหลดโปรไฟล์จริง
+                        else:
+                            self.profile_images[user_id] = self.profile_icon  # ✅ ใช้ Default
+            else:
+                print("⚠️ API Error: ไม่สามารถโหลดข้อมูลผู้ใช้ได้")
+        except Exception as e:
+            print(f"❌ Error loading user profiles: {e}")
+
+    def load_profile_image(self, image_url):
+        """ โหลดรูปโปรไฟล์จาก URL """
+        try:
+            if not image_url or image_url.strip() == "" or image_url.lower() == "null":
+                return self.profile_icon  # ใช้ Default ถ้าไม่มี URL
+
+            response = requests.get(image_url, timeout=5)
+            if response.status_code == 200:
+                image_data = io.BytesIO(response.content)
+                image = Image.open(image_data)
+                image = image.resize((50, 50), Image.Resampling.LANCZOS)
+                return ImageTk.PhotoImage(image)
+            else:
+                print(f"⚠️ โหลดรูปโปรไฟล์ไม่สำเร็จจาก {image_url}")
+        except Exception as e:
+            print(f"❌ Error loading profile image: {e}")
+
+        return self.profile_icon  # คืนค่าเป็นรูปโปรไฟล์เริ่มต้นถ้าโหลดไม่สำเร็จ
+
     def load_messages(self):
+        """โหลดข้อความทั้งหมดและอัปเดตรูปโปรไฟล์"""
         def fetch():
+            self.load_all_profiles()
             for widget in self.scrollable_frame.winfo_children():
                 widget.destroy()
 
             try:
-                response = requests.get("http://localhost:8000/get-messages")
+                response = requests.get(f"{self.api_base_url}/get-messages", params={"user_id": self.user_id})
                 if response.status_code == 200:
                     messages = response.json().get("messages", [])
-                    user_id = self.user_id  # user_id ของผู้ใช้ที่ล็อกอินอยู่
-
-                    print(f"✅ Logged-in user_id: {user_id}")  # เช็ค user_id
-
-                    # เรียง messages ตาม post_id จากมากไปน้อย (ล่าสุดอยู่ล่าง)
                     messages = sorted(messages, key=lambda x: x["post_id"])
 
                     for msg in messages:
@@ -205,39 +266,25 @@ class CommunityFrame(tk.Frame):
                         post_id = msg.get("post_id")
                         content = msg.get("content")
                         message_owner_id = msg.get("user_id")
-                        filepath = msg.get("video_path", None)  
-                        like_count = msg.get("like_count", 0)  # จำนวน like
+                        filepath = msg.get("video_path", None)
+                        like_count = msg.get("like_count", 0)
 
-                        # เรียก API เพื่อตรวจสอบว่าโพสต์นี้ถูกไลค์โดยผู้ใช้หรือไม่
-                        is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id})
-                        if is_liked_response.status_code == 200:
-                            is_liked = is_liked_response.json().get("liked_by_user", False)
+                        profile_image = self.profile_images.get(message_owner_id, self.profile_icon)
+
+                        if filepath:
+                            self.post_video(filepath, message_owner_id, post_id, username, like_count, profile_image)
                         else:
-                            is_liked = False  # ถ้าการเช็คไม่สำเร็จ ให้ตั้งค่าเป็น False
-
-                        # ถ้าเป็นโพสต์วิดีโอ
-                        if filepath:  
-                            if message_owner_id == user_id:
-                                self.post_video(filepath, user_id, post_id, username, like_count, is_liked)
-                            else:
-                                self.post_video_another(filepath, user_id, post_id, username, like_count, is_liked)
-                        else:  
-                            if message_owner_id == user_id:
-                                self.add_message_bubble(post_id, username, content)
-                            else:
-                                self.add_message_bubble_another(post_id, username, content)
-
-                    # เลื่อน scroll ลงไปที่ข้อความล่าสุด
-                    self.update_idletasks() 
+                            self.add_message_bubble(post_id, username, content, profile_image)
+                    
+                    self.update_idletasks()
                     self.canvas.yview_moveto(1.0)
                 else:
                     print("⚠️ เกิดข้อผิดพลาด:", response.json())
             except Exception as e:
                 print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
-            
+
         thread = threading.Thread(target=fetch, daemon=True)
         thread.start()
-
                     
     def fetch_user_id(self, user_email):
         """ดึง user_id จาก API"""
@@ -299,8 +346,6 @@ class CommunityFrame(tk.Frame):
         # ✅ แสดง popup ยืนยันก่อนลบ
         self.show_confirm_popup("ยืนยันการลบ", "คุณต้องการลบข้อความนี้หรือไม่?", on_ok, on_cancel)
 
-
-        
     def send_message(self):
         message = self.entry.get().strip()
         if message and message != self.placeholder_text:
@@ -342,12 +387,13 @@ class CommunityFrame(tk.Frame):
                 print("เชื่อมต่อ API ไม่สำเร็จ:", e)
 
 
-    def add_message_bubble(self, post_id, username, message):
+    def add_message_bubble(self, post_id, username, message, profile_image):
         bubble_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white", corner_radius=20)
         bubble_frame.pack(anchor="e", fill="x", padx=5, pady=5)
 
-        # แสดงรูปโปรไฟล์
-        profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
+        # ✅ ใช้รูปโปรไฟล์ที่อัปเดตล่าสุด
+        profile_label = tk.Label(bubble_frame, image=profile_image, bg="white")
+        profile_label.image = profile_image  # ป้องกัน GC ลบรูป
         profile_label.pack(side="right", padx=5)
 
         # แสดงข้อความ
@@ -387,12 +433,12 @@ class CommunityFrame(tk.Frame):
         cancel_button.pack(side="bottom", pady=5, anchor="e")
 
 
-    def add_message_bubble_another(self, post_id, username, message):
-        bubble_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white", corner_radius=15)
-        bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
-
-        # แสดงรูปโปรไฟล์
-        profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
+    def add_message_bubble_another(self, post_id, username, message, profile_image):
+        bubble_frame = tk.Frame(self.scrollable_frame, bg="#ffffff", pady=5, padx=10)
+        
+        # 🔹 ใช้รูปโปรไฟล์ที่โหลดจาก API
+        profile_label = tk.Label(bubble_frame, image=profile_image, bg="#ffffff")
+        profile_label.image = profile_image
         profile_label.pack(side="left", padx=5)
 
         # แสดงข้อความ
@@ -420,15 +466,18 @@ class CommunityFrame(tk.Frame):
         username_label.pack(anchor="w", padx=5)
 
 
-        
-    def post_video(self, filepath, user_id, post_id, username, like_count, is_liked):
+    def post_video(self, filepath, user_id, post_id, username, like_count, profile_image, is_liked=False):
         try:
-            print(f"ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอ")
+            print(f"📌 ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอ")
 
             bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
-            profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
+
+            # 🔹 ใช้รูปโปรไฟล์ที่อัปเดตแล้ว
+            profile_label = tk.Label(bubble_frame, image=profile_image, bg="white")
+            profile_label.image = profile_image  # ป้องกัน GC
             profile_label.pack(side="right", padx=5)
 
+            # 🔹 แสดง Thumbnail วิดีโอ
             thumbnail = self.get_video_thumbnail(filepath)
             if thumbnail:
                 video_label = tk.Label(bubble_frame, image=thumbnail, bg="white", cursor="hand2")
@@ -436,12 +485,13 @@ class CommunityFrame(tk.Frame):
                 video_label.pack(side="right", padx=5)
                 video_label.bind("<Button-1>", lambda e: self.play_video(filepath))
             else:
-                tk.Label(bubble_frame, text="ไม่สามารถโหลดวิดีโอได้", font=("PTT 45 Pride", 12), bg="white").pack(side="left", padx=5)
+                tk.Label(bubble_frame, text="❌ ไม่สามารถโหลดวิดีโอได้", font=("PTT 45 Pride", 12), bg="white").pack(side="left", padx=5)
 
+            # 🔹 ชื่อผู้ใช้
             username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="white")
             username_label.pack(anchor="e", padx=5)
 
-            # สร้าง Like Frame
+            # 🔹 สร้าง Like Frame
             like_frame = tk.Frame(bubble_frame, bg="white")
             like_frame.pack(side="right", anchor="e", pady=5)
 
@@ -460,13 +510,13 @@ class CommunityFrame(tk.Frame):
             like_button.pack(side="top", pady=2)
             like_label.pack(side="top")
 
-            # บันทึก like_label ลง self.like_labels
+            # ✅ บันทึก like_label ลง self.like_labels
             self.like_labels[post_id] = like_label
 
-            # อัปเดตจำนวนไลก์
+            # ✅ อัปเดตจำนวนไลก์
             self.add_like_count(post_id, like_count)
 
-            # ปุ่มยกเลิกโพสต์
+            # 🔹 ปุ่มยกเลิกโพสต์
             cancel_button = tk.Button(
                 bubble_frame, 
                 text="ยกเลิกการส่ง", 
@@ -483,17 +533,37 @@ class CommunityFrame(tk.Frame):
             self.canvas.yview_moveto(1)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error posting video: {e}")
+            messagebox.showerror("Error", f"❌ Error posting video: {e}")
 
-    def post_video_another(self, filepath, user_id, post_id, username, like_count, is_liked):
+    
+    def post_video_another(self, filepath, user_id, post_id, username, like_count, profile_image):
         try:
-            print(f"📌 ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอที่โพสต์โดยผู้ใช้อื่น")
+            # ✅ ตรวจสอบว่า scrollable_frame ยังอยู่
+            if not self.scrollable_frame.winfo_exists():
+                print("⚠️ Error: scrollable_frame ไม่อยู่แล้ว! ไม่สามารถสร้างโพสต์วิดีโอได้")
+                return
 
-            bubble_frame = tk.Frame(self.scrollable_frame, bg="#ffffff", pady=5, padx=10)
-            
-            profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="#ffffff")
-            profile_label.pack(side="left", padx=5)
+            print(f"📌 ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอของผู้ใช้อื่น")
 
+            # ✅ ใช้ `after()` เพื่อป้องกัน race condition
+            self.after(100, lambda: self._create_video_bubble(filepath, post_id, username, like_count, profile_image))
+
+        except Exception as e:
+            messagebox.showerror("Error", f"❌ Error posting video by another user: {e}")
+
+    # ✅ แยกการสร้างวิดีโอเป็นฟังก์ชันย่อย
+    def _create_video_bubble(self, filepath, post_id, username, like_count, profile_image):
+        bubble_frame = tk.Frame(self.scrollable_frame, bg="#ffffff", pady=5, padx=10)
+        
+        # ✅ ใช้รูปโปรไฟล์ที่ถูกต้อง
+        profile_label = tk.Label(bubble_frame, image=profile_image, bg="#ffffff")
+        profile_label.image = profile_image
+        profile_label.pack(side="left", padx=5)
+
+        # ✅ ตรวจสอบ filepath ก่อนโหลดวิดีโอ
+        if not filepath:
+            tk.Label(bubble_frame, text="วิดีโอไม่พร้อมใช้งาน", font=("PTT 45 Pride", 12), bg="#ffffff").pack(side="left", padx=5)
+        else:
             thumbnail = self.get_video_thumbnail(filepath)
             if thumbnail:
                 video_label = tk.Label(bubble_frame, image=thumbnail, bg="#ffffff", cursor="hand2")
@@ -503,41 +573,35 @@ class CommunityFrame(tk.Frame):
             else:
                 tk.Label(bubble_frame, text="ไม่สามารถโหลดวิดีโอได้", font=("PTT 45 Pride", 12), bg="lightgray").pack(side="left", padx=5)
 
-            username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="#ffffff")
-            username_label.pack(anchor="w", padx=5)
+        username_label = tk.Label(bubble_frame, text=username, font=("PTT 45 Pride", 10, "italic"), fg="gray", bg="#ffffff")
+        username_label.pack(anchor="w", padx=5)
 
-            # ✅ สร้าง Like Frame และ Like Button
-            like_frame = tk.Frame(bubble_frame, bg="#ffffff")
-            like_frame.pack(expand=True, anchor="w", pady=5)
+        # ✅ สร้าง Like Frame และ Like Button
+        like_frame = tk.Frame(bubble_frame, bg="#ffffff")
+        like_frame.pack(expand=True, anchor="w", pady=5)
 
-            like_icon = self.load_resized_image("Like.png", (20, 20))
-            heart_icon = self.load_resized_image("heart.png", (20, 20))
+        like_icon = self.load_resized_image("Like.png", (20, 20))
+        heart_icon = self.load_resized_image("heart.png", (20, 20))
 
-            like_button = tk.Button(like_frame, image=like_icon, bd=0, bg="#ffffff")
-            like_button.image = like_icon
-            like_button.heart_icon = heart_icon
-            like_button.like_icon = like_icon
-            like_button.is_liked = is_liked  # ใช้ is_liked ที่ได้จาก API
-            like_button.like_count = like_count
+        like_button = tk.Button(like_frame, image=like_icon, bd=0, bg="#ffffff")
+        like_button.image = like_icon
+        like_button.heart_icon = heart_icon
+        like_button.like_icon = like_icon
+        like_button.is_liked = False  # เริ่มต้นให้ Like เป็น False
+        like_button.like_count = like_count
 
-            like_label = tk.Label(like_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="#ffffff")
+        like_label = tk.Label(like_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="#ffffff")
 
-            like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id, like_button.is_liked))
-            like_button.pack(side="left", pady=2)
-            like_label.pack(side="left")
+        like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, self.user_id, like_button.is_liked))
+        like_button.pack(side="left", pady=2)
+        like_label.pack(side="left")
 
-            # ✅ บันทึก like_label ลง self.like_labels
-            self.like_labels[post_id] = like_label
+        bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
 
-            # ✅ อัปเดตจำนวนไลก์
-            self.add_like_count(post_id, like_count)
+        self.canvas.update_idletasks()
+        self.canvas.yview_moveto(1)
 
-            bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
-            self.canvas.update_idletasks()
-            self.canvas.yview_moveto(1)
 
-        except Exception as e:
-            messagebox.showerror("Error", f"❌ Error posting video by another user: {e}")
 
 
     def toggle_like(self, like_button, like_label, post_id, user_id, is_liked):
@@ -697,11 +761,14 @@ class CommunityFrame(tk.Frame):
 
     def post_media(self, filepath, post_id):
         username = self.username  # ดึงค่า username จาก instance variable
+        profile_image = self.profile_images.get(self.user_id, self.profile_icon)  # ใช้รูปโปรไฟล์ล่าสุด
+
         if filepath.lower().endswith(('mp4', 'avi', 'mkv')):
             like_count = 0  # หรือดึงค่า like_count จากฐานข้อมูลถ้ามี
-            self.post_video(filepath, self.user_id, post_id, username, like_count, is_liked=False)
+            self.post_video(filepath, self.user_id, post_id, username, like_count, profile_image, is_liked=False)
         else:
             self.post_image(filepath)
+
 
 
     def post_image(self, filepath):

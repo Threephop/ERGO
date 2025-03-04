@@ -18,16 +18,21 @@ def get_users():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ค้นหาผู้ใช้ทั้งหมด
-    cursor.execute("SELECT outlook_mail, username FROM dbo.Users_Table")
+    cursor.execute("SELECT user_id, outlook_mail, username, image FROM dbo.Users_Table")
     users = cursor.fetchall()
 
     conn.close()
 
-    # สร้าง list ของ dictionary
-    users_list = [{"email": user[0], "username": user[1]} for user in users]
+    return {"users": [
+        {
+            "user_id": user[0], 
+            "email": user[1], 
+            "username": user[2], 
+            "profile_url": user[3] if user[3] else None  # ถ้าไม่มี URL ให้เป็น None
+        }
+        for user in users
+    ]}
 
-    return {"users": users_list}
 
 @api_router.get("/get_user_id/{email}")
 def get_user_id(email: str):
@@ -110,14 +115,14 @@ def post_message(user_id: int, content: str, create_at: str):
 
 
 
-# ฟังก์ชันดึงข้อความทั้งหมดจาก community
 @api_router.get("/get-messages")
-def get_messages(user_id: int = Query(None)):  # รับ user_id ของผู้ใช้ที่ล็อกอิน
+def get_messages(user_id: int = Query(None)):
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path, 
+        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, 
+               u.image AS profile_image, c.video_path, 
                COUNT(l.like_id) AS like_count, 
                CASE 
                    WHEN EXISTS (
@@ -129,12 +134,17 @@ def get_messages(user_id: int = Query(None)):  # รับ user_id ของผ�
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
         LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  
-        GROUP BY c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path
+        GROUP BY c.post_id, c.content, c.create_at, c.user_id, u.username, u.image, c.video_path
         ORDER BY c.create_at
     """, (user_id,))
 
     messages = cursor.fetchall()
     conn.close()
+
+    # ✅ Debug ดูค่าที่ API ส่งกลับ
+    print("📌 API Response:")
+    for row in messages:
+        print(f"🔹 post_id: {row[0]}, profile_image: {row[5]}")
 
     return {"messages": [
         {
@@ -143,13 +153,13 @@ def get_messages(user_id: int = Query(None)):  # รับ user_id ของผ�
             "create_at": row[2], 
             "user_id": row[3], 
             "username": row[4], 
-            "video_path": row[5], 
-            "like_count": row[6],  
-            "liked_by_user": row[7]  # เพิ่ม liked_by_user ที่ตรวจสอบว่า user ได้กดไลก์แล้วหรือยัง
+            "profile_image": row[5] if row[5] else "https://example.com/default-profile.png",  # ถ้าไม่มี ให้ใช้ Default
+            "video_path": row[6], 
+            "like_count": row[7],  
+            "liked_by_user": row[8]
         }
         for row in messages
     ]}
-
 
 
 @api_router.delete("/delete-message/{post_id}")
@@ -716,3 +726,17 @@ def refresh_Like(user_id: int):
     except pyodbc.Error as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+@api_router.get("/get_all_profiles/")
+def get_all_profiles():
+    """ ดึง URL รูปโปรไฟล์ของผู้ใช้ทุกคน """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    query = "SELECT user_id, image FROM dbo.Users_Table"
+    cursor.execute(query)
+    profiles = cursor.fetchall()
+    conn.close()
+
+    return {
+        "profiles": {row[0]: row[1] for row in profiles if row[1]}  # เก็บเฉพาะ user_id กับ image URL
+    }
