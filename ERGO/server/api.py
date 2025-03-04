@@ -740,3 +740,78 @@ def get_all_profiles():
     return {
         "profiles": {row[0]: row[1] for row in profiles if row[1]}  # เก็บเฉพาะ user_id กับ image URL
     }
+# สร้าง API สำหรับอัปโหลดรูปโปรไฟล์ไปที่ main.py
+@api_router.post("/upload_profile_picture/")
+async def upload_profile_picture(user_id: int, file: UploadFile = File(...)):
+    """ อัปโหลดรูปโปรไฟล์ไปยัง Azure Blob Storage และอัปเดตฐานข้อมูล """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบว่าผู้ใช้มีอยู่ในระบบหรือไม่
+    cursor.execute("SELECT COUNT(*) FROM dbo.Users_Table WHERE user_id = ?", (user_id,))
+    user_exists = cursor.fetchone()[0]
+
+    if user_exists == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # ✅ กำหนดค่าการเชื่อมต่อ Azure Blob Storage
+    AZURE_CONNECTION_STRING = "your-azure-connection-string"
+    CONTAINER_NAME = "profile-pictures"
+
+    blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+    blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=f"profile_{user_id}.png")
+
+    try:
+        # ✅ อัปโหลดไฟล์ไปยัง Blob Storage
+        blob_client.upload_blob(await file.read(), overwrite=True)
+
+        # ✅ อัปเดต URL รูปโปรไฟล์ลงในฐานข้อมูล
+        profile_url = f"https://your-storage-account.blob.core.windows.net/{CONTAINER_NAME}/profile_{user_id}.png"
+        cursor.execute("UPDATE dbo.Users_Table SET image = ? WHERE user_id = ?", (profile_url, user_id))
+        conn.commit()
+        conn.close()
+
+        return {"message": "Profile picture uploaded successfully", "profile_url": profile_url}
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+# API นี้ ทุกครั้งที่ผู้ใช้เปลี่ยนรูป แล้วอัปเดต Sidebar โดยไม่ต้องรีสตาร์ทแอป   
+@api_router.get("/refresh_profile/{user_id}")
+def refresh_profile(user_id: int):
+    """ รีเฟรชข้อมูลโปรไฟล์ผู้ใช้ (เช่น username และรูปโปรไฟล์) """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ✅ ดึงข้อมูลโปรไฟล์ล่าสุดจากฐานข้อมูล
+    cursor.execute("SELECT username, image FROM dbo.Users_Table WHERE user_id = ?", (user_id,))
+    user = cursor.fetchone()
+    
+    conn.close()
+
+    if user:
+        return {"username": user[0], "profile_url": user[1] if user[1] else "https://example.com/default-profile.png"}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
+
+#API ให้ ดึงจำนวนไลก์ทั้งหมดที่โพสต์ของผู้ใช้ได้รับ
+@api_router.get("/get_total_likes/{user_id}")
+def get_total_likes(user_id: int):
+    """ ดึงจำนวนไลก์ทั้งหมดของโพสต์ของผู้ใช้ """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ✅ นับจำนวนไลก์ของโพสต์ทั้งหมดของ user
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM dbo.Like_Table 
+        WHERE post_id IN (SELECT post_id FROM dbo.CommunityPosts_Table WHERE user_id = ?)
+    """, (user_id,))
+
+    like_count = cursor.fetchone()[0]
+    conn.close()
+
+    return {"user_id": user_id, "total_likes": like_count}
