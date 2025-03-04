@@ -115,6 +115,58 @@ async def upload_video(user_id: int, file: UploadFile = File(...), container_nam
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload image: {e}")
+    
+@blob_router.delete("/delete_old_profile/")
+async def delete_old_profile(user_id: str, profile_url: str, container_name: str = "image-profile"):
+    """
+    ลบรูปโปรไฟล์เก่าของผู้ใช้ ถ้ามี
+    """
+    try:
+        if not profile_url:
+            return {"message": "⚠️ ไม่มี URL ของรูปเก่า"}
+
+        # ✅ ดึงชื่อไฟล์จาก URL ของ Blob Storage
+        blob_name = profile_url.split("/")[-1]
+
+        # ✅ ดึง container_client ให้ถูกต้อง
+        container_client = get_container_client(container_name)
+        blob_client = container_client.get_blob_client(blob_name)  # ✅ สร้าง blob_client ให้ถูกต้อง
+
+        # ✅ ตรวจสอบว่าไฟล์มีอยู่จริงก่อนลบ
+        if blob_client.exists():
+            blob_client.delete_blob()
+            return {"message": f"✅ ลบไฟล์เก่าของผู้ใช้ {user_id} สำเร็จ"}
+        else:
+            return {"message": "⚠️ ไม่พบไฟล์รูปเก่าใน Storage"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"❌ เกิดข้อผิดพลาด: {e}")
+    
+@blob_router.delete("/delete_video/")
+async def delete_video(post_id: int, video_url: str, container_name: str = "ergo"):
+    """
+    ลบวิดีโอของโพสต์ออกจาก Azure Blob Storage
+    """
+    try:
+        if not video_url:
+            return {"message": "⚠️ ไม่มี URL ของวิดีโอ"}
+
+        # ✅ ดึงชื่อไฟล์จาก URL ของ Blob Storage
+        blob_name = video_url.split("/")[-1]
+
+        # ✅ ดึง container_client ให้ถูกต้อง
+        container_client = get_container_client(container_name)
+        blob_client = container_client.get_blob_client(blob_name)  # ✅ สร้าง blob_client ให้ถูกต้อง
+
+        # ✅ ตรวจสอบว่าไฟล์มีอยู่จริงก่อนลบ
+        if blob_client.exists():
+            blob_client.delete_blob()
+            return {"message": f"✅ ลบวิดีโอของโพสต์ {post_id} สำเร็จ"}
+        else:
+            return {"message": "⚠️ ไม่พบวิดีโอใน Storage"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"❌ เกิดข้อผิดพลาด: {e}")
 
 # ฟังก์ชันดึงข้อมูลโพสต์จากฐานข้อมูล
 @blob_router.get("/get_posts/")

@@ -12,6 +12,8 @@ import requests
 import datetime
 import subprocess
 import re
+import threading
+import queue
 
 # Microsoft App Configuration
 CLIENT_ID = "f9501308-381e-4b28-9ebc-3ad41d097035"
@@ -62,65 +64,84 @@ def get_user_id_from_db(email):
         return data.get("user_id")
     return None
 
+# สร้าง queue สำหรับสื่อสารระหว่างเธรด
+login_queue = queue.Queue()
+
+def check_login_queue():
+    """ ตรวจสอบและประมวลผลคำสั่งจาก queue ในเธรดหลัก """
+    try:
+        while True:
+            task = login_queue.get_nowait()
+            if task[0] == 'login_success':
+                email, username = task[1], task[2]
+                user_id = get_user_id_from_db(email)
+                if user_id:
+                    messagebox.showinfo("Login Success", f"Welcome {username}!\nEmail: {email}")
+                    launch_main_app(email)
+                else:
+                    messagebox.showerror("Error", "User ID not found in the database.")
+            elif task[0] == 'error':
+                messagebox.showerror(task[1], task[2])
+    except queue.Empty:
+        pass
+    root.after(100, check_login_queue)
+
 # ฟังก์ชัน Log in
 def login():
-    """ ฟังก์ชัน Log in ผ่าน Microsoft """
-    app = PublicClientApplication(CLIENT_ID, authority=AUTHORITY)
-    try:
-        auth_result = app.acquire_token_interactive(scopes=SCOPES)
-        if "access_token" in auth_result:
-            access_token = auth_result["access_token"]
-            headers = {"Authorization": f"Bearer {access_token}"}
-            graph_endpoint = "https://graph.microsoft.com/v1.0/me"
-
-            response = requests.get(graph_endpoint, headers=headers)
-            if response.status_code == 200:
-                user_data = response.json()
-
-                # ✅ ดึงอีเมลให้ถูกต้อง
-                email = (
-                    user_data.get("mail") or
-                    (user_data.get("otherMails")[0] if user_data.get("otherMails") else None) or
-                    user_data.get("userPrincipalName")
-                )
-                email = clean_email(email)  # แก้ไขอีเมลบัญชีองค์กรให้ถูกต้อง
-
-                username = user_data.get("displayName")
-
-                if email and username:
-                    created_at = datetime.datetime.utcnow().isoformat()
-                    role = 0  # 0 = User, 1 = Admin
-
-                    # 🔹 เพิ่มผู้ใช้เข้า Database
-                    add_user_response = requests.post(
-                        API_ENDPOINT,
-                        params={"username": username, "email": email, "role": role, "create_at": created_at}
-                    )
-
-                    if add_user_response.status_code == 200:
-                        print("✅ User added successfully!")
-
-                        # 🔹 ค้นหา user_id
-                        user_id = get_user_id_from_db(email)
-
-                        if user_id:
-                            messagebox.showinfo("Login Success", f"Welcome {username}!\nEmail: {email}")
-
-                            root.destroy()  # ปิดหน้าต่าง Login
-                            main_app = App(email)  # ส่ง email ไปยัง main.py
-                            main_app.mainloop()
+    def fetch():
+        """ ดำเนินการล็อกอินในเธรดย่อย """
+        try:
+            app = PublicClientApplication(CLIENT_ID, authority=AUTHORITY)
+            auth_result = app.acquire_token_interactive(scopes=SCOPES)
+            if "access_token" in auth_result:
+                headers = {"Authorization": f"Bearer {auth_result['access_token']}"}
+                response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
+                if response.status_code == 200:
+                    user_data = response.json()
+                    email = (user_data.get("mail") or 
+                            (user_data.get("otherMails")[0] if user_data.get("otherMails") else None) or 
+                            user_data.get("userPrincipalName"))
+                    email = clean_email(email)
+                    username = user_data.get("displayName")
+                    if email and username:
+                        add_user_response = requests.post(API_ENDPOINT, params={"username": username, "email": email, "role": 0, "create_at": datetime.datetime.utcnow().isoformat()})
+                        if add_user_response.status_code == 200:
+                            login_queue.put(('login_success', email, username))
                         else:
-                            messagebox.showerror("Error", "User ID not found in the database.")
+                            login_queue.put(('error', 'Error', 'Failed to add user.'))
                     else:
-                        messagebox.showerror("Error", "Failed to add user.")
+                        login_queue.put(('error', 'Error', 'User data is incomplete.'))
                 else:
-                    messagebox.showerror("Error", "User data is incomplete.")
+                    login_queue.put(('error', 'Error', 'Failed to retrieve user info.'))
             else:
-                messagebox.showerror("Error", "Failed to retrieve user info.")
-        else:
-            messagebox.showerror("Login Failed", "Unable to authenticate.")
+                login_queue.put(('error', 'Login Failed', 'Unable to authenticate.'))
+        except Exception as e:
+            login_queue.put(('error', 'Error', f'An error occurred: {e}'))
+
+    thread = threading.Thread(target=fetch, daemon=True)
+    thread.start()
+    
+def login_sucess(email, username):
+    """ ฟังก์ชันเข้าสู่ระบบ """
+    # 🔹 ค้นหา user_id
+    user_id = get_user_id_from_db(email)
+
+    if user_id:
+        messagebox.showinfo("Login Success", f"Welcome {username}!\nEmail: {email}")
+        launch_main_app(email)  # เปิดแอปหลัก
+    else:
+        messagebox.showerror("Error", "User ID not found in the database.")
+    
+        
+def launch_main_app(email):
+    """ เปิดแอปหลักในเธรดหลัก """
+    try:
+        root.destroy()
+        main_app = App(email)
+        main_app.mainloop()
     except Exception as e:
-        messagebox.showerror("Error", f"An error occurred: {e}")
+        messagebox.showerror("Error", f"An error occurred while launching the main app: {e}")
+
 
 # ฟังก์ชัน Sign Up
 def signup():
@@ -129,6 +150,7 @@ def signup():
 # ฟังก์ชัน Guest
 def guest():
     messagebox.showinfo("Guest", "Guest clicked!")
+    launch_main_app(email = None)
 
 # ฟังก์ชัน Logout
 def logout():
@@ -223,4 +245,5 @@ logout_button = tk.Button(right_frame, text="Log out", bg="#FF0000", fg="white",
 logout_button.pack(pady=20)
 
 # เริ่มต้นโปรแกรม
+root.after(100, check_login_queue)
 root.mainloop()

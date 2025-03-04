@@ -266,6 +266,27 @@ async def get_profile_image(user_id: int):
     
     return {"profile_url": None}  # ถ้าไม่มีรูป
 
+@api_router.get("/get_video_path")
+async def get_video_path(post_id: int):
+    """ API ดึง URL ของวิดีโอจาก CommunityPosts_Table ตาม post_id """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # ✅ ดึง `video_path` ตาม `post_id`
+    query = """
+    SELECT video_path 
+    FROM dbo.CommunityPosts_Table 
+    WHERE post_id = ?
+    """
+    
+    cursor.execute(query, (post_id,))
+    row = cursor.fetchone()
+
+    if row and row[0]:  # ถ้ามีวิดีโอในฐานข้อมูล
+        return {"video_path": row[0]}
+    
+    return {"video_path": None}  # ถ้าไม่มีวิดีโอ
+
 
 @api_router.get("/showstat")
 def get_usage_stats():
@@ -461,7 +482,8 @@ def get_activity_details(email: str):
         d.wednesday, 
         d.thursday, 
         d.friday, 
-        d.saturday
+        d.saturday,
+        d.sunday  -- เพิ่มคอมม่าเพื่อแยกคอลัมน์
     FROM dbo.Dashboard_Table d
     JOIN dbo.Users_Table u ON d.user_id = u.user_id
     WHERE u.outlook_mail = ?
@@ -482,7 +504,8 @@ def get_activity_details(email: str):
         data[3],  # Wednesday
         data[4],  # Thursday
         data[5],  # Friday
-        data[6]   # Saturday
+        data[6],   # Saturday
+        data[7]   # Sunday
     ]
 
     conn.close()

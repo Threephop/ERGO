@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 from matplotlib import pyplot as plt
 from home_frame import HomeFrame
 from community_frame import CommunityFrame
@@ -16,6 +17,7 @@ import os
 import requests
 import sys
 import threading
+import subprocess
 
 def change_windows_taskbar_icon(window, icon_windows_path):
     try:
@@ -503,6 +505,25 @@ class App(tk.Tk):
             print("Background task running...")
             time.sleep(5) # หยุดเพื่อป้องกันการใช้ CPU มากเกินไป แสเดงว่าเป็นวินาที
         print("Background task stopped.")
+        
+def open_login():
+    """เปิดหน้าต่าง Login ใหม่โดยไม่ต้องนำเข้า LoginApp"""
+    # ตรวจสอบว่าไฟล์ Login.py อยู่ในตำแหน่งที่ถูกต้อง
+    login_py_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "Login.py"))
+    if not os.path.exists(login_py_path):
+        messagebox.showerror("Error", "Cannot find Login.py")
+        return
+
+    try:
+        print(f"✅ เปิด Login.py ที่พาธ: {login_py_path}")
+        python_executable = sys.executable  # ใช้ Python interpreter เดียวกัน
+        subprocess.Popen([python_executable, login_py_path], shell=True)  # ใช้ shell=True ช่วยให้ทำงานได้ดีขึ้น
+
+        print("🛑 บังคับปิดแอปหลักด้วย sys.exit()")
+        sys.exit()  # ปิดแอปหลักไปเลย
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to open Login: {e}")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -510,4 +531,5 @@ if __name__ == "__main__":
         app = App(user_email)
         app.mainloop()
     else:
+        open_login()
         print("Error: No user email provided.")

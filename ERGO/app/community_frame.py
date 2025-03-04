@@ -1,4 +1,6 @@
 import tkinter as tk
+import customtkinter as ctk
+from customtkinter import CTkImage
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import os
@@ -252,27 +254,51 @@ class CommunityFrame(tk.Frame):
         return None  # ถ้าหาไม่เจอให้ return None
             
     def cancel_single_message(self, bubble_frame, post_id):
-        # ฟังก์ชัน callback เมื่อผู้ใช้กดยืนยันการลบ
+        """ ฟังก์ชันยกเลิก (ลบ) ข้อความและลบวิดีโอจาก Storage ถ้ามี """
+
         def on_ok():
             try:
+                # ✅ 1. เรียก API เพื่อตรวจสอบว่ามีวิดีโอในโพสต์นี้หรือไม่
+                video_response = requests.get(
+                    f"http://localhost:8000/get_video_path",
+                    params={"post_id": post_id}
+                )
+
+                if video_response.status_code == 200:
+                    video_path = video_response.json().get("video_path")
+                    if video_path:
+                        # ✅ 2. ลบวิดีโอออกจาก Storage
+                        delete_video_response = requests.delete(
+                            f"http://localhost:8000/delete_video",
+                            params={"post_id": post_id, "video_url": video_path}  # ส่ง post_id และ video_url ใน query string
+                        )
+
+                        if delete_video_response.status_code == 200:
+                            print(f"✅ วิดีโอถูกลบออกจาก Storage: {video_path}")
+                        else:
+                            print(f"⚠️ ไม่สามารถลบวิดีโอได้: {delete_video_response.json()}")
+
+                # ✅ 3. ลบโพสต์ออกจากฐานข้อมูล
                 response = requests.delete(
                     f"http://localhost:8000/delete-message/{post_id}",
-                    json={"user_id": self.user_id}  # ส่ง user_id ไปด้วยเพื่อยืนยันสิทธิ์ในการลบ
+                    json={"user_id": self.user_id}
                 )
+
                 if response.status_code == 200:
-                    print("ลบข้อความสำเร็จ!")
-                    bubble_frame.destroy()  # ลบ UI หลังจากลบข้อมูลในฐานข้อมูลสำเร็จ
+                    print("✅ ลบข้อความสำเร็จ!")
+                    bubble_frame.destroy()  # ✅ อัปเดต UI
                 else:
-                    print("เกิดข้อผิดพลาด:", response.json())
+                    print("⚠️ เกิดข้อผิดพลาดในการลบโพสต์:", response.json())
+
             except Exception as e:
-                print("เชื่อมต่อ API ไม่สำเร็จ:", e)
-        
-        # ฟังก์ชัน callback เมื่อผู้ใช้กดยกเลิกการลบ
+                print("❌ เชื่อมต่อ API ไม่สำเร็จ:", e)
+
         def on_cancel():
-            print("ยกเลิกการลบข้อความ")
-        
-        # แสดง popup ยืนยันการลบ
+            print("⛔ ยกเลิกการลบข้อความ")
+
+        # ✅ แสดง popup ยืนยันก่อนลบ
         self.show_confirm_popup("ยืนยันการลบ", "คุณต้องการลบข้อความนี้หรือไม่?", on_ok, on_cancel)
+
 
         
     def send_message(self):
@@ -316,86 +342,83 @@ class CommunityFrame(tk.Frame):
                 print("เชื่อมต่อ API ไม่สำเร็จ:", e)
 
 
-
     def add_message_bubble(self, post_id, username, message):
-        bubble_frame = tk.Frame(self.scrollable_frame, bg="white", pady=5, padx=10)
-        bubble_frame.pack(anchor="e", fill="x", padx=5, pady=5)  # จัดให้อยู่ทางขวา
+        bubble_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white", corner_radius=20)
+        bubble_frame.pack(anchor="e", fill="x", padx=5, pady=5)
 
         # แสดงรูปโปรไฟล์
         profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
-        profile_label.pack(side="right", padx=5)  # จัดรูปโปรไฟล์ไปทางขวา
+        profile_label.pack(side="right", padx=5)
 
         # แสดงข้อความ
-        text_bubble = tk.Label(
+        text_bubble = ctk.CTkLabel(
             bubble_frame,
             text=message,
-            font=("PTT 45 Pride", 14),
-            bg="#a3d977",  # เปลี่ยนสีพื้นหลังเป็นสีเขียว
-            wraplength=400,
-            justify="left",
-            anchor="w",
+            font=("PTT 45 Pride", 18),
+            fg_color="#a3d977",  # สีพื้นหลังของข้อความ
+            text_color="black",  # สีตัวอักษร
+            corner_radius=20,
+            wraplength=600,
             padx=10,
             pady=5,
-            relief="ridge",
         )
-        text_bubble.pack(side="right", padx=5)  # จัดข้อความไปด้านขวา
+        text_bubble.pack(side="right", padx=5)
 
         # แสดงชื่อผู้ใช้
-        username_label = tk.Label(
+        username_label = ctk.CTkLabel(
             bubble_frame,
             text=username,
-            font=("PTT 45 Pride", 10, "italic"),
-            fg="gray",
-            bg="white",
+            font=("PTT 45 Pride", 14, "italic"),
+            text_color="gray",
+            fg_color="white",
         )
-        username_label.pack(anchor="e", padx=5)  # จัดชื่อผู้ใช้ไปทางขวา
+        username_label.pack(anchor="e", padx=5)
 
-        # ปุ่มยกเลิกการส่ง โดยส่ง bubble_frame และ post_id ไปยังฟังก์ชัน cancel_single_message
-        cancel_button = tk.Button(
+        # ปุ่มยกเลิกการส่ง
+        cancel_button = ctk.CTkButton(
             bubble_frame, 
             text="ยกเลิกการส่ง", 
-            fg="red", 
-            font=("PTT 45 Pride", 12), 
-            bd=0, 
-            bg="white", 
+            fg_color="white", 
+            text_color="red",
+            hover_color="#f5c6cb",  # เปลี่ยนสีเมื่อชี้เมาส์
+            font=("PTT 45 Pride", 14), 
             command=lambda: self.cancel_single_message(bubble_frame, post_id)
-    )
-        cancel_button.pack(side="bottom", pady=5, anchor="e")  # จัดปุ่มไปด้านขวา
+        )
+        cancel_button.pack(side="bottom", pady=5, anchor="e")
 
-        
+
     def add_message_bubble_another(self, post_id, username, message):
-        bubble_frame = tk.Frame(self.scrollable_frame, bg="#ffffff", pady=5, padx=10)
-        
+        bubble_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white", corner_radius=15)
+        bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
+
         # แสดงรูปโปรไฟล์
-        profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="#ffffff")
+        profile_label = tk.Label(bubble_frame, image=self.profile_icon, bg="white")
         profile_label.pack(side="left", padx=5)
-        
+
         # แสดงข้อความ
-        text_bubble = tk.Label(
+        text_bubble = ctk.CTkLabel(
             bubble_frame,
             text=message,
-            font=("PTT 45 Pride", 14),
-            bg="#d0f0ff",  # สีฟ้าอ่อน
-            wraplength=400,
-            justify="left",
-            anchor="w",
+            font=("PTT 45 Pride", 18),
+            fg_color="#d0f0ff",  # สีฟ้าอ่อน
+            text_color="black",
+            corner_radius=20,
+            wraplength=600,
             padx=10,
             pady=5,
-            relief="ridge",
         )
         text_bubble.pack(side="left", padx=5)
-        
+
         # แสดงชื่อผู้ใช้
-        username_label = tk.Label(
+        username_label = ctk.CTkLabel(
             bubble_frame,
             text=username,
-            font=("PTT 45 Pride", 10, "italic"),
-            fg="gray",
-            bg="#ffffff",
+            font=("PTT 45 Pride", 14, "italic"),
+            text_color="gray",
+            fg_color="white",
         )
         username_label.pack(anchor="w", padx=5)
-        
-        bubble_frame.pack(anchor="w", fill="x", padx=5, pady=5)
+
 
         
     def post_video(self, filepath, user_id, post_id, username, like_count, is_liked):
