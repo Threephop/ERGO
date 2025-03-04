@@ -637,6 +637,46 @@ def export_dashboard(email: str):
     # ส่งชื่อไฟล์ที่ได้ไปยัง frontend
     return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+@api_router.get("/export_dashboard_month/")
+def export_dashboard_month(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to export data")
+
+    # 🔹 ดึงข้อมูลจาก Users_Table และ DashboardMonth_Table
+    query = """
+    SELECT 
+        u.username, 
+        u.outlook_mail, 
+        d.january, d.february, d.march, d.april, d.may, d.june, 
+        d.july, d.august, d.september, d.october, d.november, d.december
+    FROM dbo.DashboardMonth_Table d
+    JOIN dbo.Users_Table u ON d.user_id = u.user_id
+    """
+    
+    df = pd.read_sql(query, conn)
+    conn.close()
+
+    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้ โดยเพิ่มชื่อไฟล์ให้ไม่ซ้ำ
+    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+    file_path = get_unique_filename(downloads_folder, "dashboard_month", ".xlsx")
+    
+    df.to_excel(file_path, index=False)
+
+    # 🔹 ส่งไฟล์ให้ frontend ดาวน์โหลด
+    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 @api_router.get("/get_monthly_usage_stats/{user_id}")
 def get_monthly_usage_stats(user_id: int):
     """ดึงข้อมูลการใช้งานรายเดือนของผู้ใช้"""
