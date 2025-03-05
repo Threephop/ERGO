@@ -143,6 +143,10 @@ def get_messages(user_id: int = Query(None)):
     """, (user_id,))
 
     messages = cursor.fetchall()
+    
+    # ตรวจสอบค่าที่คืนมา
+    print(f"✅ Messages Response: {messages}")
+
     conn.close()
 
     # ✅ Debug ดูค่าที่ API ส่งกลับ
@@ -243,6 +247,7 @@ async def create_like(post_id: int, user_id: int, action: str):
     conn.close()
 
     return {"message": message}
+
 
 @api_router.get("/check-like")
 def check_like(post_id: int, user_id: int):
