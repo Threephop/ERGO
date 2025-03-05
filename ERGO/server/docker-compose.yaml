@@ -10,5 +10,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      ENV DB_USER="ergoepi@outlook.co.th"
-      ENV DB_PASSWORD="poC18112024"
+      DB_USER: "ergoepi@outlook.co.th"
+      DB_PASSWORD: "poC18112024"
+      DB_HOST: "pocergoserver.database.windows.net"
+      DB_NAME: "POCERGODATABASE"
+
+
