@@ -12,6 +12,10 @@ import os
 
 api_router = APIRouter()
 
+@api_router.get("/")
+def get_root():
+    return {"message": "Hello, FastAPI!"}
+
 # ฟังก์ชันที่ดึงข้อมูลผู้ใช้งาน
 @api_router.get("/users")
 def get_users():
