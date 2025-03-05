@@ -6,6 +6,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: sh -c "python -m uvicorn main:app --reload --port=8000 --host=0.0.0.0"
+    entrypoint: ["uvicorn", "main:app", "--reload", "--port=8000", "--host=0.0.0.0"]
     ports:
       - "8000:8000"
+    environment:
+      ENV DB_USER="ergoepi@outlook.co.th"
+      ENV DB_PASSWORD="poC18112024"

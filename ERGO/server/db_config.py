@@ -38,16 +38,33 @@
 #     return pyodbc.connect(conn_str)
 
 # db_config.py database in ERGOSERVER
+# import pyodbc
+# from azure.storage.blob import BlobServiceClient
+
+# def get_db_connection():
+#     conn_str = (
+#         "DRIVER={ODBC Driver 17 for SQL Server};"
+#         "SERVER=pocergoserver.database.windows.net;"
+#         "DATABASE=POCERGODATABASE;"
+#         "Authentication=ActiveDirectoryInteractive;"  # หรือ ActiveDirectoryPassword สำหรับการยืนยันตัวตน
+#         "UID=ergoepi@outlook.co.th;"
+#     )
+#     return pyodbc.connect(conn_str)
+
+# db_config.py database in ERGOSERVER for docker
 import pyodbc
 from azure.storage.blob import BlobServiceClient
+import os
 
 def get_db_connection():
     conn_str = (
         "DRIVER={ODBC Driver 17 for SQL Server};"
         "SERVER=pocergoserver.database.windows.net;"
-        "DATABASE=POCERGODATABASE;"
-        "Authentication=ActiveDirectoryInteractive;"  # หรือ ActiveDirectoryPassword สำหรับการยืนยันตัวตน
-        "UID=ergoepi@outlook.co.th;"
+        f"DATABASE=POCERGODATABASE;"
+        f"UID={os.getenv('DB_USER')};"
+        f"PWD={os.getenv('DB_PASSWORD')};"
+        "Authentication=ActiveDirectoryPassword;"
+        "TDS_Version=7.4;"
     )
     return pyodbc.connect(conn_str)
 
