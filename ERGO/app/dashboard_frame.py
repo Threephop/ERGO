@@ -54,10 +54,6 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         if text == "Active":  # เฉพาะแท็บ "Active" ที่จะสร้างกราฟและปุ่ม Export
             self.create_chart(self.tab1)  # ส่ง self.tab1 ไปเป็น parent
             self.create_activity_details(self.tab1, self.user_email)  # เรียกใช้แค่ใน tab1
-            if role == 1:
-                # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
-                self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
-                self.export_button.pack(pady=2)  # ลด pady ที่นี่
         elif text == "Like":
             self.create_video_list(self.tab2)
         else:
@@ -346,6 +342,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
     
     def update_activity_table(self, filter_option, user_email):
         """อัปเดต Activity Table ตาม filter (Week/Month)"""
+        role = self.user_role
 
         # ✅ เช็คว่ามีตารางเก่าอยู่หรือไม่ ถ้ามีให้ลบทิ้งก่อน
         if hasattr(self, "tree"):
@@ -361,7 +358,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             api_url = f"{self.api_base_url}/get_activity_details/?email={user_email}"
         else:
             columns = ["Username", "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"]
+                        "July", "August", "September", "October", "November", "December"]
             api_url = f"{self.api_base_url}/get_monthly_activity_details/?email={user_email}"
 
         self.tree["columns"] = columns
@@ -375,7 +372,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         if response.status_code == 200:
             activity_data = response.json()
-            
+
             if filter_option == "Week":
                 details = activity_data.get("activity_details", [])
             else:  # 🛠 แก้ให้รองรับ Monthly Activity
@@ -388,6 +385,23 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         if details:
             self.tree.insert("", "end", values=details)  # ใส่ข้อมูลในแต่ละแถว
 
+        # ✅ ตรวจสอบและลบปุ่ม Export Excel เก่าก่อนสร้างปุ่มใหม่
+        if hasattr(self, 'export_button'):
+            self.export_button.destroy()  # ลบปุ่มเก่าออก
+
+        # ✅ สร้างปุ่ม Export ใหม่
+        if filter_option == "Week":
+            if role == 1:
+                # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
+                self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
+                self.export_button.pack(pady=2)  # ลด pady ที่นี่
+        else:
+            if role == 1:
+                # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
+                self.export_button = ctk.CTkButton(self.tab1, text="Export Excel Month", corner_radius=25, command=self.export_excel_active_month)
+                self.export_button.pack(pady=2)
+
+
     def export_excel_active(self):
         """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
         if self.user_role != 1:
@@ -396,6 +410,34 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         try:
             response = requests.get(f"{self.api_base_url}/export_dashboard_active/?email={self.user_email}")
+
+            if response.status_code == 200:
+                content_disposition = response.headers.get("Content-Disposition", "")
+                filename = content_disposition.split("filename=")[-1].strip("\"")
+
+                filename = urllib.parse.unquote(filename)
+                filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
+
+                if not filename:
+                    filename = "dashboard_active.xlsx"
+
+                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+                file_path = os.path.join(downloads_folder, filename)
+
+                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
+            else:
+                messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
+        except requests.exceptions.RequestException:
+            messagebox.showerror("Error", "Failed to connect to the server")
+    
+    def export_excel_active_month(self):
+        """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
+        if self.user_role != 1:
+            messagebox.showerror("Permission Denied", "You don't have permission to export data")
+            return
+
+        try:
+            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}")
 
             if response.status_code == 200:
                 content_disposition = response.headers.get("Content-Disposition", "")
