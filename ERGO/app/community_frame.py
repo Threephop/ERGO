@@ -388,7 +388,7 @@ class CommunityFrame(tk.Frame):
                     if post_id:
                         print("ส่งข้อความสำเร็จ! post_id:", post_id)
                         # คุณสามารถเรียก add_message_bubble โดยส่ง post_id ที่ถูกต้องได้
-                        self.add_message_bubble(post_id, self.username, message)
+                        self.add_message_bubble(post_id, self.username, message, self.profile_icon)
                         self.update_idletasks() # อัปเดต UI ก่อนเลื่อนลงไปที่ข้อความล่าสุด
                         self.canvas.yview_moveto(1.0)  # เลื่อนลงไปที่ข้อความล่าสุด
                     else:
@@ -761,7 +761,7 @@ class CommunityFrame(tk.Frame):
         username = self.username  # ดึงค่า username จาก instance variable
         if filepath.lower().endswith(('mp4', 'avi', 'mkv')):
             like_count = 0  # หรือดึงค่า like_count จากฐานข้อมูลถ้ามี
-            self.post_video(filepath, self.user_id, post_id, username, like_count, is_liked=False)
+            self.post_video(filepath, self.user_id, post_id, username, like_count, is_liked=False, profile_image=self.profile_icon)
         else:
             self.post_image(filepath)
 
