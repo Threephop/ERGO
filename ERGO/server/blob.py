@@ -175,3 +175,16 @@ def get_posts():
     query = "SELECT * FROM dbo.CommunityPosts_Table"
     df = pd.read_sql(query, conn)
     return df.to_dict(orient="records")
+
+@blob_router.get("/list_videos")
+def list_videos(container_name: str = "ergodefault"):
+    """คืนรายการวิดีโอทั้งหมดใน Azure Blob Storage พร้อม URL สำหรับดาวน์โหลด"""
+    container_client = get_container_client(container_name)
+    blobs = [
+        {
+            "name": blob.name,
+            "url": f"https://ergostorageblob.blob.core.windows.net/{container_name}/{blob.name}"
+        }
+        for blob in container_client.list_blobs()
+    ]
+    return {"videos": blobs}

@@ -12,22 +12,31 @@ import os
 
 api_router = APIRouter()
 
+@api_router.get("/")
+def get_root():
+    return {"message": "Hello, FastAPI!"}
+
 # ฟังก์ชันที่ดึงข้อมูลผู้ใช้งาน
 @api_router.get("/users")
 def get_users():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ค้นหาผู้ใช้ทั้งหมด
-    cursor.execute("SELECT outlook_mail, username FROM dbo.Users_Table")
+    cursor.execute("SELECT user_id, outlook_mail, username, image FROM dbo.Users_Table")
     users = cursor.fetchall()
 
     conn.close()
 
-    # สร้าง list ของ dictionary
-    users_list = [{"email": user[0], "username": user[1]} for user in users]
+    return {"users": [
+        {
+            "user_id": user[0], 
+            "email": user[1], 
+            "username": user[2], 
+            "profile_url": user[3] if user[3] else None  # ถ้าไม่มี URL ให้เป็น None
+        }
+        for user in users
+    ]}
 
-    return {"users": users_list}
 
 @api_router.get("/get_user_id/{email}")
 def get_user_id(email: str):
@@ -110,14 +119,14 @@ def post_message(user_id: int, content: str, create_at: str):
 
 
 
-# ฟังก์ชันดึงข้อความทั้งหมดจาก community
 @api_router.get("/get-messages")
-def get_messages(user_id: int = Query(None)):  # รับ user_id ของผู้ใช้ที่ล็อกอิน
+def get_messages(user_id: int = Query(None)):
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path, 
+        SELECT c.post_id, c.content, c.create_at, c.user_id, u.username, 
+               u.image AS profile_image, c.video_path, 
                COUNT(l.like_id) AS like_count, 
                CASE 
                    WHEN EXISTS (
@@ -129,12 +138,17 @@ def get_messages(user_id: int = Query(None)):  # รับ user_id ของผ�
         FROM dbo.CommunityPosts_Table c
         JOIN dbo.Users_Table u ON c.user_id = u.user_id
         LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  
-        GROUP BY c.post_id, c.content, c.create_at, c.user_id, u.username, c.video_path
+        GROUP BY c.post_id, c.content, c.create_at, c.user_id, u.username, u.image, c.video_path
         ORDER BY c.create_at
     """, (user_id,))
 
     messages = cursor.fetchall()
     conn.close()
+
+    # ✅ Debug ดูค่าที่ API ส่งกลับ
+    print("📌 API Response:")
+    for row in messages:
+        print(f"🔹 post_id: {row[0]}, profile_image: {row[5]}")
 
     return {"messages": [
         {
@@ -143,13 +157,13 @@ def get_messages(user_id: int = Query(None)):  # รับ user_id ของผ�
             "create_at": row[2], 
             "user_id": row[3], 
             "username": row[4], 
-            "video_path": row[5], 
-            "like_count": row[6],  
-            "liked_by_user": row[7]  # เพิ่ม liked_by_user ที่ตรวจสอบว่า user ได้กดไลก์แล้วหรือยัง
+            "profile_image": row[5] if row[5] else "https://example.com/default-profile.png",  # ถ้าไม่มี ให้ใช้ Default
+            "video_path": row[6], 
+            "like_count": row[7],  
+            "liked_by_user": row[8]
         }
         for row in messages
     ]}
-
 
 
 @api_router.delete("/delete-message/{post_id}")
@@ -397,6 +411,50 @@ def update_app_time(email: str, app_time: float):
         "new_hours_used": new_hours
     }
 
+@api_router.get("/update_app_time_month/")
+def update_app_time_month(email: str, app_time: float):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 🔹 ค้นหา user_id จาก Users_Table
+    cursor.execute("SELECT user_id FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_id = user[0]
+    
+    # 🔹 ดึงชื่อเดือนปัจจุบัน
+    current_month = datetime.today().strftime('%B').lower()  # เช่น 'january', 'february', ...
+
+    # 🔹 ดึงค่าปัจจุบันของ hours_used จาก DashboardMonth_Table
+    cursor.execute(f"SELECT {current_month} FROM dbo.DashboardMonth_Table WHERE user_id = ?", (user_id,))
+    current_hours = cursor.fetchone()
+    
+    new_hours = (app_time / 3600)  # แปลงวินาทีเป็นชั่วโมง
+    
+    if current_hours and current_hours[0] is not None:
+        new_hours += float(current_hours[0])  # บวกเพิ่มถ้ามีค่าเดิมอยู่แล้ว
+        cursor.execute(
+            f"UPDATE dbo.DashboardMonth_Table SET {current_month} = ? WHERE user_id = ?",
+            (new_hours, user_id)
+        )
+    else:
+        # 🔹 ถ้าไม่มีข้อมูล ให้เพิ่มข้อมูลใหม่
+        cursor.execute(
+            f"INSERT INTO dbo.DashboardMonth_Table (user_id, {current_month}) VALUES (?, ?)",
+            (user_id, new_hours)
+        )
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "message": "App time updated successfully",
+        "new_hours_used": new_hours
+    }
 
 @api_router.get("/get_usage_stats/{user_id}")
 def get_usage_stats(user_id: int):
@@ -508,6 +566,59 @@ def get_activity_details(email: str):
     
     return {"activity_details": details}
 
+@api_router.get("/get_monthly_activity_details/")
+def get_monthly_activity_details(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบว่า user มีอยู่หรือไม่
+    cursor.execute("SELECT user_id, username FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_id, username = user
+
+    # 🔹 ดึงข้อมูลจาก DashboardMonth_Table
+    query = """
+    SELECT 
+        january, february, march, april, may, june, 
+        july, august, september, october, november, december
+    FROM dbo.DashboardMonth_Table
+    WHERE user_id = ?
+    """
+    
+    cursor.execute(query, (user_id,))
+    data = cursor.fetchone()
+
+    if not data:
+        conn.close()
+        raise HTTPException(status_code=404, detail="No monthly activity data found for this user")
+
+    # 🔹 จัดรูปแบบข้อมูลให้อยู่ใน JSON
+    details = {
+        "username": username,
+        "monthly_activity": {
+            "january": data[0] if data[0] is not None else 0,
+            "february": data[1] if data[1] is not None else 0,
+            "march": data[2] if data[2] is not None else 0,
+            "april": data[3] if data[3] is not None else 0,
+            "may": data[4]  if data[4] is not None else 0,
+            "june": data[5]  if data[5] is not None else 0,
+            "july": data[6]  if data[6] is not None else 0,
+            "august": data[7]  if data[7] is not None else 0,
+            "september": data[8]  if data[8] is not None else 0,
+            "october": data[9]  if data[9] is not None else 0,
+            "november": data[10]  if data[10] is not None else 0,
+            "december": data[11]  if data[11] is not None else 0
+        }
+    }
+
+    conn.close()
+    
+    return details
 
 # 🔄 ฟังก์ชันสำหรับอัปเดตชื่อผู้ใช้ (รับค่าเป็น Form Data)
 @api_router.post("/update_username/")
@@ -593,6 +704,46 @@ def export_dashboard(email: str):
     # ส่งชื่อไฟล์ที่ได้ไปยัง frontend
     return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+@api_router.get("/export_dashboard_month/")
+def export_dashboard_month(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to export data")
+
+    # 🔹 ดึงข้อมูลจาก Users_Table และ DashboardMonth_Table
+    query = """
+    SELECT 
+        u.username, 
+        u.outlook_mail, 
+        d.january, d.february, d.march, d.april, d.may, d.june, 
+        d.july, d.august, d.september, d.october, d.november, d.december
+    FROM dbo.DashboardMonth_Table d
+    JOIN dbo.Users_Table u ON d.user_id = u.user_id
+    """
+    
+    df = pd.read_sql(query, conn)
+    conn.close()
+
+    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้ โดยเพิ่มชื่อไฟล์ให้ไม่ซ้ำ
+    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+    file_path = get_unique_filename(downloads_folder, "dashboard_month", ".xlsx")
+    
+    df.to_excel(file_path, index=False)
+
+    # 🔹 ส่งไฟล์ให้ frontend ดาวน์โหลด
+    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 @api_router.get("/get_monthly_usage_stats/{user_id}")
 def get_monthly_usage_stats(user_id: int):
     """ดึงข้อมูลการใช้งานรายเดือนของผู้ใช้"""
@@ -618,6 +769,7 @@ def get_monthly_usage_stats(user_id: int):
             "September": row[10] if row[10] is not None else 0,
             "October": row[11] if row[11] is not None else 0,
             "November": row[12] if row[12] is not None else 0,
+            "December": row[13] if row[13] is not None else 0,
             "December": row[13] if row[13] is not None else 0,
         }
     else:
@@ -645,3 +797,84 @@ def get_profile_url(user_id: int):
 
     finally:
         conn.close()  # ปิดการเชื่อมต่อฐานข้อมูล
+
+@api_router.get("/get_user_videos/{user_id}")
+def get_user_videos(user_id: int):
+    """ ดึงข้อมูลวิดีโอของผู้ใช้จากฐานข้อมูล """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    query = """
+    SELECT post_id, video_path AS video_url, image_path AS thumbnail_url, 
+           (SELECT COUNT(*) FROM dbo.Like_Table WHERE post_id = c.post_id) AS like_count
+    FROM dbo.CommunityPosts_Table c
+    WHERE user_id = ?
+    """
+    cursor.execute(query, (user_id,))
+    videos = cursor.fetchall()
+
+    conn.close()
+
+    return {
+        "videos": [
+            {
+                "post_id": row[0],
+                "video_url": row[1],
+                "thumbnail_url": row[2] if row[2] else None,
+                "like_count": row[3]
+            }
+            for row in videos
+        ]
+    }
+
+
+@api_router.get("/refresh_Like/")
+def refresh_Like(user_id: int):
+    """ รีโหลดข้อมูลโพสต์ของผู้ใช้ทั้งหมด คล้ายกับที่ทำใน Commu """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # ✅ เช็คว่ามี user_id นี้อยู่ในระบบหรือไม่
+        cursor.execute("SELECT COUNT(*) FROM dbo.Users_Table WHERE user_id = ?", (user_id,))
+        user_exists = cursor.fetchone()[0]
+
+        if user_exists == 0:
+            return {"message": "User not found", "videos": []}  # 🔹 แจ้งเตือนถ้าไม่พบ user
+
+        # ✅ ดึงวิดีโอของผู้ใช้จากฐานข้อมูล
+        query = """
+            SELECT c.post_id, c.video_path AS video_url, 
+                   COUNT(l.like_id) AS like_count
+            FROM dbo.CommunityPosts_Table c
+            LEFT JOIN dbo.Like_Table l ON c.post_id = l.post_id  
+            WHERE c.user_id = ?
+            GROUP BY c.post_id, c.video_path
+        """
+        
+        cursor.execute(query, (user_id,))
+        videos = cursor.fetchall()
+        conn.close()
+
+        if not videos:
+            return {"message": "No videos found", "videos": []}  # 🔹 ป้องกัน `NoneType`
+
+        return {"videos": [{"post_id": row[0], "video_url": row[1], "like_count": row[2]} for row in videos]}
+    
+    except pyodbc.Error as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@api_router.get("/get_all_profiles/")
+def get_all_profiles():
+    """ ดึง URL รูปโปรไฟล์ของผู้ใช้ทุกคน """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    query = "SELECT user_id, image FROM dbo.Users_Table"
+    cursor.execute(query)
+    profiles = cursor.fetchall()
+    conn.close()
+
+    return {
+        "profiles": {row[0]: row[1] for row in profiles if row[1]}  # เก็บเฉพาะ user_id กับ image URL
+    }

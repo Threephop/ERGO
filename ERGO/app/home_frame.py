@@ -1,84 +1,184 @@
+import os
 import tkinter as tk
-from tkinter import PhotoImage, messagebox
-import os  # For opening local video files
-import cv2  # For playing video using OpenCV
-import threading  # For running video playback in a separate thread
+from tkinter import ttk, Canvas, Scrollbar
+from PIL import Image, ImageTk
+import cv2  # ใช้สำหรับดึงเฟรมแรกของวิดีโอ
+from video_player import play_video  # ฟังก์ชันเล่นวิดีโอ
+import customtkinter as ctk  # ใช้ CustomTkinter
+import requests
 
-# Video Section
-video_dir = os.path.join(os.path.dirname(__file__), "video")
-video1_path = os.path.join(video_dir, "video1.mp4")
-icon_dir = os.path.join(os.path.dirname(__file__), "icon")
-video1_icon_path = os.path.join(icon_dir, "video1.png")
+API_BASE_URL = "http://localhost:8000"  # URL ของ FastAPI
+# ตรวจสอบพาธเต็ม
+video_folder = os.path.join(os.path.dirname(__file__), "video")
+updated_videos_folder = os.path.join(video_folder, "updated_videos")
+print(f"\U0001F6E0️ Full path to video folder: {os.path.abspath(video_folder)}")
+print(f"\U0001F6E0️ Full path to updated_videos folder: {os.path.abspath(updated_videos_folder)}")
 
-# Video Section
-video_data = [
-    {"title": "Video Name + 500 K.cal", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP1", "image": video1_icon_path},
-    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP2", "image": video1_icon_path},
-    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP3", "image": video1_icon_path},
-    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP4", "image": video1_icon_path},
-    {"title": "Video Name", "path": video1_path, "description": "\u0e04\u0e33\u0e2d\u0e34\u0e19\u0e22\u0e32\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23\u0e2a\u0e48\u0e27\u0e19 EP5", "image": video1_icon_path}
-]
+# 🔹 กำหนดโฟลเดอร์วิดีโอ
+DEFAULT_VIDEO_DIR = os.path.join(os.path.dirname(__file__), "video", "default_videos")
+UPDATED_VIDEO_DIR = os.path.join(os.path.dirname(__file__), "video", "updated_videos")
+THUMBNAIL_SIZE = (250, 200)  # กำหนดขนาด Thumbnail
+ctk.set_appearance_mode("light")
 
-
-video_playing = False
-
-class HomeFrame(tk.Frame):
+class HomeFrame(ctk.CTkFrame):
     def __init__(self, parent):
-        super().__init__(parent, bg="#ffffff")
+        super().__init__(parent, fg_color="white") 
+        self.parent = parent
+        self.columns = max(3, self.winfo_width() // 250)  # ✅ ปรับค่าเริ่มต้น
+        self.init_ui()
+        self.bind("<Configure>", self.on_resize)  # ตรวจจับการเปลี่ยนขนาดหน้าต่าง
+        self.after(100, lambda: self.on_resize(None)) # ✅ เรียก on_resize() ตั้งแต่แรก
 
-        # Main content
-        main_content = tk.Frame(self, bg="#ffffff")
-        main_content.pack(side="right", expand=True, fill="both")
+    def init_ui(self):
+        """สร้าง UI ใหม่ พร้อมปรับดีไซน์ปุ่ม"""
+        self.pack(fill=tk.BOTH, expand=True)
+        
+        # 🔹 ปุ่ม Update Videos (ไว้ด้านขวา)
+        self.update_button = ctk.CTkButton(
+            self, text="\U0001F504 Update Videos", 
+            command=self.update_videos, fg_color="#007BFF", hover_color="#0056b3"
+        )
+        self.update_button.pack(pady=5, padx=10, anchor="e")  # ชิดขวา
 
-        # Title
-        tk.Label(main_content, text="Video", bg="#ffffff", fg="#000000", font=("PTT 45 Pride", 24, "bold")).pack(pady=10)
-        tk.Label(main_content, text="วิดีโอสุขภาพ", 
-                 bg="#ffffff", fg="#888888", font=("PTT 45 Pride", 12, "italic")).pack(pady=5)
+        # 🔹 สร้าง Scrollable Frame
+        self.canvas = tk.Canvas(self, bg="white")  
+        self.scroll_y = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.frame = ctk.CTkFrame(self.canvas, fg_color="white")  
 
-        video_frame = tk.Frame(main_content, bg="#ffffff")
-        video_frame.pack(pady=10)
+        self.canvas.create_window((0, 0), window=self.frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scroll_y.set)
 
-        for i, video in enumerate(video_data):
-            try:
-                thumbnail = PhotoImage(file=video["image"]).subsample(2, 2)  # Load image and resize
-            except Exception as e:
-                print(f"Error loading image for {video['title']}: {e}")
-                thumbnail = PhotoImage(width=150, height=100)  # Placeholder image
+        self.scroll_y.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
 
-            video_btn = tk.Button(video_frame, image=thumbnail, text=video["description"],
-                                   compound="top", bg="#ffffff", fg="#000000",
-                                   font=("PTT 45 Pride", 10),
-                                   command=lambda v=video: self.play_video(v["path"]))
-            video_btn.image = thumbnail  # Keep a reference to prevent garbage collection
-            video_btn.grid(row=i // 2, column=i % 2, padx=10, pady=10)
+        self.canvas.bind_all("<MouseWheel>", self.on_mouse_wheel)  # เมาส์เลื่อน Scroll
 
-    def play_video(self, video_path):
-        def run_video():
-            global video_playing
-            video_playing = True
+        self.load_video_list()
+        
+    def get_video_thumbnail(self, video_path):
+        """ดึง Thumbnail ของวิดีโอ (เฟรมแรก)"""
+        cap = cv2.VideoCapture(video_path)
+        ret, frame = cap.read()
+        cap.release()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(frame)
+            image.thumbnail(THUMBNAIL_SIZE)
+            return ImageTk.PhotoImage(image)
+        return None
+        
+    def download_videos_from_azure(self):
+        """เรียก API เพื่อดึง URL วิดีโอจาก list_videos แล้วดาวน์โหลดลงโฟลเดอร์"""
+        if not os.path.exists(UPDATED_VIDEO_DIR):
+            os.makedirs(UPDATED_VIDEO_DIR)
 
-            cap = cv2.VideoCapture(video_path)
+        try:
+            # เรียก API /list_videos เพื่อดึงรายการวิดีโอ
+            response = requests.get(f"{API_BASE_URL}/list_videos/")
+            if response.status_code == 200:
+                posts = response.json()  # posts เป็น dictionary ที่มี key "videos"
+                
+                for post in posts["videos"]:  # ใช้ posts["videos"] เพื่อเข้าถึงรายการวิดีโอ
+                    video_url = post.get("url")  # ใช้ key "url" ตาม JSON ที่ได้
+                    if not video_url:
+                        continue
 
-            if not cap.isOpened():
-                messagebox.showerror("ข้อผิดพลาด", "ไม่สามารถเปิดวิดีโอได้")
-                return
+                    file_name = os.path.basename(video_url)
+                    local_file_path = os.path.join(UPDATED_VIDEO_DIR, file_name)
+
+                    if not os.path.exists(local_file_path):
+                        # ดาวน์โหลดวิดีโอจาก URL
+                        download_response = requests.get(video_url, stream=True)
+                        if download_response.status_code == 200:
+                            with open(local_file_path, "wb") as f:
+                                for chunk in download_response.iter_content(1024):
+                                    f.write(chunk)
+                            print(f"✅ Downloaded: {file_name}")
+                        else:
+                            print(f"❌ Failed to download {file_name}")
+                    else:
+                        print(f"✅ Already exists: {file_name}")
+
+            else:
+                print("❌ Failed to fetch video list from API")
+        except Exception as e:
+            print(f"❌ API Request Error: {e}")
+
             
-            window_name = "Video Player"
-            cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-            
-            while video_playing and cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
+    def load_video_list(self):
+        """โหลดรายการวิดีโอและแสดงเป็น Thumbnail Grid"""
+        for widget in self.frame.winfo_children():
+            widget.destroy()
 
-                cv2.imshow(window_name, frame)
+        videos = []
+        for folder in [DEFAULT_VIDEO_DIR, UPDATED_VIDEO_DIR]:
+            if os.path.exists(folder):
+                videos.extend([os.path.join(folder, f) for f in os.listdir(folder) if f.endswith(('.mp4', '.avi'))])
 
-                key = cv2.waitKey(25)
-                if key == ord('q') or cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
-                    break
+        self.video_thumbnails = []
 
-            cap.release()
-            cv2.destroyAllWindows()  # แก้ไขตรงนี้
-            video_playing = False
+        for idx, video_path in enumerate(videos):
+            thumbnail = self.get_video_thumbnail(video_path)
+            if thumbnail:
+                self.video_thumbnails.append(thumbnail)
 
-        threading.Thread(target=run_video, daemon=True).start()  # ใช้ daemon=True ให้ปิด thread อัตโนมัติ
+                frame = ctk.CTkFrame(self.frame, corner_radius=10)  
+                frame.grid(row=idx // self.columns, column=idx % self.columns, padx=15, pady=15)
+
+                label = tk.Label(frame, image=thumbnail)
+                label.pack()
+
+                btn = ctk.CTkButton(
+                    frame, text=os.path.basename(video_path), 
+                    command=lambda v=video_path: play_video(v), 
+                    fg_color="#28A745", hover_color="#1E7E34"
+                )
+                btn.pack(pady=5)
+
+        self.frame.update_idletasks()
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))        
+    
+    def play_selected_video(self):
+        """เล่นวิดีโอที่เลือก"""
+        selected_video = self.video_list.get()
+        if not selected_video:
+            return
+
+        # ค้นหาวิดีโอจากโฟลเดอร์ที่ถูกต้อง
+        video_path = os.path.join(DEFAULT_VIDEO_DIR, selected_video)
+        if not os.path.exists(video_path):
+            video_path = os.path.join(UPDATED_VIDEO_DIR, selected_video)
+
+        if os.path.exists(video_path):
+            play_video(video_path)
+        else:
+            print(f"❌ Error: Video file not found - {selected_video}")
+
+    def on_resize(self, event=None):
+        """ตรวจจับการเปลี่ยนขนาดหน้าต่างแล้วปรับจำนวนวิดีโอต่อแถว"""
+        if event:
+            width = event.width
+        else:
+            width = self.winfo_width()  # ใช้ความกว้างของ widget ถ้าไม่มี event
+        self.columns = max(2, width // 250)  # ปรับจำนวนวิดีโอต่อแถวอัตโนมัติ
+        self.load_video_list()
+
+    def on_mouse_wheel(self, event):
+        """ให้ Canvas ใช้เมาส์เลื่อน Scroll ได้"""
+        self.canvas.yview_scroll(-1 * (event.delta // 120), "units")
+
+
+    def update_videos(self):
+        """อัปเดตวิดีโอจาก Azure"""
+        print("🔄 Downloading videos from Azure...")
+        self.download_videos_from_azure()
+        self.load_video_list()
+        print("✅ Videos updated!")
+
+# 🔹 สร้างหน้าต่างหลัก
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.title("🎬 Video Player with Azure Update")
+    root.geometry("400x250")  # ตั้งค่าขนาดหน้าต่าง
+    app = HomeFrame(root)
+    root.mainloop()
