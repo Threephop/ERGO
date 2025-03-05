@@ -95,6 +95,7 @@ class CommunityFrame(tk.Frame):
         self.refresh_button.grid(row=0, column=0, padx=10, pady=10, sticky="ne")
 
         self.entry.bind("<Return>", lambda event: self.send_message())
+        self.is_loading = False # ตั้งค่าเริ่มต้นสำหรับการโหลดข้อความ
         self.load_messages()
         self.update_idletasks() # อัปเดต UI ก่อนเลื่อนลงไปที่ข้อความล่าสุด
         self.canvas.yview_moveto(1.0)  # เลื่อนลงไปที่ข้อความล่าสุด
@@ -245,19 +246,26 @@ class CommunityFrame(tk.Frame):
         return self.profile_icon  # คืนค่าเป็นรูปโปรไฟล์เริ่มต้นถ้าโหลดไม่สำเร็จ
         
     def load_messages(self):
-        def fetch():
-            for widget in self.scrollable_frame.winfo_children():
-                widget.destroy()
+        if self.is_loading:
+            return  # ป้องกันการโหลดซ้ำ
 
+        self.is_loading = True  # กำลังโหลด...
+        
+        def fetch():
             try:
+                for widget in self.scrollable_frame.winfo_children():
+                    try:
+                        widget.unbind("<Button-1>")  # ป้องกันปัญหา event ถูกเรียกหลัง destroy
+                    except Exception as e:
+                        print(f"⚠️ ไม่สามารถ unbind widget ได้: {e}")  
+                    
+                    widget.destroy()
+
                 response = requests.get("http://localhost:8000/get-messages")
                 if response.status_code == 200:
                     messages = response.json().get("messages", [])
-                    user_id = self.user_id  # user_id ของผู้ใช้ที่ล็อกอินอยู่
+                    user_id = self.user_id
 
-                    print(f"✅ Logged-in user_id: {user_id}")  # เช็ค user_id
-
-                    # เรียง messages ตาม post_id จากมากไปน้อย (ล่าสุดอยู่ล่าง)
                     messages = sorted(messages, key=lambda x: x["post_id"])
 
                     for msg in messages:
@@ -266,16 +274,12 @@ class CommunityFrame(tk.Frame):
                         content = msg.get("content")
                         message_owner_id = msg.get("user_id")
                         filepath = msg.get("video_path", None)  
-                        like_count = msg.get("like_count", 0)  # จำนวน like
+                        like_count = msg.get("like_count", 0)  
                         profile_image = self.profile_images.get(message_owner_id, self.profile_icon)
-                        # เรียก API เพื่อตรวจสอบว่าโพสต์นี้ถูกไลค์โดยผู้ใช้หรือไม่
-                        is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id})
-                        if is_liked_response.status_code == 200:
-                            is_liked = is_liked_response.json().get("is_liked", False)
-                        else:
-                            is_liked = False  # ถ้าการเช็คไม่สำเร็จ ให้ตั้งค่าเป็น False
 
-                        # ถ้าเป็นโพสต์วิดีโอ
+                        is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id})
+                        is_liked = is_liked_response.json().get("is_liked", False) if is_liked_response.status_code == 200 else False
+
                         if filepath:  
                             if message_owner_id == user_id:
                                 self.post_video(filepath, user_id, post_id, username, like_count, is_liked, profile_image)
@@ -287,13 +291,14 @@ class CommunityFrame(tk.Frame):
                             else:
                                 self.add_message_bubble_another(post_id, username, content, profile_image)
 
-                    # เลื่อน scroll ลงไปที่ข้อความล่าสุด
-                    self.update_idletasks() 
+                    self.update_idletasks()
                     self.canvas.yview_moveto(1.0)
                 else:
                     print("⚠️ เกิดข้อผิดพลาด:", response.json())
             except Exception as e:
                 print("⚠️ เกิดข้อผิดพลาดขณะโหลดข้อความ:", e)
+            finally:
+                self.is_loading = False  # โหลดเสร็จแล้ว
             
         thread = threading.Thread(target=fetch, daemon=True)
         thread.start()
