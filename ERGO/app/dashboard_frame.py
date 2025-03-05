@@ -20,6 +20,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         self.user_id = self.fetch_user_id(user_email)  
         self.user_email = user_email  
         self.user_role = self.fetch_user_role(user_email)  
+        self.image_dir = os.path.join(os.path.dirname(__file__), "imageVideo")
 
         # ✅ สร้าง Notebook (ใช้แท็บของ Tkinter)
         self.notebook = ttk.Notebook(self)
@@ -211,16 +212,18 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
   
 
-    def get_video_thumbnail(self, video_url, save_path=None):
-        """ ดึง Thumbnail จากเฟรมแรกของวิดีโอและบันทึกไฟล์ """
+    def get_video_thumbnail(self, video_url, post_id):
+        """ ดึง Thumbnail จากเฟรมแรกของวิดีโอและบันทึกใน icon/ """
         try:
             cap = cv2.VideoCapture(video_url)
             success, frame = cap.read()
             cap.release()
 
             if success:
-                if save_path:  # ✅ ถ้ามี save_path ให้บันทึกไฟล์
-                    cv2.imwrite(save_path, frame)
+                thumbnail_filename = f"thumbnail_{post_id}.jpg"
+                save_path = os.path.join(self.image_dir, thumbnail_filename)  # 🔹 บันทึกที่ icon/
+
+                cv2.imwrite(save_path, frame)  # ✅ บันทึกไฟล์ Thumbnail
 
                 img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 img = img.resize((150, 100), Image.Resampling.LANCZOS)
@@ -230,7 +233,6 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             print(f"❌ Error loading thumbnail: {e}")
         
         return None  # ✅ ถ้าล้มเหลวให้คืนค่า None
-
 
     def create_video_list(self, parent, videos=None):
         """ สร้าง UI แสดงวิดีโอของผู้ใช้ และ Like Count """
@@ -259,9 +261,8 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             video_url = video.get("video_url", "")
             like_count = video.get("like_count", 0)
 
-            # ✅ ดึง Thumbnail จากวิดีโอ
-            thumbnail_path = f"thumbnail_{post_id}.jpg"
-            thumbnail = self.get_video_thumbnail(video_url, save_path=thumbnail_path)
+            # ✅ ดึง Thumbnail จากวิดีโอและเก็บไว้ในโฟลเดอร์ icon
+            thumbnail = self.get_video_thumbnail(video_url, post_id)
 
             if thumbnail:
                 video_label = tk.Label(video_frame, image=thumbnail, bg="white", cursor="hand2")
