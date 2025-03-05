@@ -271,7 +271,7 @@ class CommunityFrame(tk.Frame):
                         # เรียก API เพื่อตรวจสอบว่าโพสต์นี้ถูกไลค์โดยผู้ใช้หรือไม่
                         is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id})
                         if is_liked_response.status_code == 200:
-                            is_liked = is_liked_response.json().get("liked_by_user", False)
+                            is_liked = is_liked_response.json().get("is_liked", False)
                         else:
                             is_liked = False  # ถ้าการเช็คไม่สำเร็จ ให้ตั้งค่าเป็น False
 
@@ -481,7 +481,7 @@ class CommunityFrame(tk.Frame):
 
 
         
-    def post_video(self, filepath, user_id, post_id, username, like_count, is_liked , profile_image):
+    def post_video(self, filepath, user_id, post_id, username, like_count, is_liked, profile_image):
         try:
             print(f"ใช้ post_id: {post_id} สำหรับการแสดงผลวิดีโอ")
 
@@ -509,25 +509,29 @@ class CommunityFrame(tk.Frame):
             like_icon = self.load_resized_image("Like.png", (20, 20))
             heart_icon = self.load_resized_image("heart.png", (20, 20))
 
-            like_button = tk.Button(like_frame, image=like_icon, bd=0, bg="white")
-            like_button.image = like_icon
+            initial_icon = heart_icon if is_liked else like_icon
+
+            like_button = tk.Button(like_frame, image=initial_icon, bd=0, bg="white")
+            like_button.image = initial_icon  # ป้องกัน GC
             like_button.heart_icon = heart_icon
             like_button.like_icon = like_icon
-            like_button.is_liked = is_liked  # ใช้ is_liked ที่ได้จาก API
+            like_button.is_liked = is_liked  
             like_button.like_count = like_count
+
             like_label = tk.Label(like_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="white")
 
-            like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id, like_button.is_liked))
-            like_button.pack(side="top", pady=2)
-            like_label.pack(side="top")
+            # ใช้ try-except ป้องกัน error ที่เกิดจาก widget ที่อาจถูกลบ
+            try:
+                like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id, like_button.is_liked))
+                like_button.pack(side="top", pady=2)
+                like_label.pack(side="top")
+            except tk.TclError:
+                print(f"⚠️ ไม่สามารถสร้าง Like button สำหรับ post_id {post_id}")
 
-            # บันทึก like_label ลง self.like_labels
             self.like_labels[post_id] = like_label
 
-            # อัปเดตจำนวนไลก์
             self.add_like_count(post_id, like_count)
 
-            # ปุ่มยกเลิกโพสต์
             cancel_button = tk.Button(
                 bubble_frame, 
                 text="ยกเลิกการส่ง", 
@@ -545,6 +549,7 @@ class CommunityFrame(tk.Frame):
 
         except Exception as e:
             messagebox.showerror("Error", f"Error posting video: {e}")
+
 
     def post_video_another(self, filepath, user_id, post_id, username, like_count, is_liked ,profile_image):
         try:
@@ -574,19 +579,25 @@ class CommunityFrame(tk.Frame):
 
             like_icon = self.load_resized_image("Like.png", (20, 20))
             heart_icon = self.load_resized_image("heart.png", (20, 20))
+            
+            initial_icon = heart_icon if is_liked else like_icon
 
-            like_button = tk.Button(like_frame, image=like_icon, bd=0, bg="#ffffff")
-            like_button.image = like_icon
+            like_button = tk.Button(like_frame, image=initial_icon, bd=0, bg="white")
+            like_button.image = initial_icon  # ป้องกัน GC
             like_button.heart_icon = heart_icon
             like_button.like_icon = like_icon
-            like_button.is_liked = is_liked  # ใช้ is_liked ที่ได้จาก API
+            like_button.is_liked = is_liked  
             like_button.like_count = like_count
 
-            like_label = tk.Label(like_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="#ffffff")
+            like_label = tk.Label(like_frame, text=f"{like_count} Likes", font=("PTT 45 Pride", 12), bg="white")
 
-            like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id, like_button.is_liked))
-            like_button.pack(side="left", pady=2)
-            like_label.pack(side="left")
+            # ใช้ try-except ป้องกัน error ที่เกิดจาก widget ที่อาจถูกลบ
+            try:
+                like_button.config(command=lambda: self.toggle_like(like_button, like_label, post_id, user_id, like_button.is_liked))
+                like_button.pack(side="top", pady=2)
+                like_label.pack(side="top")
+            except tk.TclError:
+                print(f"⚠️ ไม่สามารถสร้าง Like button สำหรับ post_id {post_id}")
 
             # ✅ บันทึก like_label ลง self.like_labels
             self.like_labels[post_id] = like_label
@@ -605,7 +616,11 @@ class CommunityFrame(tk.Frame):
     def toggle_like(self, like_button, like_label, post_id, user_id, is_liked):
         """ เปลี่ยนสถานะของปุ่ม Like และอัปเดตจำนวน Like พร้อมกับส่งข้อมูลไปยัง FastAPI """
 
-        # ใช้ค่า is_liked ที่รับมาแทนการเช็คจาก like_button
+        # ตรวจสอบว่าปุ่มยังคงอยู่ก่อนอัปเดต
+        if not like_button.winfo_exists() or not like_label.winfo_exists():
+            print(f"⚠️ ปุ่มหรือ Label ของ post_id {post_id} ถูกลบไปแล้ว")
+            return
+
         if is_liked:
             # ถ้ายกเลิก Like
             like_button.config(image=like_button.like_icon, bg="white")
@@ -622,9 +637,9 @@ class CommunityFrame(tk.Frame):
         # ส่งคำขอไปยัง API
         self.send_like(post_id, user_id, action)
 
-        # อัปเดตจำนวน Like ใน label
-        like_label.config(text=f"{like_button.like_count} Likes")
-
+        # ตรวจสอบว่า label ยังมีอยู่ก่อนอัปเดตข้อความ
+        if like_label.winfo_exists():
+            like_label.config(text=f"{like_button.like_count} Likes")
 
     def send_like(self, post_id, user_id, action):
         """ ส่งคำขอ Like หรือ Unlike ไปยัง API """
