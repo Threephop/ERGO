@@ -45,6 +45,7 @@ class App(tk.Tk):
         
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
         # ตั้งค่าไอคอน
+        self.default_profile_path = os.path.join(self.icon_dir, "profile.png")
         self.iconbitmap(os.path.join(self.icon_dir, "GODJI-Action_200113_0008.ico"))  # เปลี่ยนเป็นพาธของไฟล์ .ico
         self.geometry("1024x768")  # ขนาดหน้าต่าง
         self.configure(bg="white")  # สีพื้นหลังหน้าต่างหลัก

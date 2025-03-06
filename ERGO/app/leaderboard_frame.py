@@ -113,40 +113,39 @@ class LeaderboardFrame(tk.Frame):
             role = self.user_role
 
             if tab_name == "Active":
-                sorted_stats = sorted(stats, key=lambda x: x["hours_used"], reverse=True)  # เรียงจากมากไปน้อย
+                sorted_stats = sorted(stats, key=lambda x: x["hours_used"], reverse=True)  
                 top_user = sorted_stats[0]["username"] if sorted_stats else "N/A"
-                self.active_label.config(text=f"Most Active Hours: {top_user}")
-                self.display_users(self.active_list_frame, sorted_stats)
+                self.active_label.config(text=f"Most Active User: {top_user}")
+                self.display_users(self.active_list_frame, sorted_stats, "hours_used")
 
             elif tab_name == "Popular":
-                sorted_stats = sorted(stats, key=lambda x: x["like_count"], reverse=True)  # เปลี่ยนเป็น like_count
+                sorted_stats = sorted(stats, key=lambda x: x["like_count"], reverse=True)  
                 top_user = sorted_stats[0]["username"] if sorted_stats else "N/A"
                 self.popular_label.config(text=f"Most Popular User: {top_user}")
-                self.display_users(self.popular_list_frame, sorted_stats)
-                
-            if role == 1 and tab_name == "Active":
-                # ถ้ามีปุ่ม export_button อยู่แล้ว ให้ลบก่อน
-                if hasattr(self, "export_button") and self.export_button is not None:
-                    self.export_button.destroy()
+                self.display_users(self.popular_list_frame, sorted_stats, "like_count")
 
-                # สร้างปุ่มใหม่
-                self.export_button_active = ctk.CTkButton(
-                    self.active_list_frame, text="Export Excel Active", font = ("PTT 45 Pride", 16),
-                    corner_radius=25,
-                    fg_color = "#176E1B", command=self.export_active_excel)
-                self.export_button_active.pack(pady=10)
-                
-            if role == 1 and tab_name == "Popular":
-                # ถ้ามีปุ่ม export_button อยู่แล้ว ให้ลบก่อน
-                if hasattr(self, "export_button") and self.export_button is not None:
-                    self.export_button.destroy()
+            # ปุ่ม Export สำหรับ Admin เท่านั้น
+            if role == 1:
+                if tab_name == "Active":
+                    if hasattr(self, "export_button") and self.export_button is not None:
+                        self.export_button.destroy()
+                    self.export_button_active = ctk.CTkButton(
+                        self.active_list_frame, text="Export Excel Active",
+                        font=("PTT 45 Pride", 16), corner_radius=25, fg_color="#176E1B",
+                        command=self.export_active_excel
+                    )
+                    self.export_button_active.pack(pady=10)
 
-                # สร้างปุ่มใหม่
-                self.export_button_popular = ctk.CTkButton(
-                    self.popular_list_frame, text="Export Excel Popular", font = ("PTT 45 Pride", 16),
-                    corner_radius=25,
-                    fg_color = "#176E1B", command=self.export_popular_excel)
-                self.export_button_popular.pack(pady=10)
+                elif tab_name == "Popular":
+                    if hasattr(self, "export_button") and self.export_button is not None:
+                        self.export_button.destroy()
+                    self.export_button_popular = ctk.CTkButton(
+                        self.popular_list_frame, text="Export Excel Popular",
+                        font=("PTT 45 Pride", 16), corner_radius=25, fg_color="#176E1B",
+                        command=self.export_popular_excel
+                    )
+                    self.export_button_popular.pack(pady=10)
+
 
     def export_active_excel(self):
         """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
@@ -204,19 +203,20 @@ class LeaderboardFrame(tk.Frame):
         except requests.exceptions.RequestException:
             messagebox.showerror("Error", "Failed to connect to the server")
 
-    def display_users(self, frame, stats):
+    def display_users(self, frame, stats, key):
         for widget in frame.winfo_children():
             widget.destroy()
 
         for idx, user in enumerate(stats):
+            value = user[key]  # ใช้ key ที่ส่งมา
+            text = f"{idx+1}. {user['username']} | {value} {'hrs' if key == 'hours_used' else 'likes'}"
+            
             name_label = tk.Label(
-                frame,
-                text=f"{idx+1}. {user['username']} | {user['hours_used']} hrs | {user['like_count']} likes",  # เปลี่ยนเป็น like_count
-                font=("PTT 45 Pride", 12),
-                bg="white",
-                fg="black",
+                frame, text=text, font=("PTT 45 Pride", 12),
+                bg="white", fg="black"
             )
             name_label.pack(anchor="w", padx=20, pady=2)
+
 
 
 # เรียกใช้ App
