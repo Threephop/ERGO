@@ -778,6 +778,87 @@ def export_dashboard_month(email: str):
     # 🔹 ส่งไฟล์ให้ frontend ดาวน์โหลด
     return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+# 🔹 API: Export Leaderboard Active (เรียงตาม hours_used)
+@api_router.get("/export_leaderboard_active/")
+def export_leaderboard_active(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to export data")
+
+    # 🔹 ดึงข้อมูลจาก UsageStats_Table และ Users_Table
+    query = """
+    SELECT 
+        u.username AS "รายชื่อ", 
+        u.outlook_mail AS "ที่อยู่อีเมล", 
+        COALESCE(s.hours_used, 0) AS "ชั่วโมงที่ใช้"
+    FROM dbo.UsageStats_Table s
+    JOIN dbo.Users_Table u ON s.user_id = u.user_id
+    ORDER BY s.hours_used DESC
+    """
+    
+    df = pd.read_sql(query, conn)
+    conn.close()
+
+    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้
+    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+    file_path = get_unique_filename(downloads_folder, "leaderboard_active", ".xlsx")
+    
+    df.to_excel(file_path, index=False)
+
+    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+# 🔹 API: Export Leaderboard Popular (เรียงตาม total_likes)
+@api_router.get("/export_leaderboard_popular/")
+def export_leaderboard_popular(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to export data")
+
+    # 🔹 ดึงข้อมูลที่ต้องการ: username, email, และจำนวนไลค์ที่ได้รับ
+    query = """
+    SELECT 
+        u.username AS "ชื่อ",
+        u.outlook_mail AS "ที่อยู่อีเมล",
+        COUNT(l.like_id) AS "จำนวนการกดถูกใจ"
+    FROM dbo.Like_Table l
+    JOIN dbo.Users_Table u ON l.user_id = u.user_id
+    GROUP BY u.username, u.outlook_mail
+    ORDER BY COUNT(l.like_id) DESC
+    """
+    
+    df = pd.read_sql(query, conn)
+    conn.close()
+
+    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้
+    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+    file_path = get_unique_filename(downloads_folder, "leaderboard_popular", ".xlsx")
+    
+    df.to_excel(file_path, index=False)
+
+    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 @api_router.get("/get_monthly_usage_stats/{user_id}")
 def get_monthly_usage_stats(user_id: int):
     """ดึงข้อมูลการใช้งานรายเดือนของผู้ใช้"""
