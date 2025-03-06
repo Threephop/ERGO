@@ -313,7 +313,7 @@ class App(tk.Tk):
             activeforeground="white",
             command=lambda: self.show_frame(ProfileFrame),
         )
-        self.profile_button.place(x=55, y=10)  # ปรับตำแหน่งปุ่ม
+        self.profile_button.place(x=60, y=10)  # ปรับตำแหน่งปุ่ม
 
         # โหลดรูปโปรไฟล์จาก API หลังจากสร้างปุ่มแล้ว
         self.update_sidebar_profile()
@@ -462,7 +462,7 @@ class App(tk.Tk):
                 command=lambda: self.show_frame(ProfileFrame),
             )
             self.profile_button.image = profile_icon
-            self.profile_button.place(x=55, y=10)
+            self.profile_button.place(x=60, y=10)
 
 
     def show_frame(self, frame_class): 
@@ -541,8 +541,8 @@ class App(tk.Tk):
             self.menu_label.place_forget()  # ซ่อนข้อความ "MENU"
             
             # แสดงปุ่มเมนู
-            self.profile_button.place(x=20, y=20)
-            self.username_frame.place(x=0, y=0, width=200) 
+            self.profile_button.place(x=50, y=20)
+            self.username_frame.place(x=10, y=0, width=200) 
             self.home_button.place(x=30, y=250)
             self.community_button.place(x=30, y=350)
             self.dashboard_button.place(x=30, y=450)
