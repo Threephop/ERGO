@@ -17,7 +17,7 @@ class LeaderboardFrame(tk.Frame):
         self.user_role = self.fetch_user_role(user_email) 
 
         # Header สำหรับ Leaderboard
-        title_label = tk.Label(self, text="Leader-board", font=("Arial", 24, "bold"), bg="white", fg="black")
+        title_label = tk.Label(self, text="Leader-board", font=("PTT 45 Pride", 24, "bold"), bg="white", fg="black")
         title_label.pack(pady=10)
 
         # Tabs Frame
@@ -30,7 +30,7 @@ class LeaderboardFrame(tk.Frame):
             btn = tk.Button(
                 tabs_frame,
                 text=tab_name,
-                font=("Arial", 12),
+                font=("PTT 45 Pride", 12),
                 bg="#D3D3D3" if idx != 0 else "#4B0082",
                 fg="black" if idx != 0 else "white",
                 relief="flat",
@@ -62,7 +62,7 @@ class LeaderboardFrame(tk.Frame):
 
     def create_active_frame(self):
         frame = tk.Frame(self, bg="white")
-        self.active_label = tk.Label(frame, text="Loading...", font=("Arial", 18), bg="white", fg="#4B0082")
+        self.active_label = tk.Label(frame, text="Loading...", font=("PTT 45 Pride", 18), bg="white", fg="#4B0082")
         self.active_label.pack(pady=10)
         self.active_list_frame = tk.Frame(frame, bg="white")
         self.active_list_frame.pack(pady=5)
@@ -71,7 +71,7 @@ class LeaderboardFrame(tk.Frame):
 
     def create_popular_frame(self):
         frame = tk.Frame(self, bg="white")
-        self.popular_label = tk.Label(frame, text="Loading...", font=("Arial", 18), bg="white", fg="#4B0082")
+        self.popular_label = tk.Label(frame, text="Loading...", font=("PTT 45 Pride", 18), bg="white", fg="#4B0082")
         self.popular_label.pack(pady=10)
         self.popular_list_frame = tk.Frame(frame, bg="white")
         self.popular_list_frame.pack(pady=5)
@@ -212,7 +212,7 @@ class LeaderboardFrame(tk.Frame):
             name_label = tk.Label(
                 frame,
                 text=f"{idx+1}. {user['username']} | {user['hours_used']} hrs | {user['like_count']} likes",  # เปลี่ยนเป็น like_count
-                font=("Arial", 12),
+                font=("PTT 45 Pride", 12),
                 bg="white",
                 fg="black",
             )
