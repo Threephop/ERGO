@@ -200,14 +200,26 @@ class SettingFrame(tk.Frame):
             print("Muted: เสียงแจ้งเตือนถูกปิดอยู่")
             return  # ไม่เล่นเสียงถ้า mute อยู่
 
-        pygame.init()
-        pygame.mixer.init()
+        # ตรวจสอบว่า pygame ได้รับการเริ่มต้นหรือไม่
+        if not pygame.mixer.get_init():
+            pygame.mixer.quit()  # ปิดการใช้งานก่อน
+            pygame.mixer.init()  # เริ่มใหม่
 
         sound_path = os.path.join(os.path.dirname(__file__), "sounds", "notification_sound.mp3")
         if os.path.exists(sound_path):
+            pygame.mixer.music.stop()  # หยุดเสียงก่อนถ้ามีเสียงกำลังเล่นอยู่
             pygame.mixer.music.load(sound_path)
-            pygame.mixer.music.set_volume(self.volume.get() / 100)
-            pygame.mixer.music.play()
+            
+            # ใช้ after() เพื่ออัปเดต volume ใน main thread
+            def set_volume():
+                pygame.mixer.music.set_volume(self.volume.get() / 100)
+
+            self.after(0, set_volume)  # ใช้ after ในการอัปเดต volume
+            
+            try:
+                pygame.mixer.music.play()  # เล่นเสียง
+            except pygame.error as e:
+                print(f"Error playing sound: {e}")
         else:
             print(f"Error: Sound file not found - {sound_path}")
 
@@ -246,19 +258,19 @@ class SettingFrame(tk.Frame):
                 print("เกิดข้อผิดพลาดในการอ่านไฟล์ JSON")
         return {}
 
-if __name__ == "__main__":
-    def on_language_change(language):
-        print(f"Language changed to: {language}")
+# if __name__ == "__main__":
+#     def on_language_change(language):
+#         print(f"Language changed to: {language}")
 
-    def is_muted():
-        return False  # ตัวอย่าง callback สำหรับตรวจสอบ mute
+#     def is_muted():
+#         return False  # ตัวอย่าง callback สำหรับตรวจสอบ mute
 
-    root = tk.Tk()
-    root.title("Settings")
-    root.geometry("800x400")
+#     root = tk.Tk()
+#     root.title("Settings")
+#     root.geometry("800x400")
 
-    # สร้าง SettingFrame ด้วย callback ทั้งสอง
-    setting_frame = SettingFrame(root, is_muted_callback=is_muted, change_language_callback=on_language_change)
-    setting_frame.place(x=0, y=0, width=800, height=400)
+#     # สร้าง SettingFrame ด้วย callback ทั้งสอง
+#     setting_frame = SettingFrame(root, is_muted_callback=is_muted, change_language_callback=on_language_change)
+#     setting_frame.place(x=0, y=0, width=800, height=400)
 
-    root.mainloop()
+#     root.mainloop()

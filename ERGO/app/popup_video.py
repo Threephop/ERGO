@@ -1,11 +1,16 @@
 import cv2
+import tkinter as tk
 from tkinter import messagebox
 import os
-from video_player import play_video # ฟังก์ชันเล่นวิดีโอ
+from video_player import VideoPlayer  # นำเข้า VideoPlayer
 
 # 🔹 กำหนดโฟลเดอร์วิดีโอ
 DEFAULT_VIDEO_DIR = os.path.join(os.path.dirname(__file__), "video", "default_videos")
 UPDATED_VIDEO_DIR = os.path.join(os.path.dirname(__file__), "video", "updated_videos")
+
+def open_video_player(video_path):
+    root = tk.Toplevel()  # สร้างหน้าต่างใหม่
+    player = VideoPlayer(root, video_path)  # สร้าง VideoPlayer และส่ง root กับ video_path เข้าไป
 
 def get_video_list():
     """โหลดวิดีโอจากโฟลเดอร์ DEFAULT และ UPDATED"""
@@ -33,7 +38,7 @@ def show_popup():
         selected = video_var.get()
         if selected and selected in video_list:
             print(f"Selected video: {selected}")
-            play_video(video_list[selected])
+            open_video_player(video_list[selected])
         else:
             messagebox.showerror("Error", "กรุณาเลือกวิดีโอ")
 
