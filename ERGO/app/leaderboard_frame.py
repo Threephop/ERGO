@@ -141,11 +141,14 @@ class LeaderboardFrame(tk.Frame):
                 self.export_button_popular = ctk.CTkButton(
                     self.popular_list_frame, text="Export Excel Popular", font = ("PTT 45 Pride", 16),
                     corner_radius=25,
-                    fg_color = "#176E1B", command=self.export_active_excel)
+                    fg_color = "#176E1B", command=self.export_popular_excel)
                 self.export_button_popular.pack(pady=10)
 
     def export_active_excel(self):
         print("Export to active")
+        
+    def export_popular_excel(self):
+        print("Export to popular")
 
     def display_users(self, frame, stats):
         for widget in frame.winfo_children():
