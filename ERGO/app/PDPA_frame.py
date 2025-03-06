@@ -13,6 +13,9 @@ class PopupFrame(ctk.CTkToplevel):
         self.geometry("850x700")
         self.configure(fg_color="white")
         
+        # ให้ปุ่ม X ทำงานเหมือนปุ่ม "ปฏิเสธ"
+        self.protocol("WM_DELETE_WINDOW", self.open_login)
+        
         # กำหนดตำแหน่งหน้าต่างกลางจอ
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
