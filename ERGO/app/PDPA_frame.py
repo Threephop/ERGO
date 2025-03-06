@@ -3,6 +3,8 @@ from tkinter import messagebox
 import webbrowser
 import os
 import re
+import subprocess
+import sys
 
 class PopupFrame(ctk.CTkToplevel):
     def __init__(self, parent):
@@ -10,9 +12,7 @@ class PopupFrame(ctk.CTkToplevel):
         self.title("PDPA")
         self.geometry("850x700")
         self.configure(fg_color="white")
-        self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
-        self.wm_iconbitmap(os.path.join(self.icon_dir, "GODJI-Action_200113_0008.ico"))
-
+        
         # กำหนดตำแหน่งหน้าต่างกลางจอ
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -21,7 +21,7 @@ class PopupFrame(ctk.CTkToplevel):
         position_right = int(screen_width / 2 - window_width / 2)
         self.geometry(f'{window_width}x{window_height}+{position_right}+{position_top}')
 
-        ctk.CTkLabel(self, text="ข้อตกลง", font=("PTT 45 Pride", 16), fg_color="transparent").pack(pady=10)
+        ctk.CTkLabel(self, text="ข้อตกลง", font=("PTT 45 Pride", 22), fg_color="transparent").pack(pady=10)
 
         # สร้าง Canvas และ Scrollbar
         frame_canvas = ctk.CTkFrame(self, fg_color="white")
@@ -31,92 +31,59 @@ class PopupFrame(ctk.CTkToplevel):
         canvas.pack(side="left", fill="both", expand=True)
 
         scrollbar_canvas = ctk.CTkScrollbar(frame_canvas, orientation="vertical", command=canvas.yview)
+        scrollbar_canvas = scrollbar_canvas = ctk.CTkScrollbar(frame_canvas, orientation="vertical", command=canvas.yview)
         scrollbar_canvas.pack(side="right", fill="y")
         canvas.configure(yscrollcommand=scrollbar_canvas.set)
 
-        check_frame = ctk.CTkFrame(canvas, fg_color="white")
-        canvas.create_window((0, 0), window=check_frame, anchor="nw", width=800)
-
+        self.check_frame = ctk.CTkFrame(canvas, fg_color="white")
+        canvas.create_window((0, 0), window=self.check_frame, anchor="nw", width=1000)
+        
         # โหลดข้อความจากไฟล์ pdpa.txt
         pdpa_file_path = os.path.join(os.path.dirname(__file__), "text/pdpa.txt")
         try:
             with open(pdpa_file_path, "r", encoding="utf-8") as file:
                 pdpa_content = file.read()
-            
-            # ใช้ Regular Expression เพื่อจับตัวเลขข้อ + เนื้อหาไว้ด้วยกัน
+
             check_texts = re.findall(r'(\d+\.\s.*?)(?=\n\d+\.|\Z)', pdpa_content, re.DOTALL)
         except FileNotFoundError:
             check_texts = ["ไม่สามารถโหลดเนื้อหา PDPA ได้ กรุณาตรวจสอบไฟล์ pdpa.txt"]
 
-        # เพิ่ม CheckBox และ Label
         self.check_vars = []
         self.check_boxes = []
 
         for i, text in enumerate(check_texts):
             var = ctk.BooleanVar()
             self.check_vars.append(var)
-
             # สร้าง Frame ย่อยสำหรับวาง CheckBox และข้อความให้ชิดกัน
-            item_frame = ctk.CTkFrame(check_frame, fg_color="white")
+            item_frame = ctk.CTkFrame(self.check_frame, fg_color="white")
             item_frame.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
-            # สร้าง CheckBox
-            check_box = ctk.CTkCheckBox(item_frame, text="", variable=var, 
-                                        width=20, height=40, checkbox_width=20, checkbox_height=20,
-                                        fg_color="gray")  # ตั้งค่าเริ่มต้นเป็นสีเทา
-            check_box.pack(side="left", padx=(0, 5))
+            checkbox = ctk.CTkCheckBox(item_frame, variable=var, text="", fg_color="gray", hover_color="green")
+            checkbox.pack(side="left", padx=(0, 5))
 
-            # บันทึก CheckBox ไว้ในรายการ
-            self.check_boxes.append(check_box)
+            label = ctk.CTkLabel(
+                item_frame, 
+                text=text, 
+                fg_color="white", 
+                justify="left", 
+                wraplength=700,
+                font=("PTT 45 Pride", 16)  # เพิ่ม font และขนาดที่นี่
+            )
 
-            # ฟังก์ชันเปลี่ยนสี Checkbox เป็นสีเขียวเมื่อเลือก
-            def update_checkbox_color(var=var, checkbox=check_box):
-                if var.get():
-                    checkbox.configure(fg_color="green")  # เปลี่ยนเป็นสีเขียวเมื่อถูกติ๊ก
-                else:
-                    checkbox.configure(fg_color="gray")  # สีเริ่มต้น
-
-            # กำหนดให้ CheckBox เรียกฟังก์ชัน update_checkbox_color ทุกครั้งที่มีการกด
-            check_box.configure(command=lambda v=var, c=check_box: update_checkbox_color(v, c))
-
-            # สร้าง Label อยู่ใน item_frame เดียวกับ CheckBox
-            label = ctk.CTkLabel(item_frame, text=text, font=("PTT 45 Pride", 16), text_color="black", fg_color="white",
-                                 wraplength=700, width=700, justify="left", anchor="w")
             label.pack(side="left")
 
-        # ปุ่มเลือกทั้งหมด
-        select_all_button = ctk.CTkButton(self, text="เลือกทั้งหมด", command=self.select_all,
-                                          font=("PTT 45 Pride", 12), fg_color="#2ea6f4", text_color="white")
-        select_all_button.place(x=250, y=600)
+        self.check_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
-        # ปุ่มยกเลิกการเลือกทั้งหมด
-        deselect_all_button = ctk.CTkButton(self, text="ยกเลิกการเลือกทั้งหมด", command=self.deselect_all,
-                                            font=("PTT 45 Pride", 12), fg_color="#FF9800", text_color="white")
-        deselect_all_button.place(x=400, y=600)
-
-        # ปรับขนาด Canvas ตามเนื้อหา
-        def update_scrollregion(event=None):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-
-        check_frame.bind("<Configure>", update_scrollregion)
-
-        # เปิดลิงก์
-        def open_link(event):
-            webbrowser.open("https://pttpdpa.pttplc.com/")
+        ctk.CTkButton(self, text="เลือกทั้งหมด", command=self.select_all, fg_color="#2ea6f4").place(x=250, y=600)
+        ctk.CTkButton(self, text="ยกเลิกทั้งหมด", command=self.deselect_all, fg_color="#FF9800").place(x=400, y=600)
+        ctk.CTkButton(self, text="ตกลง", command=self.check_accepted, fg_color="#4CAF50").place(x=100, y=600)
+        ctk.CTkButton(self, text="ปฏิเสธ", command=self.open_login, fg_color="#FF5959").place(x=550, y=600)
 
         link_label = ctk.CTkLabel(self, text="อ่านเพิ่มเติมเกี่ยวกับนโยบายความเป็นส่วนตัวของเรา",
                                   text_color="blue", cursor="hand2",
-                                  font=("PTT 45 Pride", 12), fg_color="white")
+                                  fg_color="white")
         link_label.pack()
-        link_label.bind("<Button-1>", open_link)
-
-        accept_button = ctk.CTkButton(self, text="ตกลง", command=self.check_accepted,
-                                      font=("PTT 45 Pride", 12), fg_color="#4CAF50", text_color="white")
-        accept_button.place(x=100, y=600)
-
-        reject_button = ctk.CTkButton(self, text="ปฏิเสธ", command=self.destroy,
-                                      font=("PTT 45 Pride", 12), fg_color="#FF5959", text_color="white")
-        reject_button.place(x=550, y=600)
+        link_label.bind("<Button-1>", lambda e: webbrowser.open("https://pttpdpa.pttplc.com/"))
 
         self.transient(parent)
         self.grab_set()
@@ -125,16 +92,55 @@ class PopupFrame(ctk.CTkToplevel):
         if all(var.get() for var in self.check_vars):
             self.destroy()
         else:
-            messagebox.showwarning("คำเตือน", "กรุณาอ่านและเลือกให้ครบ")
+            messagebox.showwarning("คำเตือน", "กรุณายอมรับเงื่อนไขทุกข้อก่อนตกลง")
 
-    # ฟังก์ชันเลือกทั้งหมด
     def select_all(self):
-        for var, checkbox in zip(self.check_vars, self.check_boxes):
+        for var, item_frame in zip(self.check_vars, self.check_frame.winfo_children()):
             var.set(True)
-            checkbox.configure(fg_color="green")  # เปลี่ยนเป็นสีเขียว
+            checkbox = item_frame.winfo_children()[0]  # checkbox เป็น widget ตัวแรกของ item_frame
+            checkbox.configure(fg_color="green")
 
-    # ฟังก์ชันยกเลิกการเลือกทั้งหมด
     def deselect_all(self):
-        for var, checkbox in zip(self.check_vars, self.check_boxes):
+        for var, item_frame in zip(self.check_vars, self.check_frame.winfo_children()):
             var.set(False)
-            checkbox.configure(fg_color="gray")  # กลับเป็นสีเทา
+            checkbox = item_frame.winfo_children()[0]
+            checkbox.configure(fg_color="gray")
+
+    
+    def close_app(self):
+        """ ปิดแอปและเปิด Login ใหม่ """
+        print("🚪 close_app() ถูกเรียกแล้ว!")
+        if self.master.winfo_exists():
+            print("🛑 ปิดหน้าต่างหลัก")
+            self.master.quit()
+            self.master.destroy()
+
+        print("🔄 เรียก open_login()")
+        self.open_login()
+    
+    def open_login(self):
+        """เปิดหน้าต่าง Login ใหม่โดยไม่ต้องนำเข้า LoginApp"""
+        import sys
+        import os
+
+        # ตรวจสอบว่าไฟล์ Login.py อยู่ในตำแหน่งที่ถูกต้อง
+        login_py_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "Login.py"))
+        if not os.path.exists(login_py_path):
+            messagebox.showerror("Error", "Cannot find Login.py")
+            return
+
+        try:
+            print(f"✅ เปิด Login.py ที่พาธ: {login_py_path}")
+            python_executable = sys.executable  # ใช้ Python interpreter เดียวกัน
+            subprocess.Popen([python_executable, login_py_path], shell=True)  # ใช้ shell=True ช่วยให้ทำงานได้ดีขึ้น
+
+            print("🛑 บังคับปิดแอปหลักด้วย sys.exit()")
+            sys.exit()  # ปิดแอปหลักไปเลย
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open Login: {e}")
+
+
+
+
+

@@ -993,3 +993,22 @@ def get_all_profiles():
     return {
         "profiles": {row[0]: row[1] for row in profiles if row[1]}  # เก็บเฉพาะ user_id กับ image URL
     }
+
+#API ให้ ดึงจำนวนไลก์ทั้งหมดที่โพสต์ของผู้ใช้ได้รับ
+@api_router.get("/get_total_likes/{user_id}")
+def get_total_likes(user_id: int):
+    """ ดึงจำนวนไลก์ทั้งหมดของโพสต์ของผู้ใช้ """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ✅ นับจำนวนไลก์ของโพสต์ทั้งหมดของ user
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM dbo.Like_Table 
+        WHERE post_id IN (SELECT post_id FROM dbo.CommunityPosts_Table WHERE user_id = ?)
+    """, (user_id,))
+
+    like_count = cursor.fetchone()[0]
+    conn.close()
+
+    return {"user_id": user_id, "total_likes": like_count}
