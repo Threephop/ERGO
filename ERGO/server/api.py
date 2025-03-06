@@ -312,7 +312,7 @@ def get_usage_stats():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ใช้ LEFT JOIN กับ UsageStats_Table และคำนวณจำนวนไลก์จาก Like_Table
+    # แก้ไขการนับไลก์โดย JOIN กับ CommunityPosts_Table
     cursor.execute("""
         SELECT u.user_id, u.username, 
                COALESCE(us.hours_used, 0) AS hours_used, 
@@ -320,9 +320,10 @@ def get_usage_stats():
         FROM dbo.Users_Table u
         LEFT JOIN dbo.UsageStats_Table us ON u.user_id = us.user_id
         LEFT JOIN (
-            SELECT user_id, COUNT(*) AS like_count
-            FROM dbo.Like_Table
-            GROUP BY user_id
+            SELECT cp.user_id, COUNT(l.like_id) AS like_count
+            FROM dbo.CommunityPosts_Table cp
+            LEFT JOIN dbo.Like_Table l ON cp.post_id = l.post_id
+            GROUP BY cp.user_id
         ) like_counts ON u.user_id = like_counts.user_id
     """)
 
@@ -336,12 +337,30 @@ def get_usage_stats():
                 "user_id": row[0],
                 "username": row[1],
                 "hours_used": row[2],
-                "like_count": row[3]
+                "like_count": row[3]  # ✅ แก้ให้เหมือน get_total_likes
             } 
             for row in stats
         ]
     }
 
+
+@api_router.get("/get_total_likes/{user_id}")
+def get_total_likes(user_id: int):
+    """ ดึงจำนวนไลก์ทั้งหมดของโพสต์ของผู้ใช้ """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ✅ นับจำนวนไลก์ของโพสต์ทั้งหมดของ user
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM dbo.Like_Table 
+        WHERE post_id IN (SELECT post_id FROM dbo.CommunityPosts_Table WHERE user_id = ?)
+    """, (user_id,))
+
+    like_count = cursor.fetchone()[0]
+    conn.close()
+
+    return {"user_id": user_id, "total_likes": like_count}
 
 # API รับค่าจากแอปและอัปเดต hours_used ใน UsageStats_Table
 @api_router.get("/update_app_time/")
