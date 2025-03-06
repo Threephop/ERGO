@@ -486,8 +486,11 @@ class App(tk.Tk):
                 self.frames[frame_class] = frame_class(self, self.user_email)
 
             elif frame_class == ProfileFrame:
-                self.frames[frame_class] = frame_class(self, self.user_email, app_instance=self)  # ส่ง email ไปให้ ProfileFrame    
-
+                self.frames[frame_class] = frame_class(self, self.user_email, app_instance=self)  # ส่ง email ไปให้ ProfileFrame   
+                 
+            elif frame_class == LeaderboardFrame:
+                self.frames[frame_class] = frame_class(self, self.user_email)
+                
             else:
                 self.frames[frame_class] = frame_class(self)
 
@@ -561,6 +564,7 @@ class App(tk.Tk):
             elapsed_time = time.time() - self.start_time
             self.app_time = Decimal(f"{elapsed_time:.2f}")
             self.send_app_time()
+            self.send_app_time_month()
             print(f"App closed. Total usage time: {self.app_time} seconds")
         else:
             print("Timer was not started.")
@@ -574,15 +578,35 @@ class App(tk.Tk):
         }
         
         try:
-            response = requests.get(api_url, params=params, timeout=5)
-            response.raise_for_status()  # เช็คว่า API ตอบกลับปกติ
-            print("✅ App time updated successfully:", response.json())
-
-        except requests.RequestException as e:
-            print(f"❌ Failed to update app time: {e}")
-            messagebox.showerror("Error", "⚠️ ไม่สามารถบันทึกเวลาใช้งานได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต!")
-
+            response = requests.get(api_url, params=params)
+            if response.status_code == 200:
+                print("✅ App time updated successfully:", response.json())
+            else:
+                print("❌ Failed to update app time:", response.json())
+        except Exception as e:
+            print(f"❌ Error sending data: {e}")
+    
     # เริ่ม Task เบื้องหลัง
+        self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
+        self.bg_thread.start()
+    
+    def send_app_time_month(self):
+        """ส่งค่าการใช้งานแอปไปยัง API"""
+        api_url = "http://127.0.0.1:8000/update_app_time_month/"  # เปลี่ยน endpoint
+        params = {
+            "email": self.user_email,
+            "app_time": float(self.app_time)  # แปลงเป็น float ก่อนส่ง
+        }
+        try:
+            response = requests.get(api_url, params=params)
+            if response.status_code == 200:
+                print("✅ App time updated successfully:", response.json())
+            else:
+                print("❌ Failed to update app time:", response.json())
+        except Exception as e:
+            print(f"❌ Error sending data: {e}")
+
+        # เริ่ม Task เบื้องหลัง
         self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
         self.bg_thread.start()
 

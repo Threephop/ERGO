@@ -20,7 +20,7 @@ pip install azure-storage-blob
 pip install sqlalchemy
 
 ---RUN API---
-python -m uvicorn api:app --reload
+python -m uvicorn main:app --reload
 ---STOP API---
 Ctrl + C in terminal
 ---Venv---

@@ -150,8 +150,7 @@ class SettingFrame(tk.Frame):
 
     def set_time(self, hour_var, minute_var):
         selected_time = f"{hour_var.get()}:{minute_var.get()}"
-        current_volume = int(self.volume.get())
-        print(f"Time set to: {selected_time}, Volume: {current_volume}%")
+        print(f"Time set to: {selected_time}")
 
         # เพิ่มการบันทึกเวลาไปที่ JSON ทันที
         self.save_current_times()
@@ -164,7 +163,7 @@ class SettingFrame(tk.Frame):
                     self.play_notification_sound()
 
                     # แสดง popup สำหรับเลือกวิดีโอ
-                    show_popup(current_volume)
+                    show_popup()
                     break
                 time.sleep(1)
 

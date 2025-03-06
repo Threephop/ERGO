@@ -20,6 +20,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         self.user_id = self.fetch_user_id(user_email)  
         self.user_email = user_email  
         self.user_role = self.fetch_user_role(user_email)  
+        self.image_dir = os.path.join(os.path.dirname(__file__), "imageVideo")
 
         # ✅ สร้าง Notebook (ใช้แท็บของ Tkinter)
         self.notebook = ttk.Notebook(self)
@@ -43,10 +44,10 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         self.notebook.add(self.tab2, text="Like")  
 
         # ✅ วาง widget ในแต่ละแท็บ
-        self.create_content(self.tab1, "Active", "#000000")
-        self.create_content(self.tab2, "Like", "#000000")
+        self.create_content(self.tab1, "Active", "#000000", self.user_role)
+        self.create_content(self.tab2, "Like", "#000000", self.user_role)
 
-    def create_content(self, parent, text, color):
+    def create_content(self, parent, text, color, role):
         """ สร้าง Label แสดงข้อความในแต่ละแท็บ """
         label = tk.Label(parent, text=text, font=("PTT 45 Pride", 14), fg=color, bg="white")
         label.pack(pady=5)  # ลด pady ที่นี่
@@ -54,10 +55,8 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         if text == "Active":  # เฉพาะแท็บ "Active" ที่จะสร้างกราฟและปุ่ม Export
             self.create_chart(self.tab1)  # ส่ง self.tab1 ไปเป็น parent
             self.create_activity_details(self.tab1, self.user_email)  # เรียกใช้แค่ใน tab1
-
-            # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
-            self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
-            self.export_button.pack(pady=2)  # ลด pady ที่นี่
+        elif text == "Like":
+            self.create_video_list(self.tab2)
         else:
             pass
 
@@ -213,16 +212,18 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
   
 
-    def get_video_thumbnail(self, video_url, save_path=None):
-        """ ดึง Thumbnail จากเฟรมแรกของวิดีโอและบันทึกไฟล์ """
+    def get_video_thumbnail(self, video_url, post_id):
+        """ ดึง Thumbnail จากเฟรมแรกของวิดีโอและบันทึกใน icon/ """
         try:
             cap = cv2.VideoCapture(video_url)
             success, frame = cap.read()
             cap.release()
 
             if success:
-                if save_path:  # ✅ ถ้ามี save_path ให้บันทึกไฟล์
-                    cv2.imwrite(save_path, frame)
+                thumbnail_filename = f"thumbnail_{post_id}.jpg"
+                save_path = os.path.join(self.image_dir, thumbnail_filename)  # 🔹 บันทึกที่ icon/
+
+                cv2.imwrite(save_path, frame)  # ✅ บันทึกไฟล์ Thumbnail
 
                 img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 img = img.resize((150, 100), Image.Resampling.LANCZOS)
@@ -276,9 +277,8 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             # ✅ ตรวจสอบค่า Like Count
             like_count = video.get("like_count", None)
 
-            # ✅ ดึง Thumbnail จากวิดีโอ
-            thumbnail_path = f"thumbnail_{post_id}.jpg"
-            thumbnail = self.get_video_thumbnail(video_url, save_path=thumbnail_path)
+            # ✅ ดึง Thumbnail จากวิดีโอและเก็บไว้ในโฟลเดอร์ icon
+            thumbnail = self.get_video_thumbnail(video_url, post_id)
 
             if thumbnail:
                 video_label = tk.Label(video_frame, image=thumbnail, bg="white", cursor="hand2")
@@ -326,28 +326,6 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
             like_label = tk.Label(self.video_frame, text=f"❤ {like_count} Likes", font=("Arial", 10), bg="white")
             like_label.pack(pady=2)
-
-    def create_content(self, parent, text, color):
-        """ สร้าง Label แสดงข้อความในแต่ละแท็บ """
-        
-        # ✅ สร้าง Label หัวข้อของแต่ละแท็บ
-        label = tk.Label(parent, text=text, font=("PTT 45 Pride", 14), fg=color, bg="white")
-        label.pack(pady=5)  # เว้นระยะห่างจากขอบบน
-
-        # ✅ ถ้าเป็นแท็บ "Active" ให้สร้างกราฟและปุ่ม Export
-        if text == "Active":
-            self.create_chart(parent)  # สร้างกราฟ
-            self.create_activity_details(parent, self.user_email)  # สร้างตาราง Activity
-
-            # 🔹 ปุ่ม Export Excel
-            export_button = tk.Button(parent, text="📊 Export Excel", command=self.export_excel_active,
-                                    bg="#007BFF", fg="white", font=("Arial", 10, "bold"))
-            export_button.pack(pady=5)  # จัดตำแหน่งปุ่ม
-
-        # ✅ ถ้าเป็นแท็บ "Like" ให้สร้างรายการวิดีโอของผู้ใช้
-        elif text == "Like":
-            self.create_video_list(parent)  # โหลดวิดีโอของผู้ใช้
-
 
     def get_user_videos(self):
         """ ดึงวิดีโอทั้งหมดของผู้ใช้จาก API """
@@ -397,6 +375,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
     
     def update_activity_table(self, filter_option, user_email):
         """อัปเดต Activity Table ตาม filter (Week/Month)"""
+        role = self.user_role
 
         # ✅ เช็คว่ามีตารางเก่าอยู่หรือไม่ ถ้ามีให้ลบทิ้งก่อน
         if hasattr(self, "tree"):
@@ -412,7 +391,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             api_url = f"{self.api_base_url}/get_activity_details/?email={user_email}"
         else:
             columns = ["Username", "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"]
+                        "July", "August", "September", "October", "November", "December"]
             api_url = f"{self.api_base_url}/get_monthly_activity_details/?email={user_email}"
 
         self.tree["columns"] = columns
@@ -423,16 +402,38 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         # ✅ ดึงข้อมูลจาก API
         response = requests.get(api_url)
-        
+
         if response.status_code == 200:
             activity_data = response.json()
-            details = activity_data.get("activity_details", [])
+
+            if filter_option == "Week":
+                details = activity_data.get("activity_details", [])
+            else:  # 🛠 แก้ให้รองรับ Monthly Activity
+                monthly_data = activity_data.get("monthly_activity", {})
+                details = [activity_data.get("username", "")] + list(monthly_data.values())
         else:
             details = []
 
         # ✅ ใส่ข้อมูลใหม่ลงตาราง
         if details:
             self.tree.insert("", "end", values=details)  # ใส่ข้อมูลในแต่ละแถว
+
+        # ✅ ตรวจสอบและลบปุ่ม Export Excel เก่าก่อนสร้างปุ่มใหม่
+        if hasattr(self, 'export_button'):
+            self.export_button.destroy()  # ลบปุ่มเก่าออก
+
+        # ✅ สร้างปุ่ม Export ใหม่
+        if filter_option == "Week":
+            if role == 1:
+                # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
+                self.export_button = ctk.CTkButton(self.tab1, text="Export Excel", corner_radius=25, command=self.export_excel_active)
+                self.export_button.pack(pady=2)  # ลด pady ที่นี่
+        else:
+            if role == 1:
+                # 🔹 ปุ่ม Export Excel (อยู่ใน tab1)
+                self.export_button = ctk.CTkButton(self.tab1, text="Export Excel Month", corner_radius=25, command=self.export_excel_active_month)
+                self.export_button.pack(pady=2)
+
 
     def export_excel_active(self):
         """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
@@ -462,8 +463,65 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         except requests.exceptions.RequestException:
             messagebox.showerror("Error", "Failed to connect to the server")
     
+    def export_excel_active_month(self):
+        """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
+        if self.user_role != 1:
+            messagebox.showerror("Permission Denied", "You don't have permission to export data")
+            return
+
+        try:
+            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}")
+
+            if response.status_code == 200:
+                content_disposition = response.headers.get("Content-Disposition", "")
+                filename = content_disposition.split("filename=")[-1].strip("\"")
+
+                filename = urllib.parse.unquote(filename)
+                filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
+
+                if not filename:
+                    filename = "dashboard_active.xlsx"
+
+                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+                file_path = os.path.join(downloads_folder, filename)
+
+                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
+            else:
+                messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
+        except requests.exceptions.RequestException:
+            messagebox.showerror("Error", "Failed to connect to the server")
+    
     def play_video(self, video_url):
         """เปิดวิดีโอใน Web Browser"""
         import webbrowser
         webbrowser.open(video_url)
+
+            
+    def export_excel_month(self):
+        """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
+        if self.user_role != 1:
+            messagebox.showerror("Permission Denied", "You don't have permission to export data")
+            return
+
+        try:
+            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}")
+
+            if response.status_code == 200:
+                content_disposition = response.headers.get("Content-Disposition", "")
+                filename = content_disposition.split("filename=")[-1].strip("\"")
+
+                filename = urllib.parse.unquote(filename)
+                filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
+
+                if not filename:
+                    filename = "dashboard_month.xlsx"
+
+                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+                file_path = os.path.join(downloads_folder, filename)
+
+                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
+            else:
+                messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
+        except requests.exceptions.RequestException:
+            messagebox.showerror("Error", "Failed to connect to the server")
 
