@@ -542,7 +542,7 @@ class App(tk.Tk):
             
             # แสดงปุ่มเมนู
             self.profile_button.place(x=50, y=20)
-            self.username_frame.place(x=10, y=0, width=200) 
+            self.username_frame.place(x=25, y=0, width=200) 
             self.home_button.place(x=30, y=250)
             self.community_button.place(x=30, y=350)
             self.dashboard_button.place(x=30, y=450)
