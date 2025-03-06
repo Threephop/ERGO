@@ -126,8 +126,23 @@ class LeaderboardFrame(tk.Frame):
                     self.export_button.destroy()
 
                 # สร้างปุ่มใหม่
-                self.export_button = ctk.CTkButton(self.active_list_frame, text="Export Active Data", command=self.export_active_excel)
-                self.export_button.pack(pady=10)
+                self.export_button_active = ctk.CTkButton(
+                    self.active_list_frame, text="Export Excel Active", font = ("PTT 45 Pride", 16),
+                    corner_radius=25,
+                    fg_color = "#176E1B", command=self.export_active_excel)
+                self.export_button_active.pack(pady=10)
+                
+            if role == 1 and tab_name == "Popular":
+                # ถ้ามีปุ่ม export_button อยู่แล้ว ให้ลบก่อน
+                if hasattr(self, "export_button") and self.export_button is not None:
+                    self.export_button.destroy()
+
+                # สร้างปุ่มใหม่
+                self.export_button_popular = ctk.CTkButton(
+                    self.popular_list_frame, text="Export Excel Popular", font = ("PTT 45 Pride", 16),
+                    corner_radius=25,
+                    fg_color = "#176E1B", command=self.export_active_excel)
+                self.export_button_popular.pack(pady=10)
 
     def export_active_excel(self):
         print("Export to active")
