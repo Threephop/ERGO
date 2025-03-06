@@ -684,15 +684,15 @@ def export_dashboard(email: str):
     # 🔹 ดึงข้อมูลจาก Users_Table และ Dashboard_Table
     query = """
     SELECT 
-        u.username, 
-        u.outlook_mail, 
-        d.monday, 
-        d.tuesday, 
-        d.wednesday, 
-        d.thursday, 
-        d.friday, 
-        d.saturday, 
-        d.sunday
+        u.username AS "รายชื่อ", 
+        u.outlook_mail AS "ที่อยู่อีเมล", 
+        COALESCE(d.monday, 0) AS "จันทร์", 
+        COALESCE(d.tuesday, 0) AS "อังคาร", 
+        COALESCE(d.wednesday, 0) AS "พุธ", 
+        COALESCE(d.thursday, 0) AS "พฤหัสบดี", 
+        COALESCE(d.friday, 0) AS "ศุกร์", 
+        COALESCE(d.saturday, 0) AS "เสาร์", 
+        COALESCE(d.sunday, 0) AS "อาทิตย์"
     FROM dbo.Dashboard_Table d
     JOIN dbo.Users_Table u ON d.user_id = u.user_id
     """
@@ -729,10 +729,20 @@ def export_dashboard_month(email: str):
     # 🔹 ดึงข้อมูลจาก Users_Table และ DashboardMonth_Table
     query = """
     SELECT 
-        u.username, 
-        u.outlook_mail, 
-        d.january, d.february, d.march, d.april, d.may, d.june, 
-        d.july, d.august, d.september, d.october, d.november, d.december
+        u.username AS "รายชื่อ", 
+        u.outlook_mail AS "ที่อยู่อีเมล", 
+        COALESCE(d.january, 0) AS "มกราคม", 
+        COALESCE(d.february, 0) AS "กุมภาพันธ์", 
+        COALESCE(d.march, 0) AS "มีนาคม", 
+        COALESCE(d.april, 0) AS "เมษายน", 
+        COALESCE(d.may, 0) AS "พฤษภาคม", 
+        COALESCE(d.june, 0) AS "มิถุนายน", 
+        COALESCE(d.july, 0) AS "กรกฎาคม", 
+        COALESCE(d.august, 0) AS "สิงหาคม", 
+        COALESCE(d.september, 0) AS "กันยายน", 
+        COALESCE(d.october, 0) AS "ตุลาคม", 
+        COALESCE(d.november, 0) AS "พฤศจิกายน", 
+        COALESCE(d.december, 0) AS "ธันวาคม"
     FROM dbo.DashboardMonth_Table d
     JOIN dbo.Users_Table u ON d.user_id = u.user_id
     """
