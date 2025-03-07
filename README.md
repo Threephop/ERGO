@@ -20,7 +20,7 @@ pip install azure-storage-blob
 pip install sqlalchemy
 
 ---RUN API---
-python -m uvicorn main:app --reload
+python -m uvicorn api:app --reload
 ---STOP API---
 Ctrl + C in terminal
 ---Venv---
@@ -50,4 +50,4 @@ python Login.py
 
 ---Build app .exe---
 pip install pyinstaller
-pyinstaller --onefile --windowed --add-data "video/*;video/" --add-data "icon/*;icon/" --add-data "font/*;font/" --add-data "sounds/*;sounds/" main.py
+pyinstaller --onefile --windowed --add-data "video/*;video/" --add-data "icon/*;icon/" --add-data "font/*;font/" --add-data "sounds/*;sounds/" Login.py

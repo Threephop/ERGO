@@ -39,15 +39,13 @@
 
 # db_config.py database in ERGOSERVER
 import pyodbc
-from azure.storage.blob import BlobServiceClient
 
 def get_db_connection():
     conn_str = (
         "DRIVER={ODBC Driver 17 for SQL Server};"
-        "SERVER=pocergoserver.database.windows.net;"
-        "DATABASE=POCERGODATABASE;"
+        "SERVER=ergoservers.database.windows.net;"
+        "DATABASE=ERGODATABASE;"
         "Authentication=ActiveDirectoryInteractive;"  # หรือ ActiveDirectoryPassword สำหรับการยืนยันตัวตน
-        "UID=ergoepi@outlook.co.th;"
+        "UID=threephop.t@live.ku.th;"
     )
     return pyodbc.connect(conn_str)
-
