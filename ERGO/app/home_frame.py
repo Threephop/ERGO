@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, Canvas, Scrollbar
 from PIL import Image, ImageTk
 import cv2  # ใช้สำหรับดึงเฟรมแรกของวิดีโอ
-from video_player import play_video  # ฟังก์ชันเล่นวิดีโอ
+from video_player import VideoPlayer  # นำเข้า VideoPlayer
 import customtkinter as ctk  # ใช้ CustomTkinter
 import requests
 
