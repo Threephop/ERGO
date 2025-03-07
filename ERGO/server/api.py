@@ -143,6 +143,10 @@ def get_messages(user_id: int = Query(None)):
     """, (user_id,))
 
     messages = cursor.fetchall()
+    
+    # ตรวจสอบค่าที่คืนมา
+    print(f"✅ Messages Response: {messages}")
+
     conn.close()
 
     # ✅ Debug ดูค่าที่ API ส่งกลับ
@@ -244,6 +248,7 @@ async def create_like(post_id: int, user_id: int, action: str):
 
     return {"message": message}
 
+
 @api_router.get("/check-like")
 def check_like(post_id: int, user_id: int):
     conn = get_db_connection()
@@ -307,7 +312,7 @@ def get_usage_stats():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ใช้ LEFT JOIN กับ UsageStats_Table และคำนวณจำนวนไลก์จาก Like_Table
+    # แก้ไขการนับไลก์โดย JOIN กับ CommunityPosts_Table
     cursor.execute("""
         SELECT u.user_id, u.username, 
                COALESCE(us.hours_used, 0) AS hours_used, 
@@ -315,9 +320,10 @@ def get_usage_stats():
         FROM dbo.Users_Table u
         LEFT JOIN dbo.UsageStats_Table us ON u.user_id = us.user_id
         LEFT JOIN (
-            SELECT user_id, COUNT(*) AS like_count
-            FROM dbo.Like_Table
-            GROUP BY user_id
+            SELECT cp.user_id, COUNT(l.like_id) AS like_count
+            FROM dbo.CommunityPosts_Table cp
+            LEFT JOIN dbo.Like_Table l ON cp.post_id = l.post_id
+            GROUP BY cp.user_id
         ) like_counts ON u.user_id = like_counts.user_id
     """)
 
@@ -331,12 +337,30 @@ def get_usage_stats():
                 "user_id": row[0],
                 "username": row[1],
                 "hours_used": row[2],
-                "like_count": row[3]
+                "like_count": row[3]  # ✅ แก้ให้เหมือน get_total_likes
             } 
             for row in stats
         ]
     }
 
+
+@api_router.get("/get_total_likes/{user_id}")
+def get_total_likes(user_id: int):
+    """ ดึงจำนวนไลก์ทั้งหมดของโพสต์ของผู้ใช้ """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ✅ นับจำนวนไลก์ของโพสต์ทั้งหมดของ user
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM dbo.Like_Table 
+        WHERE post_id IN (SELECT post_id FROM dbo.CommunityPosts_Table WHERE user_id = ?)
+    """, (user_id,))
+
+    like_count = cursor.fetchone()[0]
+    conn.close()
+
+    return {"user_id": user_id, "total_likes": like_count}
 
 # API รับค่าจากแอปและอัปเดต hours_used ใน UsageStats_Table
 @api_router.get("/update_app_time/")
@@ -679,15 +703,15 @@ def export_dashboard(email: str):
     # 🔹 ดึงข้อมูลจาก Users_Table และ Dashboard_Table
     query = """
     SELECT 
-        u.username, 
-        u.outlook_mail, 
-        d.monday, 
-        d.tuesday, 
-        d.wednesday, 
-        d.thursday, 
-        d.friday, 
-        d.saturday, 
-        d.sunday
+        u.username AS "รายชื่อ", 
+        u.outlook_mail AS "ที่อยู่อีเมล", 
+        COALESCE(d.monday, 0) AS "จันทร์", 
+        COALESCE(d.tuesday, 0) AS "อังคาร", 
+        COALESCE(d.wednesday, 0) AS "พุธ", 
+        COALESCE(d.thursday, 0) AS "พฤหัสบดี", 
+        COALESCE(d.friday, 0) AS "ศุกร์", 
+        COALESCE(d.saturday, 0) AS "เสาร์", 
+        COALESCE(d.sunday, 0) AS "อาทิตย์"
     FROM dbo.Dashboard_Table d
     JOIN dbo.Users_Table u ON d.user_id = u.user_id
     """
@@ -724,10 +748,20 @@ def export_dashboard_month(email: str):
     # 🔹 ดึงข้อมูลจาก Users_Table และ DashboardMonth_Table
     query = """
     SELECT 
-        u.username, 
-        u.outlook_mail, 
-        d.january, d.february, d.march, d.april, d.may, d.june, 
-        d.july, d.august, d.september, d.october, d.november, d.december
+        u.username AS "รายชื่อ", 
+        u.outlook_mail AS "ที่อยู่อีเมล", 
+        COALESCE(d.january, 0) AS "มกราคม", 
+        COALESCE(d.february, 0) AS "กุมภาพันธ์", 
+        COALESCE(d.march, 0) AS "มีนาคม", 
+        COALESCE(d.april, 0) AS "เมษายน", 
+        COALESCE(d.may, 0) AS "พฤษภาคม", 
+        COALESCE(d.june, 0) AS "มิถุนายน", 
+        COALESCE(d.july, 0) AS "กรกฎาคม", 
+        COALESCE(d.august, 0) AS "สิงหาคม", 
+        COALESCE(d.september, 0) AS "กันยายน", 
+        COALESCE(d.october, 0) AS "ตุลาคม", 
+        COALESCE(d.november, 0) AS "พฤศจิกายน", 
+        COALESCE(d.december, 0) AS "ธันวาคม"
     FROM dbo.DashboardMonth_Table d
     JOIN dbo.Users_Table u ON d.user_id = u.user_id
     """
@@ -742,6 +776,87 @@ def export_dashboard_month(email: str):
     df.to_excel(file_path, index=False)
 
     # 🔹 ส่งไฟล์ให้ frontend ดาวน์โหลด
+    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+# 🔹 API: Export Leaderboard Active (เรียงตาม hours_used)
+@api_router.get("/export_leaderboard_active/")
+def export_leaderboard_active(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to export data")
+
+    # 🔹 ดึงข้อมูลจาก UsageStats_Table และ Users_Table
+    query = """
+    SELECT 
+        u.username AS "รายชื่อ", 
+        u.outlook_mail AS "ที่อยู่อีเมล", 
+        COALESCE(s.hours_used, 0) AS "ชั่วโมงที่ใช้"
+    FROM dbo.UsageStats_Table s
+    JOIN dbo.Users_Table u ON s.user_id = u.user_id
+    ORDER BY s.hours_used DESC
+    """
+    
+    df = pd.read_sql(query, conn)
+    conn.close()
+
+    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้
+    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+    file_path = get_unique_filename(downloads_folder, "leaderboard_active", ".xlsx")
+    
+    df.to_excel(file_path, index=False)
+
+    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+# 🔹 API: Export Leaderboard Popular (เรียงตาม total_likes)
+@api_router.get("/export_leaderboard_popular/")
+def export_leaderboard_popular(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 🔹 ตรวจสอบ role ของ user
+    cursor.execute("SELECT role FROM dbo.Users_Table WHERE outlook_mail = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user[0] != 1:  # ถ้าไม่ใช่ Admin
+        conn.close()
+        raise HTTPException(status_code=403, detail="You don't have permission to export data")
+
+    # 🔹 ดึงข้อมูลที่ต้องการ: username, email, และจำนวนไลค์ที่ได้รับ
+    query = """
+    SELECT 
+        u.username AS "ชื่อ",
+        u.outlook_mail AS "ที่อยู่อีเมล",
+        COUNT(l.like_id) AS "จำนวนการกดถูกใจ"
+    FROM dbo.Like_Table l
+    JOIN dbo.Users_Table u ON l.user_id = u.user_id
+    GROUP BY u.username, u.outlook_mail
+    ORDER BY COUNT(l.like_id) DESC
+    """
+    
+    df = pd.read_sql(query, conn)
+    conn.close()
+
+    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้
+    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+    file_path = get_unique_filename(downloads_folder, "leaderboard_popular", ".xlsx")
+    
+    df.to_excel(file_path, index=False)
+
     return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @api_router.get("/get_monthly_usage_stats/{user_id}")
@@ -878,3 +993,22 @@ def get_all_profiles():
     return {
         "profiles": {row[0]: row[1] for row in profiles if row[1]}  # เก็บเฉพาะ user_id กับ image URL
     }
+
+#API ให้ ดึงจำนวนไลก์ทั้งหมดที่โพสต์ของผู้ใช้ได้รับ
+@api_router.get("/get_total_likes/{user_id}")
+def get_total_likes(user_id: int):
+    """ ดึงจำนวนไลก์ทั้งหมดของโพสต์ของผู้ใช้ """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # ✅ นับจำนวนไลก์ของโพสต์ทั้งหมดของ user
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM dbo.Like_Table 
+        WHERE post_id IN (SELECT post_id FROM dbo.CommunityPosts_Table WHERE user_id = ?)
+    """, (user_id,))
+
+    like_count = cursor.fetchone()[0]
+    conn.close()
+
+    return {"user_id": user_id, "total_likes": like_count}

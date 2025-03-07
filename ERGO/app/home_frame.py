@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, Canvas, Scrollbar
 from PIL import Image, ImageTk
 import cv2  # ใช้สำหรับดึงเฟรมแรกของวิดีโอ
-from video_player import play_video  # ฟังก์ชันเล่นวิดีโอ
+from video_player import VideoPlayer  # นำเข้า VideoPlayer
 import customtkinter as ctk  # ใช้ CustomTkinter
 import requests
 
@@ -20,6 +20,10 @@ UPDATED_VIDEO_DIR = os.path.join(os.path.dirname(__file__), "video", "updated_vi
 THUMBNAIL_SIZE = (250, 200)  # กำหนดขนาด Thumbnail
 ctk.set_appearance_mode("light")
 
+def open_video_player(video_path):
+    root = tk.Toplevel()  # สร้างหน้าต่างใหม่
+    player = VideoPlayer(root, video_path)  # สร้าง VideoPlayer และส่ง root กับ video_path เข้าไป
+    
 class HomeFrame(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="white") 
@@ -27,7 +31,9 @@ class HomeFrame(ctk.CTkFrame):
         self.columns = max(3, self.winfo_width() // 250)  # ✅ ปรับค่าเริ่มต้น
         self.init_ui()
         self.bind("<Configure>", self.on_resize)  # ตรวจจับการเปลี่ยนขนาดหน้าต่าง
+
         self.after(100, lambda: self.on_resize(None)) # ✅ เรียก on_resize() ตั้งแต่แรก
+
 
     def init_ui(self):
         """สร้าง UI ใหม่ พร้อมปรับดีไซน์ปุ่ม"""
@@ -57,7 +63,7 @@ class HomeFrame(ctk.CTkFrame):
         
     def get_video_thumbnail(self, video_path):
         """ดึง Thumbnail ของวิดีโอ (เฟรมแรก)"""
-        cap = cv2.VideoCapture(video_path)
+        cap = cv2.VideoCapture(video_path, cv2.CAP_FFMPEG)
         ret, frame = cap.read()
         cap.release()
         if ret:
@@ -130,7 +136,7 @@ class HomeFrame(ctk.CTkFrame):
 
                 btn = ctk.CTkButton(
                     frame, text=os.path.basename(video_path), 
-                    command=lambda v=video_path: play_video(v), 
+                    command=lambda v=video_path: open_video_player(v), 
                     fg_color="#28A745", hover_color="#1E7E34"
                 )
                 btn.pack(pady=5)
@@ -150,11 +156,17 @@ class HomeFrame(ctk.CTkFrame):
             video_path = os.path.join(UPDATED_VIDEO_DIR, selected_video)
 
         if os.path.exists(video_path):
-            play_video(video_path)
+            # Ensure previous video is paused/stopped before opening new one
+            open_video_player(video_path)
         else:
             print(f"❌ Error: Video file not found - {selected_video}")
 
     def on_resize(self, event=None):
+        if event is None:
+            width, height = self.winfo_width(), self.winfo_height()
+        else:
+            width, height = event.width, event.height
+
         """ตรวจจับการเปลี่ยนขนาดหน้าต่างแล้วปรับจำนวนวิดีโอต่อแถว"""
         if event:
             width = event.width
@@ -175,10 +187,11 @@ class HomeFrame(ctk.CTkFrame):
         self.load_video_list()
         print("✅ Videos updated!")
 
-# 🔹 สร้างหน้าต่างหลัก
+
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("🎬 Video Player with Azure Update")
     root.geometry("400x250")  # ตั้งค่าขนาดหน้าต่าง
     app = HomeFrame(root)
     root.mainloop()
+
