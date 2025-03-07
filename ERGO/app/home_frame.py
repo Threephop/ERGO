@@ -3,25 +3,16 @@ import tkinter as tk
 from tkinter import ttk, Canvas, Scrollbar
 from PIL import Image, ImageTk
 import cv2  # ใช้สำหรับดึงเฟรมแรกของวิดีโอ
-from azure.storage.blob import BlobServiceClient
-from video_player import VideoPlayer  # นำเข้า VideoPlayer
+from video_player import play_video  # ฟังก์ชันเล่นวิดีโอ
 import customtkinter as ctk  # ใช้ CustomTkinter
+import requests
 
+API_BASE_URL = "http://localhost:8000"  # URL ของ FastAPI
 # ตรวจสอบพาธเต็ม
 video_folder = os.path.join(os.path.dirname(__file__), "video")
 updated_videos_folder = os.path.join(video_folder, "updated_videos")
-print(f"🛠️ Full path to video folder: {os.path.abspath(video_folder)}")
-print(f"🛠️ Full path to updated_videos folder: {os.path.abspath(updated_videos_folder)}")
-
-# 🔹 ตั้งค่าการเชื่อมต่อ Azure
-AZURE_CONNECTION_STRING = "Connection string here"
-CONTAINER_NAME = "ergodefault"
-
-blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
-container_client = blob_service_client.get_container_client(CONTAINER_NAME)
-
-blobs = [blob.name for blob in container_client.list_blobs()]
-print("📜 Files in Azure Blob Storage:", blobs)
+print(f"\U0001F6E0️ Full path to video folder: {os.path.abspath(video_folder)}")
+print(f"\U0001F6E0️ Full path to updated_videos folder: {os.path.abspath(updated_videos_folder)}")
 
 # 🔹 กำหนดโฟลเดอร์วิดีโอ
 DEFAULT_VIDEO_DIR = os.path.join(os.path.dirname(__file__), "video", "default_videos")
@@ -41,7 +32,8 @@ class HomeFrame(ctk.CTkFrame):
         self.init_ui()
         self.bind("<Configure>", self.on_resize)  # ตรวจจับการเปลี่ยนขนาดหน้าต่าง
 
-        self.after(100, self.on_resize)
+        self.after(100, lambda: self.on_resize(None)) # ✅ เรียก on_resize() ตั้งแต่แรก
+
 
     def init_ui(self):
         """สร้าง UI ใหม่ พร้อมปรับดีไซน์ปุ่ม"""
@@ -49,7 +41,7 @@ class HomeFrame(ctk.CTkFrame):
         
         # 🔹 ปุ่ม Update Videos (ไว้ด้านขวา)
         self.update_button = ctk.CTkButton(
-            self, text="🔄 Update Videos", 
+            self, text="\U0001F504 Update Videos", 
             command=self.update_videos, fg_color="#007BFF", hover_color="#0056b3"
         )
         self.update_button.pack(pady=5, padx=10, anchor="e")  # ชิดขวา
@@ -80,31 +72,45 @@ class HomeFrame(ctk.CTkFrame):
             image.thumbnail(THUMBNAIL_SIZE)
             return ImageTk.PhotoImage(image)
         return None
-
+        
     def download_videos_from_azure(self):
-        """ดาวน์โหลดวิดีโอจาก Azure Storage"""
+        """เรียก API เพื่อดึง URL วิดีโอจาก list_videos แล้วดาวน์โหลดลงโฟลเดอร์"""
         if not os.path.exists(UPDATED_VIDEO_DIR):
             os.makedirs(UPDATED_VIDEO_DIR)
-        
-        blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
-        container_client = blob_service_client.get_container_client(CONTAINER_NAME)
-        
-        blobs = [blob.name for blob in container_client.list_blobs()]
-        
-        for blob_name in blobs:
-            local_file_path = os.path.join(UPDATED_VIDEO_DIR, os.path.basename(blob_name))
-            
-            if not os.path.exists(local_file_path):
-                try:
-                    with open(local_file_path, "wb") as file:
-                        download_stream = container_client.download_blob(blob_name)
-                        file.write(download_stream.readall())
-                    print(f"✅ Downloaded: {blob_name}")
-                except Exception as e:
-                    print(f"❌ Failed to download {blob_name}: {e}")
-            else:
-                print(f"✅ Already exists: {blob_name}")
+
+        try:
+            # เรียก API /list_videos เพื่อดึงรายการวิดีโอ
+            response = requests.get(f"{API_BASE_URL}/list_videos/")
+            if response.status_code == 200:
+                posts = response.json()  # posts เป็น dictionary ที่มี key "videos"
                 
+                for post in posts["videos"]:  # ใช้ posts["videos"] เพื่อเข้าถึงรายการวิดีโอ
+                    video_url = post.get("url")  # ใช้ key "url" ตาม JSON ที่ได้
+                    if not video_url:
+                        continue
+
+                    file_name = os.path.basename(video_url)
+                    local_file_path = os.path.join(UPDATED_VIDEO_DIR, file_name)
+
+                    if not os.path.exists(local_file_path):
+                        # ดาวน์โหลดวิดีโอจาก URL
+                        download_response = requests.get(video_url, stream=True)
+                        if download_response.status_code == 200:
+                            with open(local_file_path, "wb") as f:
+                                for chunk in download_response.iter_content(1024):
+                                    f.write(chunk)
+                            print(f"✅ Downloaded: {file_name}")
+                        else:
+                            print(f"❌ Failed to download {file_name}")
+                    else:
+                        print(f"✅ Already exists: {file_name}")
+
+            else:
+                print("❌ Failed to fetch video list from API")
+        except Exception as e:
+            print(f"❌ API Request Error: {e}")
+
+            
     def load_video_list(self):
         """โหลดรายการวิดีโอและแสดงเป็น Thumbnail Grid"""
         for widget in self.frame.winfo_children():
@@ -136,8 +142,8 @@ class HomeFrame(ctk.CTkFrame):
                 btn.pack(pady=5)
 
         self.frame.update_idletasks()
-        self.canvas.config(scrollregion=self.canvas.bbox("all"))
-
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))        
+    
     def play_selected_video(self):
         """เล่นวิดีโอที่เลือก"""
         selected_video = self.video_list.get()
@@ -160,10 +166,19 @@ class HomeFrame(ctk.CTkFrame):
             width, height = self.winfo_width(), self.winfo_height()
         else:
             width, height = event.width, event.height
-    
+
+        """ตรวจจับการเปลี่ยนขนาดหน้าต่างแล้วปรับจำนวนวิดีโอต่อแถว"""
+        if event:
+            width = event.width
+        else:
+            width = self.winfo_width()  # ใช้ความกว้างของ widget ถ้าไม่มี event
+        self.columns = max(2, width // 250)  # ปรับจำนวนวิดีโอต่อแถวอัตโนมัติ
+        self.load_video_list()
+
     def on_mouse_wheel(self, event):
         """ให้ Canvas ใช้เมาส์เลื่อน Scroll ได้"""
         self.canvas.yview_scroll(-1 * (event.delta // 120), "units")
+
 
     def update_videos(self):
         """อัปเดตวิดีโอจาก Azure"""
@@ -172,10 +187,11 @@ class HomeFrame(ctk.CTkFrame):
         self.load_video_list()
         print("✅ Videos updated!")
 
-# 🔹 สร้างหน้าต่างหลัก
-# if __name__ == "__main__":
-#     root = tk.Tk()
-#     root.title("🎬 Video Player with Azure Update")
-#     root.geometry("400x250")  # ตั้งค่าขนาดหน้าต่าง
-#     app = HomeFrame(root)
-#     root.mainloop()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.title("🎬 Video Player with Azure Update")
+    root.geometry("400x250")  # ตั้งค่าขนาดหน้าต่าง
+    app = HomeFrame(root)
+    root.mainloop()
+

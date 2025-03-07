@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 from matplotlib import pyplot as plt
 from home_frame import HomeFrame
 from community_frame import CommunityFrame
@@ -15,6 +16,9 @@ import time
 import os
 import requests
 import sys
+import threading
+import subprocess
+import io
 
 def change_windows_taskbar_icon(window, icon_windows_path):
     try:
@@ -25,13 +29,23 @@ def change_windows_taskbar_icon(window, icon_windows_path):
 class App(tk.Tk):
     def __init__(self, user_email):
         super().__init__()
+        self.running = True
+
         # กำหนด path สำหรับไอคอนทั้งหมด
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
         self.icon_windows_path = os.path.join(self.icon_dir, "windows_icon.ico")
         change_windows_taskbar_icon(self, self.icon_windows_path)
         self.change_taskbar_icon()
         self.title("ERGO PROJECT")
+        self.user_email = user_email
+        self.user_id = None  # เก็บ user_id
+        self.profile_image_url = None  # ✅ ป้องกัน AttributeError
+    
+        self.user_id = self.fetch_user_id(user_email)  # ดึง user_id จาก API
+        
+        self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
         # ตั้งค่าไอคอน
+        self.default_profile_path = os.path.join(self.icon_dir, "profile.png")
         self.iconbitmap(os.path.join(self.icon_dir, "GODJI-Action_200113_0008.ico"))  # เปลี่ยนเป็นพาธของไฟล์ .ico
         self.geometry("1024x768")  # ขนาดหน้าต่าง
         self.configure(bg="white")  # สีพื้นหลังหน้าต่างหลัก
@@ -54,44 +68,30 @@ class App(tk.Tk):
         #     data = response.json()
         #     self.username = data['users'][3]
         
-        self.user_email = user_email
-        
-        # 🔹 ดึงรายชื่อ users จาก API
-        response = requests.get("http://127.0.0.1:8000/users")
-        if response.status_code == 200:
-            try:
-                data = response.json()
+    
+        # ดึงรายชื่อ users จาก API
+        try:
+            response = requests.get("http://127.0.0.1:8000/users", timeout=5)
+            response.raise_for_status()  # ตรวจสอบ HTTP Status Code
 
-                # พิมพ์ข้อมูลที่ได้รับจาก API
-                # print("Users list from API:", data)
+            data = response.json()
 
-                # ตรวจสอบว่า 'users' มีอยู่ และเป็น list
-                users_list = data.get('users', [])
-                if isinstance(users_list, list):
-                    # 🔹 ค้นหา user ตาม email
-                    user_data = next((user for user in users_list if user.get("email") == self.user_email), None)
-
-                    if user_data:
-                        self.username = user_data.get("username", "Unknown User")
-                    else:
-                        self.username = "Unknown User"
-
-                    print(f"🔹 Username: {self.username}")
-                else:
-                    print("⚠️ Error: 'users' is not a list!")
-                    self.username = "Unknown User"
-            except ValueError as e:
-                print(f"⚠️ Error: Failed to parse response as JSON - {e}")
+            # ตรวจสอบว่า 'users' มีอยู่ และเป็น list
+            users_list = data.get('users', [])
+            if isinstance(users_list, list):
+                # 🔹 ค้นหา user ตาม email
+                user_data = next((user for user in users_list if user.get("email") == self.user_email), None)
+                self.username = user_data.get("username", "Unknown User") if user_data else "Unknown User"
+            else:
+                print("⚠️ Error: 'users' is not a list!")
                 self.username = "Unknown User"
-        else:
-            print(f"⚠️ API Error: {response.status_code}")
-            self.username = "Unknown User"
-            
-        
-        self.show_popup()
 
-        
-        
+        except (requests.RequestException, ValueError) as e:
+            print(f"⚠️ API Error: {e}")
+            self.username = "Unknown User"
+            self.show_popup()  # แสดง Popup สำหรับเลือกวิดีโอ
+
+        self.show_popup()
         # ฟังก์ชันที่จะได้รับค่าภาษา
         self.selected_language = "English"
         
@@ -116,10 +116,25 @@ class App(tk.Tk):
         
         self.frames = {}
         self.current_frame = None
+        
+        # ✅ สร้าง Sidebar ก่อน (แต่ยังไม่โหลดรูป)
+        self.sidebar = tk.Frame(self, bg="#221551", width=200, height=768)
+        self.sidebar.pack(side="left", fill="y")
 
-        # Sidebar
-        self.sidebar = tk.Frame(self, bg="#221551", width=200, height=768)  # กำหนดความสูง
-        self.sidebar.pack(side="left", fill="y")  # แพ็ค sidebar ทางด้านซ้าย
+        # ✅ สร้างปุ่ม Profile ก่อน แล้วโหลดรูปภายหลัง
+        self.profile_button = tk.Button(
+            self.sidebar,
+            bg="#221551",
+            fg="white",
+            relief="flat",
+            activebackground="#6F6969",
+            activeforeground="white",
+            command=lambda: self.show_frame(ProfileFrame),
+        )
+        self.profile_button.place(x=55, y=10)  # ปรับตำแหน่งปุ่ม
+
+        # ✅ โหลดรูปโปรไฟล์จาก API หลังจากสร้างปุ่มแล้ว
+        self.update_sidebar_profile()
 
         self.frames = {}
         self.current_frame = None
@@ -288,34 +303,111 @@ class App(tk.Tk):
         self.speaker_button.image = self.speaker_icon
         self.speaker_button.place(x=104, y=641)  # ปรับตำแหน่งปุ่ม speaker
 
-        
 
-        from PIL import Image, ImageTk  # เพิ่มการนำเข้า Pillow
-
-        # โหลดและปรับขนาดรูปภาพ
-        profile_icon_path = os.path.join(self.icon_dir, "profile.png")
-        profile_image = Image.open(profile_icon_path)
-        profile_image = profile_image.resize((100, 100), Image.Resampling.LANCZOS)  # ใช้ LANCZOS แทน ANTIALIAS
-        profile_icon = ImageTk.PhotoImage(profile_image)
-
-        # สร้างปุ่ม profile
+        # สร้างปุ่ม Profile ก่อน แล้วโหลดรูปภายหลัง
         self.profile_button = tk.Button(
             self.sidebar,
-            image=profile_icon,
-            compound="left",  # แสดงไอคอนทางซ้ายของข้อความ
             bg="#221551",
             fg="white",
-            font=("PTT 45 Pride", 12),
             relief="flat",
             activebackground="#6F6969",
             activeforeground="white",
             command=lambda: self.show_frame(ProfileFrame),
         )
-        self.profile_button.image = profile_icon
-        self.profile_button.place(x=55, y=10)  # ปรับตำแหน่งปุ่ม
+        self.profile_button.place(x=60, y=10)  # ปรับตำแหน่งปุ่ม
 
-        # Default frame
+        # โหลดรูปโปรไฟล์จาก API หลังจากสร้างปุ่มแล้ว
+        self.update_sidebar_profile()
         self.show_frame(HomeFrame)
+    
+    def fetch_profile_image(self):
+        """ ดึง URL รูปโปรไฟล์จาก API แล้วบันทึกไว้ที่ self.profile_image_url """
+        def fetch():
+            api_url = f"http://127.0.0.1:8000/get_profile_url/{self.user_id}"
+            try:
+                response = requests.get(api_url, timeout=5)
+                if response.status_code == 200:
+                    self.profile_image_url = response.json().get("profile_url", "")
+                    print(f"✅ Profile image URL updated: {self.profile_image_url}")
+                    self.after(2000, self.update_sidebar_profile)  # ✅ รอให้ API อัปเดตก่อนโหลดรูป
+                else:
+                    print("⚠️ API returned error for profile image")
+                    self.profile_image_url = None
+            except requests.RequestException as e:
+                print(f"⚠️ Error fetching profile image: {e}")
+                self.profile_image_url = None
+
+        threading.Thread(target=fetch, daemon=True).start()
+
+    def fetch_user_id(self, email):
+        url = f"http://127.0.0.1:8000/get_user_id/{email}"
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("user_id")  # ✅ ส่งค่า user_id กลับไปทันที
+            else:
+                return None
+        except requests.RequestException as e:
+            print(f"⚠️ Error fetching user_id: {e}")
+            return None
+    
+    def update_sidebar_profile(self):
+        """โหลดและอัปเดตรูปโปรไฟล์ที่ Sidebar"""
+        try:
+            # ✅ 1. ดึง URL ของรูปโปรไฟล์จาก API
+            response = requests.get("http://127.0.0.1:8000/get_profile_image/", params={"user_id": self.user_id})
+            profile_url = response.json().get("profile_url") if response.status_code == 200 else None
+
+            # ✅ 2. โหลดรูปจาก URL (ถ้ามี)
+            if profile_url:
+                try:
+                    image_response = requests.get(profile_url, timeout=5)
+                    if image_response.status_code == 200:
+                        image_data = io.BytesIO(image_response.content)
+                        profile_image = Image.open(image_data)
+                    else:
+                        raise ValueError("Failed to fetch image from URL")
+                except Exception as e:
+                    print(f"⚠️ Error loading profile image from URL: {e}")
+                    profile_image = Image.open(self.default_profile_path)  # 🔹 ใช้ Default
+            else:
+                profile_image = Image.open(self.default_profile_path)  # 🔹 ใช้ Default ถ้าไม่มี URL
+
+            # ✅ 3. ปรับขนาดรูปภาพ
+            profile_image = profile_image.resize((100, 100), Image.Resampling.LANCZOS)
+            profile_icon = ImageTk.PhotoImage(profile_image)
+
+            # ✅ 4. อัปเดตปุ่ม Sidebar
+            self.profile_button.config(image=profile_icon)
+            self.profile_button.image = profile_icon  # ✅ ป้องกันการรีเฟอเรนซ์หาย
+            print("✅ Sidebar profile updated successfully!")
+
+        except Exception as e:
+            print(f"❌ update_sidebar_profile() error: {e}")
+
+
+
+    def on_profile_picture_updated(self):
+        """อัปเดตรูปโปรไฟล์ใหม่หลังจากเปลี่ยนรูป"""
+        print("✅ Profile picture updated, refreshing sidebar...")
+
+        # 🔹 เรียก API refresh_profile เพื่อดึงค่าล่าสุด
+        try:
+            api_url = f"http://127.0.0.1:8000/refresh_profile/{self.user_id}"
+            response = requests.get(api_url, timeout=5)
+            response.raise_for_status()
+            data = response.json()
+
+            # 🔹 อัปเดต Username และ Profile Image URL
+            self.username = data.get("username", "Unknown User")
+            self.profile_image_url = data.get("profile_url")
+
+            # 🔹 โหลดรูปโปรไฟล์ใหม่ใน Sidebar
+            self.update_sidebar_profile()
+
+        except requests.RequestException as e:
+            print(f"⚠️ Failed to refresh profile: {e}")
         
     def change_taskbar_icon(self):
         # เปลี่ยนไอคอน Taskbar โดยใช้ win32gui
@@ -333,38 +425,46 @@ class App(tk.Tk):
             self.speaker_button.config(image=self.speaker_icon)  # เปลี่ยนกลับเป็นไอคอน speaker
 
     def load_sidebar_profile_image(self):
-        """ โหลดรูปโปรไฟล์ Sidebar และอัปเดตปุ่ม """
+        """ โหลดรูปโปรไฟล์จาก URL และอัปเดต Sidebar """
+        profile_icon = None  # 🔹 กำหนดค่า Default ก่อน
+        profile_url = self.fetch_profile_image()  # ดึง URL ของโปรไฟล์จาก API
+        
+        if profile_url:
+            try:
+                response = requests.get(profile_url, timeout=5)  # โหลดรูปจาก URL
+                if response.status_code == 200:
+                    image_data = io.BytesIO(response.content)
+                    image = Image.open(image_data)
+                    image = image.resize((100, 100), Image.Resampling.LANCZOS)
+                    profile_icon = ImageTk.PhotoImage(image)  
+                else:
+                    raise ValueError("Failed to fetch image from URL")
+            except Exception as e:
+                print(f"⚠️ Error loading profile image from URL: {e}")
 
-        profile_icon_path = os.path.join(self.icon_dir, "profile.png")
-        if not os.path.exists(profile_icon_path):
-            profile_icon_path = os.path.join(self.icon_dir, "default_profile.png")
-        profile_image = Image.open(profile_icon_path)
-        profile_image = profile_image.resize((100, 100), Image.Resampling.LANCZOS)
-        profile_icon = ImageTk.PhotoImage(profile_image)
-        if self.profile_button:
+        # 🔹 ถ้าโหลดจาก URL ไม่สำเร็จ ให้ใช้ Default `profile.png`
+        if profile_icon is None:
+            profile_icon = ImageTk.PhotoImage(Image.open(os.path.join(self.icon_dir, "profile.png")).resize((100, 100)))
+
+        if hasattr(self, 'profile_button'):
             self.profile_button.config(image=profile_icon)
             self.profile_button.image = profile_icon
-    
         else:
             self.profile_button = tk.Button(
-            self.sidebar,
-            image=profile_icon,
-            compound="left",
-            bg="#221551",
-            fg="white",
-            font=("Arial", 12),
-            relief="flat",
-            activebackground="#6F6969",
-            activeforeground="white",
-            command=lambda: self.show_frame(ProfileFrame),
-        )
-        self.profile_button.place(x=55, y=10)
-        self.profile_button.image = profile_icon
+                self.sidebar,
+                image=profile_icon,
+                compound="left",
+                bg="#221551",
+                fg="white",
+                font=("Arial", 12),
+                relief="flat",
+                activebackground="#6F6969",
+                activeforeground="white",
+                command=lambda: self.show_frame(ProfileFrame),
+            )
+            self.profile_button.image = profile_icon
+            self.profile_button.place(x=60, y=10)
 
-    
-    def update_sidebar_profile(self, new_image_path):
-        """ Callback เมื่อรูปโปรไฟล์เปลี่ยน """
-        self.load_sidebar_profile_image()
 
     def show_frame(self, frame_class): 
         # ถ้าเฟรมที่ต้องการแสดงคือเฟรมเดียวกับที่แสดงอยู่แล้ว
@@ -387,8 +487,11 @@ class App(tk.Tk):
                 self.frames[frame_class] = frame_class(self, self.user_email)
 
             elif frame_class == ProfileFrame:
-                self.frames[frame_class] = frame_class(self, self.user_email, app_instance=self)  # ส่ง email ไปให้ ProfileFrame    
-
+                self.frames[frame_class] = frame_class(self, self.user_email, app_instance=self)  # ส่ง email ไปให้ ProfileFrame   
+                 
+            elif frame_class == LeaderboardFrame:
+                self.frames[frame_class] = frame_class(self, self.user_email)
+                
             else:
                 self.frames[frame_class] = frame_class(self)
 
@@ -411,11 +514,6 @@ class App(tk.Tk):
     def show_popup(self):
         PopupFrame(self) 
 
-    def on_closing(self):
-        """Function to handle the window close event"""
-        self.stop_timer()  # หยุดจับเวลา 
-        plt.close()  # ปิด figure ของ matplotlib
-        self.quit()   # ปิดหน้าต่าง Tkinter
         
     def update_language(self, language):
         self.selected_language = language
@@ -447,8 +545,8 @@ class App(tk.Tk):
             self.menu_label.place_forget()  # ซ่อนข้อความ "MENU"
             
             # แสดงปุ่มเมนู
-            self.profile_button.place(x=20, y=20)
-            self.username_frame.place(x=0, y=0, width=200) 
+            self.profile_button.place(x=50, y=20)
+            self.username_frame.place(x=25, y=0, width=200) 
             self.home_button.place(x=30, y=250)
             self.community_button.place(x=30, y=350)
             self.dashboard_button.place(x=30, y=450)
@@ -467,6 +565,7 @@ class App(tk.Tk):
             elapsed_time = time.time() - self.start_time
             self.app_time = Decimal(f"{elapsed_time:.2f}")
             self.send_app_time()
+            self.send_app_time_month()
             print(f"App closed. Total usage time: {self.app_time} seconds")
         else:
             print("Timer was not started.")
@@ -474,6 +573,27 @@ class App(tk.Tk):
     def send_app_time(self):
         """ส่งค่าการใช้งานแอปไปยัง API"""
         api_url = "http://127.0.0.1:8000/update_app_time/"
+        params = {
+            "email": self.user_email,
+            "app_time": float(self.app_time)  # แปลงเป็น float ก่อนส่ง
+        }
+        
+        try:
+            response = requests.get(api_url, params=params)
+            if response.status_code == 200:
+                print("✅ App time updated successfully:", response.json())
+            else:
+                print("❌ Failed to update app time:", response.json())
+        except Exception as e:
+            print(f"❌ Error sending data: {e}")
+    
+    # เริ่ม Task เบื้องหลัง
+        self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
+        self.bg_thread.start()
+    
+    def send_app_time_month(self):
+        """ส่งค่าการใช้งานแอปไปยัง API"""
+        api_url = "http://127.0.0.1:8000/update_app_time_month/"  # เปลี่ยน endpoint
         params = {
             "email": self.user_email,
             "app_time": float(self.app_time)  # แปลงเป็น float ก่อนส่ง
@@ -486,7 +606,44 @@ class App(tk.Tk):
                 print("❌ Failed to update app time:", response.json())
         except Exception as e:
             print(f"❌ Error sending data: {e}")
-    
+
+        # เริ่ม Task เบื้องหลัง
+        self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
+        self.bg_thread.start()
+
+    def on_closing(self):
+        """ซ่อน UI และให้ Background Task ทำงานต่อ"""
+        self.running = False  # ✅ หยุด Background Task
+        self.withdraw()  # ซ่อนหน้าต่างหลัก
+        self.stop_timer()  # หยุดจับเวลา
+        print("App is running in the background...")
+
+    def background_task(self):
+        """ทำงานต่อแม้ UI ถูกซ่อน"""
+        while self.running:
+            print("Background task running...")
+            time.sleep(10) # หยุดเพื่อป้องกันการใช้ CPU มากเกินไป แสเดงว่าเป็นวินาที
+        print("Background task stopped.")
+        
+def open_login():
+    """เปิดหน้าต่าง Login ใหม่โดยไม่ต้องนำเข้า LoginApp"""
+    login_py_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "Login.py"))
+
+    if not os.path.exists(login_py_path):
+        messagebox.showerror("Error", "❌ ไม่พบไฟล์ Login.py กรุณาตรวจสอบการติดตั้ง!")
+        return
+
+    try:
+        print(f"✅ เปิด Login.py ที่พาธ: {login_py_path}")
+        python_executable = sys.executable
+        subprocess.Popen([python_executable, login_py_path], shell=True)
+
+        print("🛑 บังคับปิดแอปหลักด้วย sys.exit()")
+        sys.exit()  
+
+    except Exception as e:
+        messagebox.showerror("Error", f"❌ Failed to open Login: {e}")
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -494,4 +651,5 @@ if __name__ == "__main__":
         app = App(user_email)
         app.mainloop()
     else:
+        open_login()
         print("Error: No user email provided.")
