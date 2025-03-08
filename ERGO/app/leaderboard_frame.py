@@ -24,6 +24,17 @@ class LeaderboardFrame(tk.Frame):
         tabs_frame = tk.Frame(self, bg="white")
         tabs_frame.pack(pady=10)
 
+        # ในส่วน __init__ ของคลาส LeaderboardFrame เพิ่มปุ่ม Refresh
+        refresh_button = ctk.CTkButton(
+            self,
+            text="Refresh",
+            font=("PTT 45 Pride", 14),
+            corner_radius=25,
+            fg_color="#0078D4",
+            command=self.refresh_data
+        )
+        refresh_button.place(relx=0.95, rely=0.02, anchor="ne")
+
         # ปุ่มแท็บ
         self.tab_buttons = {}
         for idx, tab_name in enumerate(["Active", "Popular"]):
@@ -64,10 +75,12 @@ class LeaderboardFrame(tk.Frame):
         frame = tk.Frame(self, bg="white")
         self.active_label = tk.Label(frame, text="Loading...", font=("PTT 45 Pride", 18), bg="white", fg="#4B0082")
         self.active_label.pack(pady=10)
+
         self.active_list_frame = tk.Frame(frame, bg="white")
         self.active_list_frame.pack(pady=5)
         
         return frame
+
 
     def create_popular_frame(self):
         frame = tk.Frame(self, bg="white")
@@ -217,9 +230,12 @@ class LeaderboardFrame(tk.Frame):
             )
             name_label.pack(anchor="w", padx=20, pady=2)
 
+    def refresh_data(self):
+        self.fetch_users("Active")
+        self.fetch_users("Popular")
 
 
-# เรียกใช้ App
+    # เรียกใช้ App
 if __name__ == "__main__":
     root = tk.Tk()
     root.geometry("1024x768")
