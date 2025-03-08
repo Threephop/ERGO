@@ -50,4 +50,4 @@ python Login.py
 
 ---Build app .exe---
 pip install pyinstaller
-pyinstaller --onefile --windowed --add-data "video/*;video/" --add-data "icon/*;icon/" --add-data "font/*;font/" --add-data "sounds/*;sounds/" main.py
+pyinstaller --onefile --windowed --add-data "video/default_videos/;video/default_videos/" --add-data "icon/;icon/" --add-data "font/;font/" --add-data "sounds/;sounds/" --add-data "text/*;text/" Login.py
