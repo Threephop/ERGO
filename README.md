@@ -50,4 +50,4 @@ python Login.py
 
 ---Build app .exe---
 pip install pyinstaller
-pyinstaller --onefile --windowed --add-data "video/default_videos/;video/default_videos/" --add-data "icon/;icon/" --add-data "font/;font/" --add-data "sounds/;sounds/" --add-data "text/*;text/" Login.py
+pyinstaller --onefile --windowed --collect-all numpy --hidden-import=numpy --hidden-import=numpy.core --hidden-import=numpy.core._multiarray_umath --hidden-import=numpy.core._dtype --hidden-import=numpy.core.numeric --hidden-import=numpy.core.shape_base --hidden-import=numpy.linalg --hidden-import=numpy.fft --hidden-import=numpy.random --add-data "video/default_videos/;video/default_videos/" --add-data "icon/;icon/" --add-data "font/;font/" --add-data "sounds/;sounds/" --add-data "text/*;text/" --add-data "Login.py;." Login.py
