@@ -7,6 +7,7 @@ import requests
 import webbrowser
 import subprocess  # เพิ่มการนำเข้า subprocess
 import threading
+import sys
 
 class ProfileFrame(tk.Frame):
     def __init__(self, parent, user_email, app_instance):
@@ -322,26 +323,30 @@ class ProfileFrame(tk.Frame):
 
 
     def open_login(self):
-        """เปิดหน้าต่าง Login ใหม่โดยไม่ต้องนำเข้า LoginApp"""
-        import sys
-        import os
-
-        # ตรวจสอบว่าไฟล์ Login.py อยู่ในตำแหน่งที่ถูกต้อง
-        login_py_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "Login.py"))
-        if not os.path.exists(login_py_path):
-            messagebox.showerror("Error", "Cannot find Login.py")
-            return
-
+        """ เปิดหน้าต่าง Login ใหม่ """
         try:
-            print(f"✅ เปิด Login.py ที่พาธ: {login_py_path}")
-            python_executable = sys.executable  # ใช้ Python interpreter เดียวกัน
-            subprocess.Popen([python_executable, login_py_path], shell=True)  # ใช้ shell=True ช่วยให้ทำงานได้ดีขึ้น
+            # หาพาธของโฟลเดอร์หลัก (ตำแหน่งของไฟล์ปัจจุบัน)
+            base_dir = os.path.dirname(os.path.abspath(__file__))
 
-            print("🛑 บังคับปิดแอปหลักด้วย sys.exit()")
-            sys.exit()  # ปิดแอปหลักไปเลย
+            # ถ้าพาธของไฟล์ปัจจุบัน **ลงท้ายด้วย** "app" อยู่แล้ว ไม่ต้องเพิ่ม "app" ซ้ำ
+            if base_dir.endswith("app"):
+                script_path = os.path.join(base_dir, "Login.py")
+            else:
+                script_path = os.path.join(base_dir, "app", "Login.py")  # ไปที่โฟลเดอร์ "app"
 
+            # ตรวจสอบว่า Login.py มีอยู่จริงหรือไม่
+            if not os.path.exists(script_path):
+                messagebox.showerror("Error", f"Cannot find Login.py at {script_path}")
+                return
+
+            # เปิด Login.py ใหม่
+            python_executable = sys.executable  # ใช้ Python ที่กำลังรันอยู่
+            subprocess.Popen([python_executable, script_path], shell=True)
+
+            # ปิดโปรแกรมเก่า
+            sys.exit()
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to open Login: {e}")
+            messagebox.showerror("Error", f"Failed to restart Login: {e}")
 
 
 if __name__ == "__main__":
