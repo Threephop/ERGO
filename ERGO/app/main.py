@@ -19,6 +19,15 @@ import sys
 import threading
 import subprocess
 import io
+import psutil
+import pystray
+from PIL import Image, ImageDraw
+import win32api
+import win32event
+import win32process
+import winerror
+import ctypes
+from ctypes import wintypes
 
 def change_windows_taskbar_icon(window, icon_windows_path):
     try:
@@ -30,6 +39,9 @@ class App(tk.Tk):
     def __init__(self, user_email):
         super().__init__()
         self.running = True
+        # เพิ่มการจัดการการทำงานร่วมกับ Windows Taskbar
+        self.protocol("WM_TAKE_FOCUS", self.on_taskbar_click)
+        self.after(100, self.register_taskbar_restart)
 
         # กำหนด path สำหรับไอคอนทั้งหมด
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
@@ -590,7 +602,13 @@ class App(tk.Tk):
     # เริ่ม Task เบื้องหลัง
         self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
         self.bg_thread.start()
-    
+    # สร้าง System Tray Icon 
+        self.create_tray_icon()
+
+        if self.is_already_running():
+            print("โปรแกรมกำลังทำงานอยู่แล้ว!")
+            sys.exit(1)
+
     def send_app_time_month(self):
         """ส่งค่าการใช้งานแอปไปยัง API"""
         api_url = "http://127.0.0.1:8000/update_app_time_month/"  # เปลี่ยน endpoint
@@ -613,10 +631,20 @@ class App(tk.Tk):
 
     def on_closing(self):
         """ซ่อน UI และให้ Background Task ทำงานต่อ"""
-        self.running = False  # ✅ หยุด Background Task
+        self.running = True  # ยังให้ Background Task ทำงานต่อ
         self.withdraw()  # ซ่อนหน้าต่างหลัก
-        self.stop_timer()  # หยุดจับเวลา
+        
+        # อัปเดตเวลาล่าสุดก่อนที่จะซ่อน
+        elapsed_time = time.time() - self.start_time
+        self.app_time = Decimal(f"{elapsed_time:.2f}")
+        self.send_app_time()
+        
+        # restart timer เพื่อให้นับต่อเมื่อกลับมา
+        self.start_time = time.time()
+        
+        self.create_tray_icon()  # สร้าง System Tray Icon ถ้ายังไม่มี
         print("App is running in the background...")
+        return "break"  # ป้องกันการปิดแอปโดยสิ้นเชิง
 
     def background_task(self):
         """ทำงานต่อแม้ UI ถูกซ่อน"""
@@ -624,7 +652,144 @@ class App(tk.Tk):
             print("Background task running...")
             time.sleep(10) # หยุดเพื่อป้องกันการใช้ CPU มากเกินไป แสเดงว่าเป็นวินาที
         print("Background task stopped.")
+
+    def create_tray_icon(self):
+        """สร้างไอคอนใน System Tray จากไฟล์ ICO"""
+        if hasattr(self, 'tray_icon'):
+            return  # ถ้ามี tray_icon อยู่แล้ว ไม่ต้องสร้างใหม่
+
+        icon_path = os.path.join(self.icon_dir, "windows_icon.ico")
+        if not os.path.exists(icon_path):
+            print(f"❌ ไม่พบไฟล์ไอคอนที่ '{icon_path}'")
+            icon_path = os.path.join(self.icon_dir, "GODJI-Action_200113_0008.ico")  # ลองใช้ไอคอนอื่น
+            if not os.path.exists(icon_path):
+                return
+
+        icon_image = Image.open(icon_path)
+
+        # ฟังก์ชันการตอบสนองต่อการคลิกที่ไอคอน
+        def on_left_click(icon, item):
+            self.show_window()
+
+        # กำหนดเมนู Tray
+        menu = pystray.Menu(
+            pystray.MenuItem("Show", self.show_window),
+            pystray.MenuItem("Exit", self.exit_app)
+        )
+
+        self.tray_icon = pystray.Icon("ergo_project", icon_image, "ERGO PROJECT", menu)
         
+        # กำหนดการตอบสนองต่อการคลิก (รวมทั้งดับเบิลคลิก)
+        self.tray_icon.on_activate = on_left_click
+        
+        # รัน Tray Icon ใน Thread แยก
+        self.tray_thread = threading.Thread(target=self.tray_icon.run, daemon=True)
+        self.tray_thread.start()
+
+
+    def show_window(self, icon=None, item=None):
+        """เปิดหน้าต่างหลักกลับมา"""
+        self.deiconify()  # แสดงหน้าต่างหลัก
+        self.lift()  # นำหน้าต่างมาด้านหน้า
+        self.focus_force()  # บังคับให้ได้รับ focus
+        
+        # บันทึกเวลาที่ใช้ในการทำงานเบื้องหลัง
+        if self.start_time is not None:
+            elapsed_time = time.time() - self.start_time
+            self.app_time += Decimal(f"{elapsed_time:.2f}")
+            
+        # เริ่มจับเวลาใหม่
+        self.start_time = time.time()
+
+    def exit_app(self):
+        """ปิดแอปทั้งหมด รวมถึง Background Task"""
+        print("🛑 Exiting application...")
+
+        # หยุด Background Task
+        self.running = False  
+
+        # ปิด System Tray Icon ถ้ามี
+        if hasattr(self, 'tray_icon'):
+            self.tray_icon.stop()
+
+        # ปิดหน้าต่างหลักจาก main thread
+        self.after(100, self.destroy)  
+
+        # ปิดโปรเซสทั้งหมด
+        self.after(200, sys.exit, 0)  # ให้ Tkinter ปิดก่อน แล้วค่อยออกจากโปรแกรม
+
+    def is_already_running(self):
+        """เช็คว่าโปรแกรมกำลังทำงานอยู่หรือไม่ และเปิดหน้าต่างเดิมแทน"""
+        current_pid = os.getpid()
+        current_exe = sys.executable
+        
+        for process in psutil.process_iter(['pid', 'name', 'exe']):
+            try:
+                if (process.info['name'] == os.path.basename(current_exe) or 
+                    process.info['exe'] == current_exe) and process.info['pid'] != current_pid:
+                    
+                    print(f"🔍 Found running instance: PID {process.info['pid']}")
+                    if self.focus_existing_window(process.info['pid']):
+                        return True  # พบโปรแกรมที่เปิดอยู่ และนำกลับมาแสดงแล้ว
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+        return False
+
+    def focus_existing_window(self, pid):
+        """หาหน้าต่างของโปรแกรมที่มีอยู่ และนำกลับมาแสดง"""
+        def callback(hwnd, hwnds):
+            _, found_pid = win32process.GetWindowThreadProcessId(hwnd)
+            if found_pid == pid and win32gui.IsWindowVisible(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)  # คืนค่าจาก Minimized
+                win32gui.SetForegroundWindow(hwnd)  # นำหน้าต่างขึ้นมา
+                hwnds.append(hwnd)
+            return True
+        
+        hwnds = []
+        win32gui.EnumWindows(callback, hwnds)
+
+        if hwnds:
+            print("✅ Found existing window and brought it to foreground")
+            return True
+        else:
+            print("⚠️ No existing window found")
+            return False
+
+    def register_taskbar_restart(self):
+        """ลงทะเบียน taskbar handler ให้รองรับการเปิดจาก Taskbar"""
+        try:
+            self.hwnd = self.winfo_id()
+
+            # โหลดฟังก์ชัน SetWindowSubclass จาก comctl32.dll
+            comctl32 = ctypes.WinDLL("comctl32")
+            SetWindowSubclass = comctl32.SetWindowSubclass
+            SetWindowSubclass.argtypes = [wintypes.HWND, wintypes.LPVOID, wintypes.UINT_PTR, wintypes.DWORD]
+            SetWindowSubclass.restype = wintypes.BOOL
+
+            # กำหนด callback ให้กับ WNDPROC
+            self.WNDPROC = ctypes.WINFUNCTYPE(wintypes.LRESULT, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)(self.wnd_proc)
+            
+            # ลงทะเบียน subclass
+            if not SetWindowSubclass(self.hwnd, self.WNDPROC, 0, 0):
+                raise ctypes.WinError()
+            
+            print("✅ Taskbar restart handler registered successfully")
+        except Exception as e:
+            print(f"❌ ไม่สามารถลงทะเบียน taskbar handler: {e}")
+
+    def wnd_proc(self, hwnd, msg, wparam, lparam):
+        """Windows callback handler สำหรับการจัดการข้อความจาก Taskbar"""
+        if msg == win32con.WM_ACTIVATEAPP and wparam:
+            self.after(100, self.show_window)
+
+        # ใช้ DefWindowProc() แทน CallWindowProc()
+        return ctypes.windll.user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+    
+    def on_taskbar_click(self, event=None):
+        """จัดการเมื่อคลิกที่ไอคอนใน Taskbar"""
+        if not self.winfo_viewable():  # ถ้าหน้าต่างถูกซ่อนอยู่
+            self.show_window()
+        return "break"
 def open_login():
     """ เปิด Login.exe หรือ Login.py ใหม่ """
     try:
@@ -657,6 +822,17 @@ def open_login():
 
 
 if __name__ == "__main__":
+    # ใช้ Mutex เพื่อป้องกันการเปิดซ้ำ
+    mutex_name = "ERGO_PROJECT_MUTEX"
+    mutex = win32event.CreateMutex(None, 1, mutex_name)
+    last_error = win32api.GetLastError()
+
+    app_instance = App("dummy@email.com")  # สร้างอินสแตนซ์เพื่อตรวจสอบ
+
+    if last_error == winerror.ERROR_ALREADY_EXISTS or app_instance.is_already_running():
+        print("⚠️ โปรแกรมกำลังทำงานอยู่แล้ว จะแสดงหน้าต่างที่มีอยู่แทน")
+        sys.exit(0)
+
     if len(sys.argv) > 1:
         user_email = sys.argv[1]  # ✅ ดึง email จาก arguments
         app = App(user_email)
