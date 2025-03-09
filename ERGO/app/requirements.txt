@@ -32,3 +32,6 @@ pywin32-ctypes==0.2.3
 requests==2.32.3
 six==1.17.0
 urllib3==2.3.0
+psutil==7.0.0
+pystray==0.19.5
+comtypes==1.4.10
