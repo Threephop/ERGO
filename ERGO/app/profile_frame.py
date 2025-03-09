@@ -331,17 +331,23 @@ class ProfileFrame(tk.Frame):
             else:
                 base_dir = os.path.dirname(os.path.abspath(__file__))  # ถ้ารันจาก .py
 
-            # ตรวจสอบพาธของ Login.py
+            # กำหนดพาธที่เป็นไปได้ของ Login.py และ Login.exe
             login_py_path = os.path.join(base_dir, "Login.py")
+            login_exe_path = os.path.join(base_dir, "Login.exe")
 
-            if os.path.exists(login_py_path):
-                subprocess.Popen([sys.executable, login_py_path], shell=True)
+            # ตรวจสอบว่า Login.exe มีอยู่หรือไม่
+            if os.path.exists(login_exe_path):
+                subprocess.Popen([login_exe_path], shell=True)  # เปิด Login.exe
+            elif os.path.exists(login_py_path):
+                subprocess.Popen([sys.executable, login_py_path], shell=True)  # เปิด Login.py
             else:
-                messagebox.showerror("Error", f"Cannot find Login.py at {login_py_path}")
+                messagebox.showerror("Error", f"Cannot find Login.py or Login.exe at {base_dir}")
                 return
 
-            # ปิดโปรแกรมปัจจุบัน
-            sys.exit()
+            print("✅ Login เปิดสำเร็จ! ปิดโปรแกรมปัจจุบัน")
+            
+            self.quit()  # ปิด Tkinter mainloop
+            self.after(500, lambda: sys.exit(0))  # รอ 0.5 วินาทีแล้วค่อยปิดโปรแกรม
         except Exception as e:
             messagebox.showerror("Error", f"Failed to restart Login: {e}")
 
