@@ -19,6 +19,9 @@ import sys
 import threading
 import subprocess
 import io
+import psutil
+import pystray
+from PIL import Image, ImageDraw
 
 def change_windows_taskbar_icon(window, icon_windows_path):
     try:
@@ -590,7 +593,13 @@ class App(tk.Tk):
     # เริ่ม Task เบื้องหลัง
         self.bg_thread = threading.Thread(target=self.background_task, daemon=True)
         self.bg_thread.start()
-    
+    # สร้าง System Tray Icon 
+        self.create_tray_icon()
+
+        if self.is_already_running():
+            print("โปรแกรมกำลังทำงานอยู่แล้ว!")
+            sys.exit(1)
+
     def send_app_time_month(self):
         """ส่งค่าการใช้งานแอปไปยัง API"""
         api_url = "http://127.0.0.1:8000/update_app_time_month/"  # เปลี่ยน endpoint
@@ -616,6 +625,7 @@ class App(tk.Tk):
         self.running = False  # ✅ หยุด Background Task
         self.withdraw()  # ซ่อนหน้าต่างหลัก
         self.stop_timer()  # หยุดจับเวลา
+        self.create_tray_icon()  # สร้าง System Tray Icon ถ้ายังไม่มี
         print("App is running in the background...")
 
     def background_task(self):
@@ -624,7 +634,69 @@ class App(tk.Tk):
             print("Background task running...")
             time.sleep(10) # หยุดเพื่อป้องกันการใช้ CPU มากเกินไป แสเดงว่าเป็นวินาที
         print("Background task stopped.")
-        
+
+    def create_tray_icon(self):
+        """สร้างไอคอนใน System Tray จากไฟล์ ICO"""
+        if hasattr(self, 'tray_icon'):
+            return  # ถ้ามี tray_icon อยู่แล้ว ไม่ต้องสร้างใหม่
+
+        icon_path = "icon/windows_icon.ico"  # 🔹 ใช้ไฟล์ ICO
+        if not os.path.exists(icon_path):
+            print(f"❌ ไม่พบไฟล์ไอคอนที่ '{icon_path}'")
+            sys.exit(1)
+
+        icon_image = Image.open(icon_path)  # โหลดไอคอนจากไฟล์
+        def on_left_click(icon, item):
+            self.show_window()
+        # กำหนดเมนู Tray
+        self.tray_icon = pystray.Icon("my_app", icon_image, menu=pystray.Menu(
+            pystray.MenuItem("Show", self.show_window),
+            pystray.MenuItem("Exit", self.exit_app)
+        ))
+            # กำหนดการตอบสนองต่อการคลิก (รวมทั้งดับเบิลคลิก)
+        self.tray_icon.on_activate = on_left_click
+        # รัน Tray Icon ใน Thread แยก
+        self.tray_thread = threading.Thread(target=self.tray_icon.run, daemon=True)
+        self.tray_thread.start()
+
+
+    def show_window(self):
+        """เปิดหน้าต่างหลักกลับมา"""
+        self.deiconify()  # แสดงหน้าต่างหลัก
+
+    def exit_app(self):
+        """ออกจากโปรแกรมและเปิดหน้าต่าง Login ใหม่"""
+        self.running = False  # หยุด Background Task
+        self.tray_icon.stop()
+        self.quit()
+
+        # เปิดหน้าต่าง Login ใหม่
+        login_py_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "Login.py"))
+        if not os.path.exists(login_py_path):
+            messagebox.showerror("Error", "❌ ไม่พบไฟล์ Login.py กรุณาตรวจสอบการติดตั้ง!")
+            return
+
+        try:
+            print(f"✅ เปิด Login.py ที่พาธ: {login_py_path}")
+            python_executable = sys.executable
+            subprocess.Popen([python_executable, login_py_path], shell=True)
+        except Exception as e:
+            messagebox.showerror("Error", f"❌ Failed to open Login: {e}")
+
+        # ทำลายหน้าต่างหลักใน main thread
+        self.after(100, self.destroy)
+        sys.exit(0)
+
+    def is_already_running(self):
+        """เช็คว่าโปรแกรมเปิดอยู่หรือไม่"""
+        current_pid = os.getpid()
+        process_name = os.path.basename(sys.argv[0])
+
+        for process in psutil.process_iter(['pid', 'name']):
+            if process.info['name'] == process_name and process.info['pid'] != current_pid:
+                return True  # มีโปรแกรมรันอยู่แล้ว
+
+        return False       
 def open_login():
     """เปิดหน้าต่าง Login ใหม่โดยไม่ต้องนำเข้า LoginApp"""
     login_py_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "Login.py"))
