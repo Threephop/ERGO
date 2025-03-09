@@ -7,6 +7,7 @@ import requests
 import webbrowser
 import subprocess  # เพิ่มการนำเข้า subprocess
 import threading
+import sys
 
 class ProfileFrame(tk.Frame):
     def __init__(self, parent, user_email, app_instance):
@@ -322,26 +323,33 @@ class ProfileFrame(tk.Frame):
 
 
     def open_login(self):
-        """เปิดหน้าต่าง Login ใหม่โดยไม่ต้องนำเข้า LoginApp"""
-        import sys
-        import os
-
-        # ตรวจสอบว่าไฟล์ Login.py อยู่ในตำแหน่งที่ถูกต้อง
-        login_py_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "Login.py"))
-        if not os.path.exists(login_py_path):
-            messagebox.showerror("Error", "Cannot find Login.py")
-            return
-
+        """ เปิด Login.exe หรือ Login.py ใหม่ """
         try:
-            print(f"✅ เปิด Login.py ที่พาธ: {login_py_path}")
-            python_executable = sys.executable  # ใช้ Python interpreter เดียวกัน
-            subprocess.Popen([python_executable, login_py_path], shell=True)  # ใช้ shell=True ช่วยให้ทำงานได้ดีขึ้น
+            # ตรวจสอบว่ารันจาก .exe หรือไม่
+            if getattr(sys, 'frozen', False):  # ถ้าเป็น .exe
+                base_dir = sys._MEIPASS  # PyInstaller แตกไฟล์ไว้ที่นี่
+            else:
+                base_dir = os.path.dirname(os.path.abspath(__file__))  # ถ้ารันจาก .py
 
-            print("🛑 บังคับปิดแอปหลักด้วย sys.exit()")
-            sys.exit()  # ปิดแอปหลักไปเลย
+            # กำหนดพาธที่เป็นไปได้ของ Login.py และ Login.exe
+            login_py_path = os.path.join(base_dir, "Login.py")
+            login_exe_path = os.path.join(base_dir, "Login.exe")
 
+            # ตรวจสอบว่า Login.exe มีอยู่หรือไม่
+            if os.path.exists(login_exe_path):
+                subprocess.Popen([login_exe_path], shell=True)  # เปิด Login.exe
+            elif os.path.exists(login_py_path):
+                subprocess.Popen([sys.executable, login_py_path], shell=True)  # เปิด Login.py
+            else:
+                messagebox.showerror("Error", f"Cannot find Login.py or Login.exe at {base_dir}")
+                return
+
+            print("✅ Login เปิดสำเร็จ! ปิดโปรแกรมปัจจุบัน")
+            
+            self.quit()  # ปิด Tkinter mainloop
+            self.after(500, lambda: sys.exit(0))  # รอ 0.5 วินาทีแล้วค่อยปิดโปรแกรม
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to open Login: {e}")
+            messagebox.showerror("Error", f"Failed to restart Login: {e}")
 
 
 if __name__ == "__main__":
