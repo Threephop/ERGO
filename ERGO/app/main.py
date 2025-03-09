@@ -626,27 +626,24 @@ class App(tk.Tk):
         print("Background task stopped.")
         
 def open_login(self):
-    """ เปิดหน้าต่าง Login ใหม่ """
+    """ เปิด Login.exe หรือ Login.py ใหม่ """
     try:
-        # หาพาธของโฟลเดอร์หลัก (ตำแหน่งของไฟล์ปัจจุบัน)
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-
-        # ถ้าพาธของไฟล์ปัจจุบัน **ลงท้ายด้วย** "app" อยู่แล้ว ไม่ต้องเพิ่ม "app" ซ้ำ
-        if base_dir.endswith("app"):
-            script_path = os.path.join(base_dir, "Login.py")
+        # ตรวจสอบว่ารันจาก .exe หรือไม่
+        if getattr(sys, 'frozen', False):  # ถ้าเป็น .exe
+            base_dir = sys._MEIPASS  # PyInstaller แตกไฟล์ไว้ที่นี่
         else:
-            script_path = os.path.join(base_dir, "app", "Login.py")  # ไปที่โฟลเดอร์ "app"
+            base_dir = os.path.dirname(os.path.abspath(__file__))  # ถ้ารันจาก .py
 
-        # ตรวจสอบว่า Login.py มีอยู่จริงหรือไม่
-        if not os.path.exists(script_path):
-            messagebox.showerror("Error", f"Cannot find Login.py at {script_path}")
+        # ตรวจสอบพาธของ Login.py
+        login_py_path = os.path.join(base_dir, "Login.py")
+
+        if os.path.exists(login_py_path):
+            subprocess.Popen([sys.executable, login_py_path], shell=True)
+        else:
+            messagebox.showerror("Error", f"Cannot find Login.py at {login_py_path}")
             return
 
-        # เปิด Login.py ใหม่
-        python_executable = sys.executable  # ใช้ Python ที่กำลังรันอยู่
-        subprocess.Popen([python_executable, script_path], shell=True)
-
-        # ปิดโปรแกรมเก่า
+        # ปิดโปรแกรมปัจจุบัน
         sys.exit()
     except Exception as e:
         messagebox.showerror("Error", f"Failed to restart Login: {e}")
