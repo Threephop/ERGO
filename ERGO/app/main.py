@@ -625,7 +625,7 @@ class App(tk.Tk):
             time.sleep(10) # หยุดเพื่อป้องกันการใช้ CPU มากเกินไป แสเดงว่าเป็นวินาที
         print("Background task stopped.")
         
-def open_login(self):
+def open_login():
     """ เปิด Login.exe หรือ Login.py ใหม่ """
     try:
         # ตรวจสอบว่ารันจาก .exe หรือไม่
@@ -649,8 +649,8 @@ def open_login(self):
 
         print("✅ Login เปิดสำเร็จ! ปิดโปรแกรมปัจจุบัน")
         
-        self.quit()  # ปิด Tkinter mainloop
-        self.after(500, lambda: sys.exit(0))  # รอ 0.5 วินาทีแล้วค่อยปิดโปรแกรม
+        quit()  # ปิด Tkinter mainloop
+        after(500, lambda: sys.exit(0))  # รอ 0.5 วินาทีแล้วค่อยปิดโปรแกรม
     except Exception as e:
         messagebox.showerror("Error", f"Failed to restart Login: {e}")
 
