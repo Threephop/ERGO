@@ -9,10 +9,5 @@ services:
     entrypoint: ["uvicorn", "main:app", "--reload", "--port=8000", "--host=0.0.0.0"]
     ports:
       - "8000:8000"
-    environment:
-      DB_USER: "ergoepi@outlook.co.th"
-      DB_PASSWORD: "poC18112024"
-      DB_HOST: "pocergoserver.database.windows.net"
-      DB_NAME: "POCERGODATABASE"
-
-
+    env_file:
+      - .env

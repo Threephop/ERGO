@@ -55,5 +55,11 @@ pyinstaller --onefile --windowed --name "ERGO" --collect-all numpy --hidden-impo
 
 
 ---Docker---
+<!-- สร้าง container และ รัน-->
 docker compose up --build
+<!-- สร้าง container -->
+docker-compose build --no-cache
+<!-- run container -->
+docker-compose up
+
 
