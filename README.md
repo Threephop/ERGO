@@ -66,4 +66,8 @@ docker-compose down
 <!-- หยุดแค่ Container เดียว  -->
 docker-compose stop
 
+docker login
+docker images
+docker tag 25340c5b3047 threephop/ergodocker:ergo
+docker push threephop/ergodocker:ergo
 
