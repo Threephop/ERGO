@@ -1,14 +1,20 @@
 import pyodbc
+import os
 from azure.storage.blob import BlobServiceClient
+from dotenv import load_dotenv
+
+# โหลดค่าจาก .env
+load_dotenv()
 
 def get_blob_service_client():
-    # กำหนดข้อมูลสำหรับการเชื่อมต่อกับ Azure Blob Storage
-    AZURE_STORAGE_ACCOUNT_NAME = "ergostorageblob"
-    AZURE_STORAGE_ACCOUNT_KEY = "password ต้องใส่ใหม่ github ไม่เก็บ password ในไฟล์"
+    # โหลดข้อมูลจาก .env
+    account_name = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
+    account_key = os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
+
     # สร้าง client สำหรับเชื่อมต่อกับ Azure Blob Storage
     blob_service_client = BlobServiceClient(
-        account_url=f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
-        credential=AZURE_STORAGE_ACCOUNT_KEY
+        account_url=f"https://{account_name}.blob.core.windows.net",
+        credential=account_key
     )
     return blob_service_client
 

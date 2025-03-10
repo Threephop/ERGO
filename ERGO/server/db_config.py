@@ -57,6 +57,9 @@ from azure.storage.blob import BlobServiceClient
 import os
 from dotenv import load_dotenv
 
+# โหลดค่าจาก .env
+load_dotenv()
+
 def get_db_connection():
     conn_str = (
         "DRIVER={ODBC Driver 17 for SQL Server};"
