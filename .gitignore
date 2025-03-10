@@ -7,3 +7,8 @@ ERGO/__pycache__/leaderboard_frame.cpython-313.pyc
 venv/
 /ERGO/app/imageVideo
 /ERGO/app/video/updated_videos
+ERGO/server/.env
+/ERGO/app/dist
+/ERGO/app/build
+ERGO/app/Login.spec
+ERGO/app/ERGO.spec
