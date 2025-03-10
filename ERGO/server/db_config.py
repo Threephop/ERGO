@@ -51,20 +51,24 @@
 #     )
 #     return pyodbc.connect(conn_str)
 
-# db_config.py database in ERGOSERVER for docker
+# db_config.py database in ERGOSERVER SQL login
 import pyodbc
 from azure.storage.blob import BlobServiceClient
 import os
+from dotenv import load_dotenv
+
+# โหลดค่าจาก .env
+load_dotenv()
 
 def get_db_connection():
     conn_str = (
         "DRIVER={ODBC Driver 17 for SQL Server};"
         "SERVER=pocergoserver.database.windows.net;"
-        f"DATABASE=POCERGODATABASE;"
-        f"UID={os.getenv('DB_USER')};"
-        f"PWD={os.getenv('DB_PASSWORD')};"
-        "Authentication=ActiveDirectoryPassword;"
-        "TDS_Version=7.4;"
+        "DATABASE=POCERGODATABASE;"
+        f"UID={os.getenv('SQL_UID')};"
+        f"PWD={os.getenv('SQL_PWD')};"
+        "Encrypt=yes;"
+        "TrustServerCertificate=no;"
+        "Connection Timeout=30;"
     )
     return pyodbc.connect(conn_str)
-
