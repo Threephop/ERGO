@@ -8,3 +8,6 @@ venv/
 /ERGO/app/imageVideo
 /ERGO/app/video/updated_videos
 ERGO/server/.env
+/ERGO/app/dist
+/ERGO/app/build
+ERGO/app/Login.spec
