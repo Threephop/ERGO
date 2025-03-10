@@ -1,21 +1,16 @@
 FROM python:3.10
 
-# ติดตั้ง dependencies ที่จำเป็น
+# ติดตั้ง ODBC Driver 17 และ dependencies ที่จำเป็น
 RUN apt-get update && apt-get install -y \
     unixodbc \
     unixodbc-dev \
     odbcinst \
     curl \
     gnupg2 \
-    software-properties-common
-
-# เพิ่ม Microsoft package repository
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    software-properties-common && \
+    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
     curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
-    apt-get update
-
-# ติดตั้ง ODBC Driver
-RUN ACCEPT_EULA=Y apt-get install -y msodbcsql17
+    apt-get update && ACCEPT_EULA=Y apt-get install -y msodbcsql17
 
 # ตั้งค่าดirectoryและ copy โค้ดเข้า container
 WORKDIR /app

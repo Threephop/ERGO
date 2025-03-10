@@ -61,5 +61,9 @@ docker compose up --build
 docker-compose build --no-cache
 <!-- run container -->
 docker-compose up
+<!-- หยุดทุก Container  -->
+docker-compose down
+<!-- หยุดแค่ Container เดียว  -->
+docker-compose stop
 
 
