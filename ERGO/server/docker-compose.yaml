@@ -2,7 +2,7 @@ version: '3'
 
 services:
   ergo:
-    image: ergo:latest
+    image: ergoapi:latest
     build:
       context: .
       dockerfile: Dockerfile
