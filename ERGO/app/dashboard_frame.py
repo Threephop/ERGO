@@ -12,6 +12,9 @@ import requests
 from PIL import Image, ImageTk
 import cv2
 
+params = {
+    "x_api_key": "ergoapipoC18112024",  # ส่ง API Key ใน query parameter
+}
 
 class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
     def __init__(self, parent, user_email):
@@ -65,7 +68,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         """ดึง user_id จาก API"""
         url = f"{self.api_base_url}/get_user_id/{user_email}"
         try:
-            response = requests.get(url)
+            response = requests.get(url, params)
             if response.status_code == 200:
                 data = response.json()
                 if "user_id" in data:
@@ -83,7 +86,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         url = f"{self.api_base_url}/get_usage_stats/{self.user_id}"
         try:
-            response = requests.get(url)
+            response = requests.get(url, params)
             if response.status_code == 200:
                 data = response.json()
                 return [
@@ -99,7 +102,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
     def fetch_user_role(self, email):
         """ 🔹 ดึง role ของผู้ใช้จาก API """
         try:
-            response = requests.get(f"{self.api_base_url}/get_user_role/{email}")
+            response = requests.get(f"{self.api_base_url}/get_user_role/{email}", params)
             if response.status_code == 200:
                 return response.json().get("role")
             else:
@@ -115,7 +118,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         url = f"{self.api_base_url}/get_monthly_usage_stats/{self.user_id}"
         try:
-            response = requests.get(url)
+            response = requests.get(url, params)
             if response.status_code == 200:
                 data = response.json()
                 return [
@@ -237,7 +240,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
     def is_valid_url(self, url):
         """ ตรวจสอบว่า URL สามารถเข้าถึงได้หรือไม่ """
         try:
-            response = requests.head(url, allow_redirects=True, timeout=5)  # ใช้ HEAD request เพื่อเช็คว่า URL ใช้งานได้
+            response = requests.head(url, params={"x_api_key": "ergoapipoC18112024"}, allow_redirects=True, timeout=5)  # ใช้ HEAD request เพื่อเช็คว่า URL ใช้งานได้
             return response.status_code == 200  # ถ้าสถานะ 200 แปลว่า URL ใช้งานได้
         except requests.RequestException:
             return False  # ถ้ามี error แปลว่า URL ใช้ไม่ได้
@@ -298,7 +301,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         payload = {"user_id": self.user_id}  # ✅ ส่ง user_id ไปด้วย
 
         try:
-            response = requests.delete(url, json=payload, timeout=5)  # ใช้ DELETE request พร้อม JSON payload
+            response = requests.delete(url, params, json=payload, timeout=5)  # ใช้ DELETE request พร้อม JSON payload
             if response.status_code == 200:
                 print(f"✅ Successfully deleted video {post_id} from database.")
             else:
@@ -335,7 +338,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
 
         url = f"{self.api_base_url}/get_user_videos/{self.user_id}"
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, params, timeout=10)
             if response.status_code == 200:
                 return response.json().get("videos", [])
         except Exception as e:
@@ -350,7 +353,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         url = f"{self.api_base_url}/refresh_Like/?user_id={self.user_id}"
         
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, params, timeout=10)
             response.raise_for_status()  # ตรวจสอบสถานะ HTTP
             
             data = response.json()
@@ -401,7 +404,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             self.tree.column(col, width=10, anchor="center")  # ปรับขนาดให้พอดี
 
         # ✅ ดึงข้อมูลจาก API
-        response = requests.get(api_url)
+        response = requests.get(api_url, params)
 
         if response.status_code == 200:
             activity_data = response.json()
@@ -442,7 +445,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             return
 
         try:
-            response = requests.get(f"{self.api_base_url}/export_dashboard_active/?email={self.user_email}")
+            response = requests.get(f"{self.api_base_url}/export_dashboard_active/?email={self.user_email}", params)
 
             if response.status_code == 200:
                 content_disposition = response.headers.get("Content-Disposition", "")
@@ -470,7 +473,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             return
 
         try:
-            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}")
+            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}", params)
 
             if response.status_code == 200:
                 content_disposition = response.headers.get("Content-Disposition", "")
@@ -504,7 +507,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             return
 
         try:
-            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}")
+            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}", params)
 
             if response.status_code == 200:
                 content_disposition = response.headers.get("Content-Disposition", "")
