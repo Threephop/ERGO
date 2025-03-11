@@ -34,6 +34,10 @@ def change_windows_taskbar_icon(window, icon_windows_path):
         window.iconbitmap(icon_windows_path)  # ใช้พารามิเตอร์ที่ถูกต้อง
     except Exception as e:
         print(f"Error changing icon: {e}")
+        
+params = {
+    "x_api_key": "ergoapipoC18112024",  # ส่ง API Key ใน query parameter
+}
 
 class App(tk.Tk):
     def __init__(self, user_email):
@@ -83,7 +87,7 @@ class App(tk.Tk):
     
         # ดึงรายชื่อ users จาก API
         try:
-            response = requests.get("http://127.0.0.1:8000/users", timeout=5)
+            response = requests.get("http://127.0.0.1:8000/users", params=params, timeout=5)
             response.raise_for_status()  # ตรวจสอบ HTTP Status Code
 
             data = response.json()
@@ -337,7 +341,7 @@ class App(tk.Tk):
         def fetch():
             api_url = f"http://127.0.0.1:8000/get_profile_url/{self.user_id}"
             try:
-                response = requests.get(api_url, timeout=5)
+                response = requests.get(api_url, params=params, timeout=5)
                 if response.status_code == 200:
                     self.profile_image_url = response.json().get("profile_url", "")
                     print(f"✅ Profile image URL updated: {self.profile_image_url}")
@@ -354,7 +358,7 @@ class App(tk.Tk):
     def fetch_user_id(self, email):
         url = f"http://127.0.0.1:8000/get_user_id/{email}"
         try:
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, params=params, timeout=5)
             if response.status_code == 200:
                 data = response.json()
                 return data.get("user_id")  # ✅ ส่งค่า user_id กลับไปทันที
@@ -374,7 +378,7 @@ class App(tk.Tk):
             # ✅ 2. โหลดรูปจาก URL (ถ้ามี)
             if profile_url:
                 try:
-                    image_response = requests.get(profile_url, timeout=5)
+                    image_response = requests.get(profile_url, params=params, timeout=5)
                     if image_response.status_code == 200:
                         image_data = io.BytesIO(image_response.content)
                         profile_image = Image.open(image_data)
@@ -407,7 +411,7 @@ class App(tk.Tk):
         # 🔹 เรียก API refresh_profile เพื่อดึงค่าล่าสุด
         try:
             api_url = f"http://127.0.0.1:8000/refresh_profile/{self.user_id}"
-            response = requests.get(api_url, timeout=5)
+            response = requests.get(api_url, params=params, timeout=5)
             response.raise_for_status()
             data = response.json()
 
@@ -443,7 +447,7 @@ class App(tk.Tk):
         
         if profile_url:
             try:
-                response = requests.get(profile_url, timeout=5)  # โหลดรูปจาก URL
+                response = requests.get(profile_url, params=params, timeout=5)  # โหลดรูปจาก URL
                 if response.status_code == 200:
                     image_data = io.BytesIO(response.content)
                     image = Image.open(image_data)
@@ -587,7 +591,8 @@ class App(tk.Tk):
         api_url = "http://127.0.0.1:8000/update_app_time/"
         params = {
             "email": self.user_email,
-            "app_time": float(self.app_time)  # แปลงเป็น float ก่อนส่ง
+            "app_time": float(self.app_time),  # แปลงเป็น float 
+            "x_api_key": "ergoapipoC18112024"
         }
         
         try:
@@ -614,7 +619,8 @@ class App(tk.Tk):
         api_url = "http://127.0.0.1:8000/update_app_time_month/"  # เปลี่ยน endpoint
         params = {
             "email": self.user_email,
-            "app_time": float(self.app_time)  # แปลงเป็น float ก่อนส่ง
+            "app_time": float(self.app_time),  # แปลงเป็น float ก่อนส่ง
+            "x_api_key": "ergoapipoC18112024"
         }
         try:
             response = requests.get(api_url, params=params)
