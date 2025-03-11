@@ -7,6 +7,10 @@ from video_player import VideoPlayer  # นำเข้า VideoPlayer
 import customtkinter as ctk  # ใช้ CustomTkinter
 import requests
 
+params = {
+    "x_api_key": "ergoapipoC18112024",  # ส่ง API Key ใน query parameter
+}
+
 API_BASE_URL = "http://localhost:8000"  # URL ของ FastAPI
 # ตรวจสอบพาธเต็ม
 video_folder = os.path.join(os.path.dirname(__file__), "video")
@@ -80,7 +84,7 @@ class HomeFrame(ctk.CTkFrame):
 
         try:
             # เรียก API /list_videos เพื่อดึงรายการวิดีโอ
-            response = requests.get(f"{API_BASE_URL}/list_videos/")
+            response = requests.get(f"{API_BASE_URL}/list_videos/", params=params)
             if response.status_code == 200:
                 posts = response.json()  # posts เป็น dictionary ที่มี key "videos"
                 
@@ -94,7 +98,7 @@ class HomeFrame(ctk.CTkFrame):
 
                     if not os.path.exists(local_file_path):
                         # ดาวน์โหลดวิดีโอจาก URL
-                        download_response = requests.get(video_url, stream=True)
+                        download_response = requests.get(video_url, params=params, stream=True)
                         if download_response.status_code == 200:
                             with open(local_file_path, "wb") as f:
                                 for chunk in download_response.iter_content(1024):
