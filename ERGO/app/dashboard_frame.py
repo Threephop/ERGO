@@ -301,7 +301,7 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
         payload = {"user_id": self.user_id}  # ✅ ส่ง user_id ไปด้วย
 
         try:
-            response = requests.delete(url, params, json=payload, timeout=5)  # ใช้ DELETE request พร้อม JSON payload
+            response = requests.delete(url, params=params, json=payload, timeout=5)  # ใช้ DELETE request พร้อม JSON payload
             if response.status_code == 200:
                 print(f"✅ Successfully deleted video {post_id} from database.")
             else:
