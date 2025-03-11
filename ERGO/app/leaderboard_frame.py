@@ -7,6 +7,10 @@ import os
 from tkinter import messagebox
 import threading
 
+params = {
+    "x_api_key": "ergoapipoC18112024",  # ส่ง API Key ใน query parameter
+}
+
 class LeaderboardFrame(tk.Frame):
     def __init__(self, master, user_email):
         super().__init__(master, bg="white")
@@ -63,7 +67,7 @@ class LeaderboardFrame(tk.Frame):
     def fetch_user_role(self, email):
         """ 🔹 ดึง role ของผู้ใช้จาก API """
         try:
-            response = requests.get(f"{self.api_base_url}/get_user_role/{email}")
+            response = requests.get(f"{self.api_base_url}/get_user_role/{email}", params=params)
             if response.status_code == 200:
                 return response.json().get("role")
             else:
@@ -105,7 +109,7 @@ class LeaderboardFrame(tk.Frame):
     def fetch_users(self, tab_name):
         def fetch():
             try:
-                response = requests.get("http://localhost:8000/showstat")
+                response = requests.get("http://localhost:8000/showstat", params=params)
                 if response.status_code == 200:
                     data = response.json()
                     self.update_ui(tab_name, data)
@@ -167,7 +171,7 @@ class LeaderboardFrame(tk.Frame):
             return
 
         try:
-            response = requests.get(f"{self.api_base_url}/export_leaderboard_active/?email={self.user_email}")
+            response = requests.get(f"{self.api_base_url}/export_leaderboard_active/?email={self.user_email}" ,params=params)
 
             if response.status_code == 200:
                 content_disposition = response.headers.get("Content-Disposition", "")
@@ -195,7 +199,7 @@ class LeaderboardFrame(tk.Frame):
             return
 
         try:
-            response = requests.get(f"{self.api_base_url}/export_leaderboard_popular/?email={self.user_email}")
+            response = requests.get(f"{self.api_base_url}/export_leaderboard_popular/?email={self.user_email}", params=params)
 
             if response.status_code == 200:
                 content_disposition = response.headers.get("Content-Disposition", "")
