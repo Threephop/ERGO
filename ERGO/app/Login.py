@@ -15,6 +15,10 @@ import re
 import threading
 import queue
 
+params = {
+    "x_api_key": "ergoapipoC18112024",  # ส่ง API Key ใน query parameter
+}
+
 # Microsoft App Configuration
 CLIENT_ID = "f9501308-381e-4b28-9ebc-3ad41d097035"
 AUTHORITY = "https://login.microsoftonline.com/common"
@@ -46,7 +50,7 @@ def clean_email(email):
 # Function to send username and email to API
 def send_user_data(username, email, created_at):
     try:
-        payload = {"username": username, "email": email, "create_at": created_at}
+        payload = {"username": username, "email": email, "create_at": created_at, "x_api_key": "ergoapipoC18112024"}
         response = requests.post(API_ENDPOINT, params=payload)
         if response.status_code == 200:
             messagebox.showinfo("Success", "User data sent successfully.")
@@ -58,7 +62,7 @@ def send_user_data(username, email, created_at):
 def get_user_id_from_db(email):
     """ ค้นหา user_id จากอีเมลในฐานข้อมูล """
     url = f"http://127.0.0.1:8000/get_user_id/{email}"
-    response = requests.get(url)
+    response = requests.get(url, params=params)
     if response.status_code == 200:
         data = response.json()
         return data.get("user_id")
@@ -104,7 +108,7 @@ def login():
                     email = clean_email(email)
                     username = user_data.get("displayName")
                     if email and username:
-                        add_user_response = requests.post(API_ENDPOINT, params={"username": username, "email": email, "role": 0, "create_at": datetime.datetime.utcnow().isoformat()})
+                        add_user_response = requests.post(API_ENDPOINT, params={"username": username, "email": email, "role": 0, "create_at": datetime.datetime.utcnow().isoformat(), "x_api_key": "ergoapipoC18112024"})
                         if add_user_response.status_code == 200:
                             login_queue.put(('login_success', email, username))
                         else:
