@@ -372,7 +372,7 @@ class App(tk.Tk):
         """โหลดและอัปเดตรูปโปรไฟล์ที่ Sidebar"""
         try:
             # ✅ 1. ดึง URL ของรูปโปรไฟล์จาก API
-            response = requests.get("http://127.0.0.1:8000/get_profile_image/", params={"user_id": self.user_id})
+            response = requests.get("http://127.0.0.1:8000/get_profile_image/", params={"user_id": self.user_id, "x_api_key": "ergoapipoC18112024"})
             profile_url = response.json().get("profile_url") if response.status_code == 200 else None
 
             # ✅ 2. โหลดรูปจาก URL (ถ้ามี)
