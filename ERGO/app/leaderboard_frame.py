@@ -17,7 +17,7 @@ class LeaderboardFrame(tk.Frame):
         super().__init__(master, bg="white")
         self.master = master
         self.current_tab_frame = None
-        self.api_base_url = "http://127.0.0.1:8000"  
+        self.api_base_url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io"  
         self.user_email = user_email
         self.user_role = self.fetch_user_role(user_email) 
 
@@ -110,7 +110,7 @@ class LeaderboardFrame(tk.Frame):
     def fetch_users(self, tab_name):
         def fetch():
             try:
-                response = requests.get("http://localhost:8000/showstat", params=params)
+                response = requests.get("https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/showstat", params=params)
                 if response.status_code == 200:
                     data = response.json()
                     self.update_ui(tab_name, data)
