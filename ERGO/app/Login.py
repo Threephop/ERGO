@@ -37,7 +37,7 @@ def change_taskbar_icon(window, icon_path):
 
 
 # API endpoint for adding user data to the database
-API_ENDPOINT = "http://localhost:8000/add-user"
+API_ENDPOINT = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/add-user"
 
 def clean_email(email):
     """ แก้ไขอีเมลที่เป็น #EXT# ให้เป็นรูปแบบที่ถูกต้อง """
@@ -61,7 +61,7 @@ def send_user_data(username, email, created_at):
 
 def get_user_id_from_db(email):
     """ ค้นหา user_id จากอีเมลในฐานข้อมูล """
-    url = f"http://127.0.0.1:8000/get_user_id/{email}"
+    url = f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/get_user_id/{email}"
     response = requests.get(url, params=params)
     if response.status_code == 200:
         data = response.json()
