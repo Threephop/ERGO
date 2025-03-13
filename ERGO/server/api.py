@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 import pyodbc
 import pandas as pd
 import os
+import tempfile
 
 
 api_router = APIRouter()
@@ -719,14 +720,13 @@ def export_dashboard(email: str):
     df = pd.read_sql(query, conn)
     conn.close()
 
-    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้ โดยเพิ่มชื่อไฟล์ให้ไม่ซ้ำ
-    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-    file_path = get_unique_filename(downloads_folder, "dashboard_active", ".xlsx")
-    
-    df.to_excel(file_path, index=False)
+    # 🔹 บันทึกไฟล์ชั่วคราว
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    df.to_excel(temp_file.name, index=False)
+    temp_file.close()
 
-    # ส่งชื่อไฟล์ที่ได้ไปยัง frontend
-    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    # 🔹 ส่งไฟล์กลับไปยังผู้ใช้
+    return FileResponse(temp_file.name, filename="dashboard_active.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @api_router.get("/export_dashboard_month/")
 def export_dashboard_month(email: str):
@@ -769,14 +769,13 @@ def export_dashboard_month(email: str):
     df = pd.read_sql(query, conn)
     conn.close()
 
-    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้ โดยเพิ่มชื่อไฟล์ให้ไม่ซ้ำ
-    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-    file_path = get_unique_filename(downloads_folder, "dashboard_month", ".xlsx")
-    
-    df.to_excel(file_path, index=False)
+    # 🔹 บันทึกไฟล์ชั่วคราว
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    df.to_excel(temp_file.name, index=False)
+    temp_file.close()
 
-    # 🔹 ส่งไฟล์ให้ frontend ดาวน์โหลด
-    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    # 🔹 ส่งไฟล์กลับไปยังผู้ใช้
+    return FileResponse(temp_file.name, filename="dashboard_active_month.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # 🔹 API: Export Leaderboard Active (เรียงตาม hours_used)
 @api_router.get("/export_leaderboard_active/")
