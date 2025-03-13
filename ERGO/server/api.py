@@ -809,13 +809,13 @@ def export_leaderboard_active(email: str):
     df = pd.read_sql(query, conn)
     conn.close()
 
-    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้
-    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-    file_path = get_unique_filename(downloads_folder, "leaderboard_active", ".xlsx")
-    
-    df.to_excel(file_path, index=False)
+    # 🔹 บันทึกไฟล์ชั่วคราว
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    df.to_excel(temp_file.name, index=False)
+    temp_file.close()
 
-    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    # 🔹 ส่งไฟล์กลับไปยังผู้ใช้
+    return FileResponse(temp_file.name, filename="leaderboard_active.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # 🔹 API: Export Leaderboard Popular (เรียงตาม total_likes)
 @api_router.get("/export_leaderboard_popular/")
@@ -850,13 +850,13 @@ def export_leaderboard_popular(email: str):
     df = pd.read_sql(query, conn)
     conn.close()
 
-    # 🔹 บันทึกไฟล์ไปที่โฟลเดอร์ Downloads ของผู้ใช้
-    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-    file_path = get_unique_filename(downloads_folder, "leaderboard_popular", ".xlsx")
-    
-    df.to_excel(file_path, index=False)
+    # 🔹 บันทึกไฟล์ชั่วคราว
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    df.to_excel(temp_file.name, index=False)
+    temp_file.close()
 
-    return FileResponse(file_path, filename=os.path.basename(file_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    # 🔹 ส่งไฟล์กลับไปยังผู้ใช้
+    return FileResponse(temp_file.name, filename="leaderboard_month.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @api_router.get("/get_monthly_usage_stats/{user_id}")
 def get_monthly_usage_stats(user_id: int):
