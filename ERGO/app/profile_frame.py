@@ -9,6 +9,10 @@ import subprocess  # เพิ่มการนำเข้า subprocess
 import threading
 import sys
 
+params = {
+    "x_api_key": "ergoapipoC18112024",  # ส่ง API Key ใน query parameter
+}
+
 class ProfileFrame(tk.Frame):
     def __init__(self, parent, user_email, app_instance):
         super().__init__(parent, bg="white")
@@ -39,7 +43,7 @@ class ProfileFrame(tk.Frame):
 
         
         # 🔹 ดึงรายชื่อ users จาก API
-        response = requests.get("http://127.0.0.1:8000/users")
+        response = requests.get("http://127.0.0.1:8000/users", params=params)
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -84,7 +88,7 @@ class ProfileFrame(tk.Frame):
         def fetch():
             """ โหลดรูปโปรไฟล์จาก URL ถ้ามี หรือใช้ค่า default """
             try:
-                response = requests.get(f"http://localhost:8000/get_profile_image/?user_id={user_id}")
+                response = requests.get(f"http://localhost:8000/get_profile_image/?user_id={user_id}", params=params)
                 profile_url = response.json().get("profile_url") if response.status_code == 200 else None
                 
                 if profile_url:
@@ -152,14 +156,14 @@ class ProfileFrame(tk.Frame):
 
             try:
                 # ✅ 1. ดึง URL ของรูปโปรไฟล์เก่าจาก API
-                response = requests.get(f"http://localhost:8000/get_profile_image/", params={"user_id": self.user_id})
+                response = requests.get(f"http://localhost:8000/get_profile_image/", params={"user_id": self.user_id, "x_api_key": "ergoapipoC18112024"})
                 profile_url = response.json().get("profile_url") if response.status_code == 200 else None
 
                 # ✅ 2. ลบรูปโปรไฟล์เก่า ถ้ามี
                 if profile_url:
                     delete_response = requests.delete(
                         "http://localhost:8000/delete_old_profile/",
-                        params={"user_id": self.user_id, "profile_url": profile_url}
+                        params={"user_id": self.user_id, "profile_url": profile_url, "x_api_key": "ergoapipoC18112024"}
                     )
                     print(delete_response.json().get("message"))
 
@@ -167,7 +171,7 @@ class ProfileFrame(tk.Frame):
                 upload_url = f"http://localhost:8000/upload_profile/?user_id={self.user_id}"
                 with open(file_path, "rb") as file:
                     files = {"file": file}
-                    upload_response = requests.post(upload_url, files=files)
+                    upload_response = requests.post(upload_url, params=params, files=files)
 
                 if upload_response.status_code == 200:
                     new_profile_url = upload_response.json().get("profile_url", None)
@@ -180,7 +184,7 @@ class ProfileFrame(tk.Frame):
                     return
 
                 # ✅ 4. โหลดรูปภาพใหม่และอัปเดต UI
-                image_data = requests.get(new_profile_url).content
+                image_data = requests.get(new_profile_url, params=params).content
                 image = Image.open(io.BytesIO(image_data))
                 image = image.resize((100, 100), Image.Resampling.LANCZOS)
                 new_profile_image = ImageTk.PhotoImage(image)
@@ -205,7 +209,7 @@ class ProfileFrame(tk.Frame):
         """ดึง user_id จาก API"""
         url = f"{self.api_base_url}/get_user_id/{user_email}"
         try:
-            response = requests.get(url, timeout=5)  # ใส่ timeout ป้องกันค้าง
+            response = requests.get(url, params=params, timeout=5)  # ใส่ timeout ป้องกันค้าง
             if response.status_code == 200:
                 data = response.json()
                 return data.get("user_id")
@@ -241,7 +245,7 @@ class ProfileFrame(tk.Frame):
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 
         try:
-            response = requests.post(url, data=payload, headers=headers, timeout=5)  # เพิ่ม headers
+            response = requests.post(url, data=payload, params=params, headers=headers, timeout=5)  # เพิ่ม headers
             if response.status_code == 200:
                 return True
             elif response.status_code == 404:

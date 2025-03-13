@@ -49,5 +49,25 @@ cd ERGO\app
 python Login.py
 
 ---Build app .exe---
+pip install pyinstaller
 
 pyinstaller --onefile --windowed --name "ERGO" --collect-all numpy --hidden-import=numpy --hidden-import=numpy.core --hidden-import=numpy.core._multiarray_umath --hidden-import=numpy.core._dtype --hidden-import=numpy.core.numeric --hidden-import=numpy.core.shape_base --hidden-import=numpy.linalg --hidden-import=numpy.fft --hidden-import=numpy.random --add-data "video/default_videos/;video/default_videos/" --add-data "icon/;icon/" --add-data "font/;font/" --add-data "sounds/;sounds/" --add-data "text/*;text/" --add-data "Login.py;." --icon="icon/windows_icon.ico" Login.py
+
+
+---Docker---
+<!-- สร้าง container และ รัน-->
+docker compose up --build
+<!-- สร้าง container -->
+docker-compose build --no-cache
+<!-- run container -->
+docker-compose up
+<!-- หยุดทุก Container  -->
+docker-compose down
+<!-- หยุดแค่ Container เดียว  -->
+docker-compose stop
+
+docker login
+docker images
+docker tag a7724d28441f threephop/ergodocker:ergoapi
+docker push threephop/ergodocker:ergoapi
+

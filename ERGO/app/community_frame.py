@@ -10,6 +10,10 @@ import requests
 from datetime import datetime 
 import threading
 
+params = {
+    "x_api_key": "ergoapipoC18112024",  # ส่ง API Key ใน query parameter
+}
+
 class CommunityFrame(tk.Frame):
     def __init__(self, parent, user_email):
         super().__init__(parent)
@@ -100,7 +104,7 @@ class CommunityFrame(tk.Frame):
         self.update_idletasks() # อัปเดต UI ก่อนเลื่อนลงไปที่ข้อความล่าสุด
         self.canvas.yview_moveto(1.0)  # เลื่อนลงไปที่ข้อความล่าสุด
         
-        response = requests.get("http://127.0.0.1:8000/users")
+        response = requests.get("http://127.0.0.1:8000/users", params=params)
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -195,7 +199,7 @@ class CommunityFrame(tk.Frame):
         """ ดึงข้อมูลรูปโปรไฟล์ของทุกคนจาก API """
         url = f"{self.api_base_url}/get_all_profiles/"
         try:
-            response = requests.get(url)
+            response = requests.get(url, params=params)
             if response.status_code == 200:
                 data = response.json()
                 self.profile_images = data.get("profiles", {})
@@ -209,7 +213,7 @@ class CommunityFrame(tk.Frame):
     def load_all_profiles(self):
         """ โหลดรูปโปรไฟล์ของทุก user ตั้งแต่เปิดแอป """
         try:
-            response = requests.get(f"{self.api_base_url}/users")
+            response = requests.get(f"{self.api_base_url}/users", params=params)
             if response.status_code == 200:
                 users = response.json().get("users", [])
                 for user in users:
@@ -232,7 +236,7 @@ class CommunityFrame(tk.Frame):
             if not image_url or image_url.strip() == "" or image_url.lower() == "null":
                 return self.profile_icon  # ใช้ Default ถ้าไม่มี URL
 
-            response = requests.get(image_url, timeout=5)
+            response = requests.get(image_url, params=params, timeout=5)
             if response.status_code == 200:
                 image_data = io.BytesIO(response.content)
                 image = Image.open(image_data)
@@ -261,7 +265,7 @@ class CommunityFrame(tk.Frame):
                     
                     widget.destroy()
 
-                response = requests.get("http://localhost:8000/get-messages")
+                response = requests.get("http://localhost:8000/get-messages", params)
                 if response.status_code == 200:
                     messages = response.json().get("messages", [])
                     user_id = self.user_id
@@ -277,7 +281,7 @@ class CommunityFrame(tk.Frame):
                         like_count = msg.get("like_count", 0)  
                         profile_image = self.profile_images.get(message_owner_id, self.profile_icon)
 
-                        is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id})
+                        is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id, "x_api_key": "ergoapipoC18112024"})
                         is_liked = is_liked_response.json().get("is_liked", False) if is_liked_response.status_code == 200 else False
 
                         if filepath:  
@@ -308,7 +312,7 @@ class CommunityFrame(tk.Frame):
         """ดึง user_id จาก API"""
         url = f"{self.api_base_url}/get_user_id/{user_email}"
         try:
-            response = requests.get(url)
+            response = requests.get(url, params)
             if response.status_code == 200:
                 data = response.json()
                 if "user_id" in data:
@@ -326,7 +330,7 @@ class CommunityFrame(tk.Frame):
                 # ✅ 1. เรียก API เพื่อตรวจสอบว่ามีวิดีโอในโพสต์นี้หรือไม่
                 video_response = requests.get(
                     f"http://localhost:8000/get_video_path",
-                    params={"post_id": post_id}
+                    params={"post_id": post_id, "x_api_key": "ergoapipoC18112024"}        
                 )
 
                 if video_response.status_code == 200:
@@ -335,7 +339,7 @@ class CommunityFrame(tk.Frame):
                         # ✅ 2. ลบวิดีโอออกจาก Storage
                         delete_video_response = requests.delete(
                             f"http://localhost:8000/delete_video",
-                            params={"post_id": post_id, "video_url": video_path}  # ส่ง post_id และ video_url ใน query string
+                            params={"post_id": post_id, "video_url": video_path, "x_api_key": "ergoapipoC18112024"}  # ส่ง post_id และ video_url ใน query string
                         )
 
                         if delete_video_response.status_code == 200:
@@ -346,7 +350,8 @@ class CommunityFrame(tk.Frame):
                 # ✅ 3. ลบโพสต์ออกจากฐานข้อมูล
                 response = requests.delete(
                     f"http://localhost:8000/delete-message/{post_id}",
-                    json={"user_id": self.user_id}
+                    params=params,
+                    json={"user_id": self.user_id},
                 )
 
                 if response.status_code == 200:
@@ -383,7 +388,8 @@ class CommunityFrame(tk.Frame):
                     params={
                         "user_id": self.user_id,
                         "content": message,
-                        "create_at": create_at
+                        "create_at": create_at,
+                        "x_api_key": "ergoapipoC18112024"
                     }
                 )
 
@@ -654,7 +660,8 @@ class CommunityFrame(tk.Frame):
         params = {
             "post_id": post_id,
             "user_id": user_id,
-            "action": action  # ใช้ action เพื่อบอกว่าเป็นการ Like หรือ Unlike
+            "action": action,  # ใช้ action เพื่อบอกว่าเป็นการ Like หรือ 
+            "x_api_key": "ergoapipoC18112024"
         }
 
         try:
@@ -762,7 +769,7 @@ class CommunityFrame(tk.Frame):
             upload_url = "http://localhost:8000/upload_file/"
             with open(filepath, "rb") as file:
                 files = {"file": file}
-                params = {"user_id": self.user_id}
+                params = {"user_id": self.user_id, "x_api_key": "ergoapipoC18112024"}
                 upload_response = requests.post(upload_url, files=files, params=params)
 
             if upload_response.status_code == 200:
@@ -791,7 +798,7 @@ class CommunityFrame(tk.Frame):
             # ✅ 1. เช็คการเชื่อมต่อกับ Blob Storage ก่อน
             container_name = "ergo"  # แก้ไขเป็นชื่อ Container จริง
             check_blob_url = f"http://localhost:8000/check_blob_storage/?container_name={container_name}"
-            response = requests.get(check_blob_url)
+            response = requests.get(check_blob_url, params)
 
             if response.status_code == 200:
                 data = response.json()
@@ -805,7 +812,7 @@ class CommunityFrame(tk.Frame):
             upload_url = "http://localhost:8000/upload_video/"
             with open(filepath, "rb") as file:
                 files = {"file": file}
-                upload_response = requests.post(upload_url, files=files)
+                upload_response = requests.post(upload_url, params, files=files)
 
             if upload_response.status_code == 200:
                 image_url = upload_response.json().get("image_url")
@@ -816,7 +823,7 @@ class CommunityFrame(tk.Frame):
                 return
 
             # ✅ 3. ดึงรูปภาพจาก URL แทนการใช้ Local Path
-            image_data = requests.get(image_url).content
+            image_data = requests.get(image_url, params).content
             image = Image.open(io.BytesIO(image_data))
             image = image.resize((150, 150))
             image_tk = ImageTk.PhotoImage(image)
