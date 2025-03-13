@@ -11,7 +11,7 @@ params = {
     "x_api_key": "ergoapipoC18112024",  # ส่ง API Key ใน query parameter
 }
 
-API_BASE_URL = "http://localhost:8000"  # URL ของ FastAPI
+API_BASE_URL = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io"  # URL ของ FastAPI
 # ตรวจสอบพาธเต็ม
 video_folder = os.path.join(os.path.dirname(__file__), "video")
 updated_videos_folder = os.path.join(video_folder, "updated_videos")

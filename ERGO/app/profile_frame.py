@@ -17,7 +17,7 @@ class ProfileFrame(tk.Frame):
     def __init__(self, parent, user_email, app_instance):
         super().__init__(parent, bg="white")
         self.user_email = user_email
-        self.api_base_url = "http://127.0.0.1:8000"
+        self.api_base_url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io"
         self.user_id = self.fetch_user_id(user_email)  # ดึง user_id จาก API
         self.app_instance = app_instance
         self.logout_called = False  # ป้องกัน Logout ซ้ำ
@@ -43,7 +43,7 @@ class ProfileFrame(tk.Frame):
 
         
         # 🔹 ดึงรายชื่อ users จาก API
-        response = requests.get("http://127.0.0.1:8000/users", params=params)
+        response = requests.get("https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/users", params=params)
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -88,7 +88,7 @@ class ProfileFrame(tk.Frame):
         def fetch():
             """ โหลดรูปโปรไฟล์จาก URL ถ้ามี หรือใช้ค่า default """
             try:
-                response = requests.get(f"http://localhost:8000/get_profile_image/?user_id={user_id}", params=params)
+                response = requests.get(f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/get_profile_image/?user_id={user_id}", params=params)
                 profile_url = response.json().get("profile_url") if response.status_code == 200 else None
                 
                 if profile_url:
@@ -156,19 +156,19 @@ class ProfileFrame(tk.Frame):
 
             try:
                 # ✅ 1. ดึง URL ของรูปโปรไฟล์เก่าจาก API
-                response = requests.get(f"http://localhost:8000/get_profile_image/", params={"user_id": self.user_id, "x_api_key": "ergoapipoC18112024"})
+                response = requests.get(f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/get_profile_image/", params={"user_id": self.user_id, "x_api_key": "ergoapipoC18112024"})
                 profile_url = response.json().get("profile_url") if response.status_code == 200 else None
 
                 # ✅ 2. ลบรูปโปรไฟล์เก่า ถ้ามี
                 if profile_url:
                     delete_response = requests.delete(
-                        "http://localhost:8000/delete_old_profile/",
+                        "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/delete_old_profile/",
                         params={"user_id": self.user_id, "profile_url": profile_url, "x_api_key": "ergoapipoC18112024"}
                     )
                     print(delete_response.json().get("message"))
 
                 # ✅ 3. อัปโหลดรูปภาพใหม่ไปยัง Azure Blob Storage
-                upload_url = f"http://localhost:8000/upload_profile/?user_id={self.user_id}"
+                upload_url = f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/upload_profile/?user_id={self.user_id}"
                 with open(file_path, "rb") as file:
                     files = {"file": file}
                     upload_response = requests.post(upload_url, params=params, files=files)
@@ -240,7 +240,7 @@ class ProfileFrame(tk.Frame):
 
     def update_username_in_api(self, user_id, new_username):
         """ส่งคำขอเปลี่ยนชื่อไปยัง API"""
-        url = "http://127.0.0.1:8000/update_username"  # ใช้ endpoint POST ที่ถูกต้อง
+        url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/update_username"  # ใช้ endpoint POST ที่ถูกต้อง
         payload = {"user_id": user_id, "new_username": new_username}
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 

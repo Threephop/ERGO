@@ -18,7 +18,7 @@ class CommunityFrame(tk.Frame):
     def __init__(self, parent, user_email):
         super().__init__(parent)
         
-        self.api_base_url = "http://127.0.0.1:8000"
+        self.api_base_url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io"
         self.user_email = user_email
         self.user_id = self.fetch_user_id(user_email)
         self.like_labels = {}  # เก็บข้อมูลป้าย like สำหรับโพสต์แต่ละโพสต์
@@ -104,7 +104,7 @@ class CommunityFrame(tk.Frame):
         self.update_idletasks() # อัปเดต UI ก่อนเลื่อนลงไปที่ข้อความล่าสุด
         self.canvas.yview_moveto(1.0)  # เลื่อนลงไปที่ข้อความล่าสุด
         
-        response = requests.get("http://127.0.0.1:8000/users", params=params)
+        response = requests.get("https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/users", params=params)
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -265,7 +265,7 @@ class CommunityFrame(tk.Frame):
                     
                     widget.destroy()
 
-                response = requests.get("http://localhost:8000/get-messages", params)
+                response = requests.get("https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/get-messages", params)
                 if response.status_code == 200:
                     messages = response.json().get("messages", [])
                     user_id = self.user_id
@@ -281,7 +281,7 @@ class CommunityFrame(tk.Frame):
                         like_count = msg.get("like_count", 0)  
                         profile_image = self.profile_images.get(message_owner_id, self.profile_icon)
 
-                        is_liked_response = requests.get(f"http://localhost:8000/check-like", params={"post_id": post_id, "user_id": user_id, "x_api_key": "ergoapipoC18112024"})
+                        is_liked_response = requests.get(f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/check-like", params={"post_id": post_id, "user_id": user_id, "x_api_key": "ergoapipoC18112024"})
                         is_liked = is_liked_response.json().get("is_liked", False) if is_liked_response.status_code == 200 else False
 
                         if filepath:  
@@ -329,7 +329,7 @@ class CommunityFrame(tk.Frame):
             try:
                 # ✅ 1. เรียก API เพื่อตรวจสอบว่ามีวิดีโอในโพสต์นี้หรือไม่
                 video_response = requests.get(
-                    f"http://localhost:8000/get_video_path",
+                    f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/get_video_path",
                     params={"post_id": post_id, "x_api_key": "ergoapipoC18112024"}        
                 )
 
@@ -338,7 +338,7 @@ class CommunityFrame(tk.Frame):
                     if video_path:
                         # ✅ 2. ลบวิดีโอออกจาก Storage
                         delete_video_response = requests.delete(
-                            f"http://localhost:8000/delete_video",
+                            f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/delete_video",
                             params={"post_id": post_id, "video_url": video_path, "x_api_key": "ergoapipoC18112024"}  # ส่ง post_id และ video_url ใน query string
                         )
 
@@ -349,7 +349,7 @@ class CommunityFrame(tk.Frame):
 
                 # ✅ 3. ลบโพสต์ออกจากฐานข้อมูล
                 response = requests.delete(
-                    f"http://localhost:8000/delete-message/{post_id}",
+                    f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/delete-message/{post_id}",
                     params=params,
                     json={"user_id": self.user_id},
                 )
@@ -384,7 +384,7 @@ class CommunityFrame(tk.Frame):
             try:
                 create_at = datetime.now().isoformat()
                 response = requests.post(
-                    "http://localhost:8000/post-message",
+                    "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/post-message",
                     params={
                         "user_id": self.user_id,
                         "content": message,
@@ -654,7 +654,7 @@ class CommunityFrame(tk.Frame):
 
     def send_like(self, post_id, user_id, action):
         """ ส่งคำขอ Like หรือ Unlike ไปยัง API """
-        url = "http://127.0.0.1:8000/like"
+        url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/like"
         
         # สร้าง dictionary สำหรับการส่งข้อมูล
         params = {
@@ -766,7 +766,7 @@ class CommunityFrame(tk.Frame):
         filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png"), ("Video files", "*.mp4 *.avi *.mkv")])
         if filepath:
             # ✅ อัปโหลดไฟล์ครั้งเดียว และรับ `post_id`
-            upload_url = "http://localhost:8000/upload_file/"
+            upload_url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/upload_file/"
             with open(filepath, "rb") as file:
                 files = {"file": file}
                 params = {"user_id": self.user_id, "x_api_key": "ergoapipoC18112024"}
@@ -797,7 +797,7 @@ class CommunityFrame(tk.Frame):
         try:
             # ✅ 1. เช็คการเชื่อมต่อกับ Blob Storage ก่อน
             container_name = "ergo"  # แก้ไขเป็นชื่อ Container จริง
-            check_blob_url = f"http://localhost:8000/check_blob_storage/?container_name={container_name}"
+            check_blob_url = f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/check_blob_storage/?container_name={container_name}"
             response = requests.get(check_blob_url, params)
 
             if response.status_code == 200:
@@ -809,7 +809,7 @@ class CommunityFrame(tk.Frame):
                 return
 
             # ✅ 2. อัปโหลดรูปภาพไปยัง Azure Blob Storage
-            upload_url = "http://localhost:8000/upload_video/"
+            upload_url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/upload_video/"
             with open(filepath, "rb") as file:
                 files = {"file": file}
                 upload_response = requests.post(upload_url, params, files=files)
