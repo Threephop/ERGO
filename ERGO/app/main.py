@@ -79,7 +79,7 @@ class App(tk.Tk):
         # ดักจับ event ปิดแอป
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        # response = requests.get("http://127.0.0.1:8000/users")
+        # response = requests.get("https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/users")
         # if response.status_code == 200:
         #     data = response.json()
         #     self.username = data['users'][3]
@@ -87,7 +87,7 @@ class App(tk.Tk):
     
         # ดึงรายชื่อ users จาก API
         try:
-            response = requests.get("http://127.0.0.1:8000/users", params=params, timeout=5)
+            response = requests.get("https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/users", params=params, timeout=5)
             response.raise_for_status()  # ตรวจสอบ HTTP Status Code
 
             data = response.json()
@@ -339,7 +339,7 @@ class App(tk.Tk):
     def fetch_profile_image(self):
         """ ดึง URL รูปโปรไฟล์จาก API แล้วบันทึกไว้ที่ self.profile_image_url """
         def fetch():
-            api_url = f"http://127.0.0.1:8000/get_profile_url/{self.user_id}"
+            api_url = f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/get_profile_url/{self.user_id}"
             try:
                 response = requests.get(api_url, params=params, timeout=5)
                 if response.status_code == 200:
@@ -356,7 +356,7 @@ class App(tk.Tk):
         threading.Thread(target=fetch, daemon=True).start()
 
     def fetch_user_id(self, email):
-        url = f"http://127.0.0.1:8000/get_user_id/{email}"
+        url = f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/get_user_id/{email}"
         try:
             response = requests.get(url, params=params, timeout=5)
             if response.status_code == 200:
@@ -372,7 +372,7 @@ class App(tk.Tk):
         """โหลดและอัปเดตรูปโปรไฟล์ที่ Sidebar"""
         try:
             # ✅ 1. ดึง URL ของรูปโปรไฟล์จาก API
-            response = requests.get("http://127.0.0.1:8000/get_profile_image/", params={"user_id": self.user_id, "x_api_key": "ergoapipoC18112024"})
+            response = requests.get("https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/get_profile_image/", params={"user_id": self.user_id, "x_api_key": "ergoapipoC18112024"})
             profile_url = response.json().get("profile_url") if response.status_code == 200 else None
 
             # ✅ 2. โหลดรูปจาก URL (ถ้ามี)
@@ -410,7 +410,7 @@ class App(tk.Tk):
 
         # 🔹 เรียก API refresh_profile เพื่อดึงค่าล่าสุด
         try:
-            api_url = f"http://127.0.0.1:8000/refresh_profile/{self.user_id}"
+            api_url = f"https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/refresh_profile/{self.user_id}"
             response = requests.get(api_url, params=params, timeout=5)
             response.raise_for_status()
             data = response.json()
@@ -588,7 +588,7 @@ class App(tk.Tk):
             
     def send_app_time(self):
         """ส่งค่าการใช้งานแอปไปยัง API"""
-        api_url = "http://127.0.0.1:8000/update_app_time/"
+        api_url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/update_app_time/"
         params = {
             "email": self.user_email,
             "app_time": float(self.app_time),  # แปลงเป็น float 
@@ -616,7 +616,7 @@ class App(tk.Tk):
 
     def send_app_time_month(self):
         """ส่งค่าการใช้งานแอปไปยัง API"""
-        api_url = "http://127.0.0.1:8000/update_app_time_month/"  # เปลี่ยน endpoint
+        api_url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/update_app_time_month/"  # เปลี่ยน endpoint
         params = {
             "email": self.user_email,
             "app_time": float(self.app_time),  # แปลงเป็น float ก่อนส่ง
