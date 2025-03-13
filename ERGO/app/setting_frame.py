@@ -38,16 +38,33 @@ class SettingFrame(tk.Frame):
             "ภาษาไทย": {"volume": "ระดับเสียง", "language": "ภาษา", "set": "ตั้ง", "skip": "ข้าม", "add_time": "เพิ่มเวลา", "set_time": "ตั้งเวลา", "delete": "ลบ"}
         }
 
-        # เพิ่มเวลา default จากไฟล์หรือค่าเริ่มต้น
-        for hour, minute in self.default_times:
-            self.add_time_set(hour, minute)
+        # สร้าง Canvas และ Scrollbar
+        self.canvas = tk.Canvas(self, bg="white", highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas, bg="white")
 
-        # Volume control
-        volume_frame = tk.Frame(self, bg="white")
-        volume_frame.place(x=50, y=50, width=350, height=50)
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        # ทำให้ Canvas สามารถเลื่อนด้วยเมาส์
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        # Volume control (อยู่ภายใน Canvas)
+        volume_frame = tk.Frame(self.scrollable_frame, bg="white")
+        volume_frame.pack(pady=10, padx=50, anchor="w", fill="x")
 
         self.volume_label = tk.Label(volume_frame, text="Volume", font=("PTT 45 Pride", 16), bg="white")
-        self.volume_label.place(x=0, y=10, width=100, height=30)
+        self.volume_label.pack(side="left", padx=(0, 10))
 
         self.volume_scale = tk.Scale(
             volume_frame,
@@ -61,31 +78,46 @@ class SettingFrame(tk.Frame):
             troughcolor="lightgray",
             activebackground="blue"
         )
-        self.volume_scale.place(x=100, y=0, width=200, height=50)
+        self.volume_scale.pack(side="left", fill="x", expand=True)
 
         self.volume_value_label = tk.Label(volume_frame, text=f"{int(self.volume.get())}%", font=("PTT 45 Pride", 12), bg="white")
-        self.volume_value_label.place(x=300, y=10, width=50, height=30)
+        self.volume_value_label.pack(side="left", padx=(10, 0))
 
         self.volume.trace("w", self.update_volume_label)
 
-        # Language control
-        language_frame = tk.Frame(self, bg="white")
-        language_frame.place(x=50, y=120, width=350, height=50)
+        # Language control (อยู่ภายใน Canvas)
+        language_frame = tk.Frame(self.scrollable_frame, bg="white")
+        language_frame.pack(pady=10, padx=50, anchor="w", fill="x")
 
         self.language_label = tk.Label(language_frame, text="Language", font=("PTT 45 Pride", 16), bg="white")
-        self.language_label.place(x=0, y=10, width=100, height=30)
+        self.language_label.pack(side="left", padx=(0, 10))
 
         self.language_dropdown = ttk.Combobox(language_frame, textvariable=self.language_var, font=("PTT 45 Pride", 12), state="readonly")
         self.language_dropdown["values"] = ("English", "ภาษาไทย")
-        self.language_dropdown.place(x=140, y=10, width=150, height=30)
+        self.language_dropdown.pack(side="left", fill="x", expand=True)
 
         self.language_dropdown.bind("<<ComboboxSelected>>", self.change_language)
 
         self.update_language_ui(self.language_var.get())
-        
-        # ปุ่มเพิ่ม Set Time
-        add_time_button = tk.Button(self, text=self.translations[self.language_var.get()]["add_time"], command=self.add_time_set)
-        add_time_button.place(x=550, y=230, width=100, height=30)
+
+        # ปุ่มเพิ่ม Set Time (อยู่ด้านล่างของ Language)
+        add_time_button = tk.Button(self.scrollable_frame, text=self.translations[self.language_var.get()]["add_time"], command=self.add_time_set)
+        add_time_button.pack(pady=10, padx=50, anchor="w", fill="x")
+
+        # เพิ่มเวลา default จากไฟล์หรือค่าเริ่มต้น
+        for hour, minute in self.default_times:
+            self.add_time_set(hour, minute)
+
+        # ทำให้ UI responsive
+        self.bind("<Configure>", self.on_window_resize)
+
+    def _on_mousewheel(self, event):
+        """ทำให้ Canvas สามารถเลื่อนด้วยเมาส์"""
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def on_window_resize(self, event):
+        """ปรับ UI ให้ responsive เมื่อหน้าต่างถูกปรับขนาด"""
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def update_volume_label(self, *args):
         self.volume_value_label.config(text=f"{int(self.volume.get())}%")
@@ -115,33 +147,32 @@ class SettingFrame(tk.Frame):
             print("Cannot add more than 12 time entries.")
             return
 
-        y_offset = 200 + len(self.time_entries) * 50
-        time_frame = tk.Frame(self, bg="white")
-        time_frame.place(x=50, y=y_offset, width=500, height=80)
+        time_frame = tk.Frame(self.scrollable_frame, bg="white")
+        time_frame.pack(pady=10, padx=50, anchor="w", fill="x")
 
         language = self.language_var.get()
         translations = self.translations[language]
 
         label = tk.Label(time_frame, text=f"{translations['set_time']} {len(self.time_entries) + 1}", font=("Arial", 16), bg="white")
-        label.place(x=0, y=10, width=100, height=30)
+        label.pack(side="left", padx=(0, 10))
 
         hour_var = tk.StringVar(value=default_hour)
         minute_var = tk.StringVar(value=default_minute)
 
-        ttk.Combobox(time_frame, textvariable=hour_var, values=[f"{i:02d}" for i in range(24)], state="readonly").place(x=110, y=10, width=50, height=30)
-        ttk.Combobox(time_frame, textvariable=minute_var, values=[f"{i:02d}" for i in range(60)], state="readonly").place(x=170, y=10, width=50, height=30)
+        ttk.Combobox(time_frame, textvariable=hour_var, values=[f"{i:02d}" for i in range(24)], state="readonly").pack(side="left", padx=(0, 10))
+        ttk.Combobox(time_frame, textvariable=minute_var, values=[f"{i:02d}" for i in range(60)], state="readonly").pack(side="left", padx=(0, 10))
         
         # ปุ่ม set เวลา
         set_button = tk.Button(time_frame, text=translations["set"], command=lambda: self.set_time(hour_var, minute_var))
-        set_button.place(x=240, y=10, width=50, height=30)
+        set_button.pack(side="left", padx=(0, 10))
 
         # ปุ่ม skip เวลา
         skip_button = tk.Button(time_frame, text=translations["skip"], command=lambda: self.skip_time(hour_var, minute_var))
-        skip_button.place(x=300, y=10, width=50, height=30)
+        skip_button.pack(side="left", padx=(0, 10))
 
         # ปุ่มลบเวลา
         delete_button = tk.Button(time_frame, text=translations["delete"], command=lambda: self.delete_time_set(time_frame, hour_var, minute_var))
-        delete_button.place(x=360, y=10, width=50, height=30)
+        delete_button.pack(side="left")
 
         self.time_entries.append((hour_var, minute_var, time_frame, label, set_button, skip_button, delete_button))
 
@@ -267,10 +298,10 @@ class SettingFrame(tk.Frame):
 
 #     root = tk.Tk()
 #     root.title("Settings")
-#     root.geometry("800x400")
+#     root.geometry("800x600")
 
 #     # สร้าง SettingFrame ด้วย callback ทั้งสอง
 #     setting_frame = SettingFrame(root, is_muted_callback=is_muted, change_language_callback=on_language_change)
-#     setting_frame.place(x=0, y=0, width=800, height=400)
+#     setting_frame.pack(fill="both", expand=True)
 
 #     root.mainloop()
