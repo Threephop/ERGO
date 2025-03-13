@@ -1,5 +1,6 @@
 import tkinter as tk
 import customtkinter as ctk
+from customtkinter import *
 import requests
 import urllib.parse
 import re
@@ -171,22 +172,18 @@ class LeaderboardFrame(tk.Frame):
             return
 
         try:
-            response = requests.get(f"{self.api_base_url}/export_leaderboard_active/?email={self.user_email}" ,params=params)
+            response = requests.get(f"{self.api_base_url}/export_leaderboard_active/?email={self.user_email}",params=params , stream=True)
 
             if response.status_code == 200:
-                content_disposition = response.headers.get("Content-Disposition", "")
-                filename = content_disposition.split("filename=")[-1].strip("\"")
+                # ให้ user เลือกที่บันทึกไฟล์เอง
+                file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
 
-                filename = urllib.parse.unquote(filename)
-                filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
+                if file_path:
+                    with open(file_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
 
-                if not filename:
-                    filename = "leaderboard_active.xlsx"
-
-                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-                file_path = os.path.join(downloads_folder, filename)
-
-                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
+                    messagebox.showinfo("Success", f"Excel file has been saved to {file_path}!")
             else:
                 messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
         except requests.exceptions.RequestException:
@@ -199,22 +196,18 @@ class LeaderboardFrame(tk.Frame):
             return
 
         try:
-            response = requests.get(f"{self.api_base_url}/export_leaderboard_popular/?email={self.user_email}", params=params)
+            response = requests.get(f"{self.api_base_url}/export_leaderboard_popular/?email={self.user_email}",params=params , stream=True)
 
             if response.status_code == 200:
-                content_disposition = response.headers.get("Content-Disposition", "")
-                filename = content_disposition.split("filename=")[-1].strip("\"")
+                # ให้ user เลือกที่บันทึกไฟล์เอง
+                file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
 
-                filename = urllib.parse.unquote(filename)
-                filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
+                if file_path:
+                    with open(file_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
 
-                if not filename:
-                    filename = "leaderboard_popular.xlsx"
-
-                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-                file_path = os.path.join(downloads_folder, filename)
-
-                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
+                    messagebox.showinfo("Success", f"Excel file has been saved to {file_path}!")
             else:
                 messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
         except requests.exceptions.RequestException:

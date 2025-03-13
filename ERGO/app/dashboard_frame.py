@@ -437,7 +437,6 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
                 self.export_button = ctk.CTkButton(self.tab1, text="Export Excel Month", corner_radius=25, command=self.export_excel_active_month)
                 self.export_button.pack(pady=2)
 
-
     def export_excel_active(self):
         """ 🔹 ตรวจสอบสิทธิ์ก่อนส่งคำขอ Export """
         if self.user_role != 1:
@@ -445,22 +444,18 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             return
 
         try:
-            response = requests.get(f"{self.api_base_url}/export_dashboard_active/?email={self.user_email}", params)
+            response = requests.get(f"{self.api_base_url}/export_dashboard_active/?email={self.user_email}",params=params , stream=True)
 
             if response.status_code == 200:
-                content_disposition = response.headers.get("Content-Disposition", "")
-                filename = content_disposition.split("filename=")[-1].strip("\"")
+                # ให้ user เลือกที่บันทึกไฟล์เอง
+                file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
 
-                filename = urllib.parse.unquote(filename)
-                filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
+                if file_path:
+                    with open(file_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
 
-                if not filename:
-                    filename = "dashboard_active.xlsx"
-
-                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-                file_path = os.path.join(downloads_folder, filename)
-
-                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
+                    messagebox.showinfo("Success", f"Excel file has been saved to {file_path}!")
             else:
                 messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
         except requests.exceptions.RequestException:
@@ -473,22 +468,18 @@ class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
             return
 
         try:
-            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}", params)
+            response = requests.get(f"{self.api_base_url}/export_dashboard_month/?email={self.user_email}",params=params , stream=True)
 
             if response.status_code == 200:
-                content_disposition = response.headers.get("Content-Disposition", "")
-                filename = content_disposition.split("filename=")[-1].strip("\"")
+                # ให้ user เลือกที่บันทึกไฟล์เอง
+                file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
 
-                filename = urllib.parse.unquote(filename)
-                filename = re.sub(r'[^a-zA-Z0-9_\-\. ]', '', filename)
+                if file_path:
+                    with open(file_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
 
-                if not filename:
-                    filename = "dashboard_active.xlsx"
-
-                downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-                file_path = os.path.join(downloads_folder, filename)
-
-                messagebox.showinfo("Success", f"Excel file ({filename}) has been saved to your Downloads folder!")
+                    messagebox.showinfo("Success", f"Excel file has been saved to {file_path}!")
             else:
                 messagebox.showerror("Error", response.json().get("detail", "Unknown error"))
         except requests.exceptions.RequestException:

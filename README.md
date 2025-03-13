@@ -68,6 +68,6 @@ docker-compose stop
 
 docker login
 docker images
-docker tag a7724d28441f threephop/ergodocker:ergoapi
-docker push threephop/ergodocker:ergoapi
+docker tag 47f3c8f5ef54 threephop/ergodocker:ergoapipoc
+docker push threephop/ergodocker:ergoapipoc
 
