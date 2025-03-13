@@ -8,6 +8,7 @@ import webbrowser
 import subprocess  # เพิ่มการนำเข้า subprocess
 import threading
 import sys
+import json  # ต้องใช้ json.dumps()
 
 params = {
     "x_api_key": "ergoapipoC18112024",  # ส่ง API Key ใน query parameter
@@ -22,6 +23,7 @@ class ProfileFrame(tk.Frame):
         self.app_instance = app_instance
         self.logout_called = False  # ป้องกัน Logout ซ้ำ
         self.timer_stopped = False  # ป้องกัน stop_timer() ทำงานซ้ำ
+        self.api_key = "ergoapipoC18112024"
 
         # กำหนดไดเรกทอรีสำหรับไอคอน
         self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
@@ -225,9 +227,9 @@ class ProfileFrame(tk.Frame):
         new_name = simpledialog.askstring("เปลี่ยนชื่อ", "กรุณากรอกชื่อใหม่:", initialvalue=self.username)
         
         if new_name and new_name.strip():
-            user_id = self.fetch_user_id(self.user_email)  # ดึง user_id
+            user_id = self.fetch_user_id(self.user_email)
             if user_id:
-                success = self.update_username_in_api(user_id, new_name.strip())  # ส่ง user_id แทน email
+                success = self.update_username_in_api(user_id, new_name.strip())
                 if success:
                     self.username = new_name.strip()
                     if self.name_label:
@@ -240,12 +242,23 @@ class ProfileFrame(tk.Frame):
 
     def update_username_in_api(self, user_id, new_username):
         """ส่งคำขอเปลี่ยนชื่อไปยัง API"""
-        url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io/update_username"  # ใช้ endpoint POST ที่ถูกต้อง
-        payload = {"user_id": user_id, "new_username": new_username}
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        url = f"{self.api_base_url}/update_username/"
+        params = {"x_api_key": self.api_key}
+        payload = {
+            "user_id": user_id,
+            "new_username": new_username
+        }
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded"  # เปลี่ยนเป็น Form Data
+        }
+
+        print("📌 Debug Payload:", payload)
+        print("📌 Debug Params:", params)
 
         try:
-            response = requests.post(url, data=payload, params=params, headers=headers, timeout=5)  # เพิ่ม headers
+            response = requests.post(url, data=payload, params=params, headers=headers, timeout=5)
+            print("🔍 Debug Response:", response.status_code, response.text)
+
             if response.status_code == 200:
                 return True
             elif response.status_code == 404:
@@ -257,7 +270,7 @@ class ProfileFrame(tk.Frame):
         except requests.RequestException as e:
             messagebox.showerror("ผิดพลาด", f"ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์: {e}")
 
-        return False  # ถ้าอัปเดตไม่สำเร็จ ให้ return False
+        return False
 
     def logout(self):
         """ ฟังก์ชัน Logout ที่ทำให้ stop_timer() ทำงาน """
