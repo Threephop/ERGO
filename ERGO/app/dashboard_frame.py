@@ -19,7 +19,7 @@ params = {
 class DashboardFrame(ctk.CTkFrame):  # ✅ ใช้ CTkFrame แทน Frame
     def __init__(self, parent, user_email):
         super().__init__(parent, fg_color="white")
-        self.api_base_url = "http://127.0.0.1:8000"  
+        self.api_base_url = "https://ergoapicontainer.kindfield-b150dbf6.southeastasia.azurecontainerapps.io"  
         self.user_id = self.fetch_user_id(user_email)  
         self.user_email = user_email  
         self.user_role = self.fetch_user_role(user_email)  
