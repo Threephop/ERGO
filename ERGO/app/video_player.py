@@ -6,6 +6,7 @@ from PIL import Image, ImageTk
 from ffpyplayer.player import MediaPlayer
 import time
 import os
+import threading
 
 cv2.setNumThreads(1)  # Limit OpenCV to a single thread
 
@@ -42,7 +43,9 @@ class VideoPlayer:
         
         # ไอคอนกล้อง
         self.camera_icon = self.load_resized_image("camera.png", (42, 39))
-        self.camera_button = tk.Button(control_frame, image=self.camera_icon, command=self.open_camera, bd=0, bg="#FFFFFF", activebackground="#D4D4D4")
+        self.camera_button = tk.Button(control_frame, image=self.camera_icon, 
+                               command=lambda: threading.Thread(target=self.open_camera, daemon=True).start(), 
+                               bd=0, bg="#FFFFFF", activebackground="#D4D4D4")        
         self.camera_button.pack(side="left", padx=5, pady=5)
 
         

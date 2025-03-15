@@ -69,7 +69,9 @@ class CommunityFrame(tk.Frame):
         self.profile_icon = self.load_resized_image("profile.png", (50, 50))
 
         # ไอคอนกล้อง
-        self.camera_button = tk.Button(self.bottom_bar, image=self.camera_icon, command=self.open_camera, bd=0, bg="#FFFFFF", activebackground="#D4D4D4")
+        self.camera_button = tk.Button(self.bottom_bar, image=self.camera_icon, 
+                               command=lambda: threading.Thread(target=self.open_camera, daemon=True).start(), 
+                               bd=0, bg="#FFFFFF", activebackground="#D4D4D4")
         self.camera_button.pack(side="left", padx=5, pady=5)
 
         # ไอคอนโฟลเดอร์
