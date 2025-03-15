@@ -68,18 +68,18 @@ class VideoPlayer:
         
     def open_camera(self):
         try:
-            video_path = os.path.join(self.icon_dir, "recorded_video.avi")
             cap = cv2.VideoCapture(0)
             if not cap.isOpened():
                 messagebox.showerror("Error", "ไม่สามารถเปิดกล้องได้")
                 return
 
             fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            out = cv2.VideoWriter(video_path, fourcc, 20.0, (640, 480))
-
+            out = None
+            
             cv2.namedWindow("Camera")
             print("กด 'r' เพื่อเริ่ม/หยุดการอัดวิดีโอ, 's' เพื่อบันทึก, 'q' เพื่อออก")
             is_recording = False
+            video_path = None
 
             while True:
                 ret, frame = cap.read()
@@ -89,31 +89,45 @@ class VideoPlayer:
 
                 cv2.imshow("Camera", frame)
 
-                if is_recording:
+                if is_recording and out is not None:
                     print("กำลังบันทึกเฟรม...")
                     out.write(frame)
 
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('r'):
                     is_recording = not is_recording
-                    print("เริ่มการอัดวิดีโอ" if is_recording else "หยุดการอัดวิดีโอ")
+                    if is_recording:
+                        print("เริ่มการอัดวิดีโอ")
+                    else:
+                        print("หยุดการอัดวิดีโอ")
+                        if out is not None:
+                            out.release()
+                            out = None
                 elif key == ord('s'):
                     if not is_recording:
-                        print("บันทึกวิดีโอ")
+                        root = tk.Tk()
+                        root.withdraw()
+                        video_path = filedialog.asksaveasfilename(defaultextension=".avi", filetypes=[("AVI files", "*.avi")])
+                        if not video_path:
+                            print("ยกเลิกการบันทึกวิดีโอ")
+                            continue
+                        out = cv2.VideoWriter(video_path, fourcc, 20.0, (640, 480))
+                        print(f"บันทึกวิดีโอที่ {video_path}")
                         messagebox.showinfo("บันทึกสำเร็จ", f"วิดีโอถูกบันทึกที่ {video_path}")
+                        out.release()
+                        out = None
                     else:
                         print("กรุณาหยุดการอัดวิดีโอก่อนบันทึก")
                 elif key == ord('q'):
                     break
 
             cap.release()
-            out.release()
+            if out is not None:
+                out.release()
             cv2.destroyAllWindows()
-            cv2.waitKey(1)  # เพิ่มเวลาหน่วงเล็กน้อยเพื่อให้หน้าต่างปิดอย่างสมบูรณ์
-
+            cv2.waitKey(1)  # ป้องกันหน้าต่างปิดไม่สมบูรณ์
         except Exception as e:
             messagebox.showerror("Error", f"Error opening camera: {e}")
-
 
     def toggle_play(self):
         if self.playing:
