@@ -69,7 +69,9 @@ class CommunityFrame(tk.Frame):
         self.profile_icon = self.load_resized_image("profile.png", (50, 50))
 
         # ไอคอนกล้อง
-        self.camera_button = tk.Button(self.bottom_bar, image=self.camera_icon, command=self.open_camera, bd=0, bg="#FFFFFF", activebackground="#D4D4D4")
+        self.camera_button = tk.Button(self.bottom_bar, image=self.camera_icon, 
+                               command=lambda: threading.Thread(target=self.open_camera, daemon=True).start(), 
+                               bd=0, bg="#FFFFFF", activebackground="#D4D4D4")
         self.camera_button.pack(side="left", padx=5, pady=5)
 
         # ไอคอนโฟลเดอร์
@@ -716,18 +718,18 @@ class CommunityFrame(tk.Frame):
             
     def open_camera(self):
         try:
-            video_path = os.path.join(self.icon_dir, "recorded_video.avi")
             cap = cv2.VideoCapture(0)
             if not cap.isOpened():
                 messagebox.showerror("Error", "ไม่สามารถเปิดกล้องได้")
                 return
 
             fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            out = cv2.VideoWriter(video_path, fourcc, 20.0, (640, 480))
-
+            out = None
+            
             cv2.namedWindow("Camera")
             print("กด 'r' เพื่อเริ่ม/หยุดการอัดวิดีโอ, 's' เพื่อบันทึก, 'q' เพื่อออก")
             is_recording = False
+            video_path = None
 
             while True:
                 ret, frame = cap.read()
@@ -737,17 +739,29 @@ class CommunityFrame(tk.Frame):
 
                 cv2.imshow("Camera", frame)
 
-                if is_recording:
+                if is_recording and out is not None:
                     print("กำลังบันทึกเฟรม...")
                     out.write(frame)
 
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('r'):
-                    is_recording = not is_recording
-                    print("เริ่มการอัดวิดีโอ" if is_recording else "หยุดการอัดวิดีโอ")
-                elif key == ord('s'):
                     if not is_recording:
-                        print("บันทึกวิดีโอ")
+                        root = tk.Tk()
+                        root.withdraw()
+                        video_path = filedialog.asksaveasfilename(defaultextension=".avi", filetypes=[("AVI files", "*.avi")])
+                        if not video_path:
+                            print("ยกเลิกการบันทึกวิดีโอ")
+                            continue
+                        out = cv2.VideoWriter(video_path, fourcc, 20.0, (640, 480))
+                        print(f"เริ่มการอัดวิดีโอที่ {video_path}")
+                    else:
+                        print("หยุดการอัดวิดีโอ")
+                        out.release()
+                        out = None
+                    is_recording = not is_recording
+                elif key == ord('s'):
+                    if not is_recording and video_path:
+                        print("บันทึกวิดีโอสำเร็จ")
                         messagebox.showinfo("บันทึกสำเร็จ", f"วิดีโอถูกบันทึกที่ {video_path}")
                     else:
                         print("กรุณาหยุดการอัดวิดีโอก่อนบันทึก")
@@ -755,13 +769,13 @@ class CommunityFrame(tk.Frame):
                     break
 
             cap.release()
-            out.release()
+            if out is not None:
+                out.release()
             cv2.destroyAllWindows()
-            cv2.waitKey(1)  # เพิ่มเวลาหน่วงเล็กน้อยเพื่อให้หน้าต่างปิดอย่างสมบูรณ์
-
+            cv2.waitKey(1)  # ป้องกันหน้าต่างปิดไม่สมบูรณ์
         except Exception as e:
             messagebox.showerror("Error", f"Error opening camera: {e}")
-
+                        
     def open_folder(self):
         filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png"), ("Video files", "*.mp4 *.avi *.mkv")])
         if filepath:
