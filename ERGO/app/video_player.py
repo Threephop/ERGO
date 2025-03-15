@@ -1,9 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog, messagebox
 import cv2
 from PIL import Image, ImageTk
 from ffpyplayer.player import MediaPlayer
 import time
+import os
 
 cv2.setNumThreads(1)  # Limit OpenCV to a single thread
 
@@ -12,6 +14,7 @@ class VideoPlayer:
         self.root = root
         self.video_path = video_path
         self.cap = cv2.VideoCapture(video_path)
+        self.icon_dir = os.path.join(os.path.dirname(__file__), "icon")
 
         # Get video properties
         self.fps = self.cap.get(cv2.CAP_PROP_FPS) or 30  # Default to 30 FPS if not detected
@@ -37,6 +40,12 @@ class VideoPlayer:
         self.btn_play = ttk.Button(control_frame, text='▶ Play', command=self.toggle_play)
         self.btn_play.pack(side=tk.LEFT, padx=5)
         
+        # ไอคอนกล้อง
+        self.camera_icon = self.load_resized_image("camera.png", (42, 39))
+        self.camera_button = tk.Button(control_frame, image=self.camera_icon, command=self.open_camera, bd=0, bg="#FFFFFF", activebackground="#D4D4D4")
+        self.camera_button.pack(side="left", padx=5, pady=5)
+
+        
         # Volume control
         vol_frame = ttk.Frame(root)
         vol_frame.pack(fill=tk.X, padx=10, pady=5)
@@ -46,6 +55,65 @@ class VideoPlayer:
         self.volume_scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
 
         self.player.set_pause(True)
+        
+    def load_resized_image(self, file_name, size):
+        try:
+            path = os.path.join(self.icon_dir, file_name)
+            image = Image.open(path)
+            image = image.resize(size, Image.Resampling.LANCZOS)
+            return ImageTk.PhotoImage(image)
+        except Exception as e:
+            print(f"Error loading {file_name}: {e}")
+            return None
+        
+    def open_camera(self):
+        try:
+            video_path = os.path.join(self.icon_dir, "recorded_video.avi")
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                messagebox.showerror("Error", "ไม่สามารถเปิดกล้องได้")
+                return
+
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            out = cv2.VideoWriter(video_path, fourcc, 20.0, (640, 480))
+
+            cv2.namedWindow("Camera")
+            print("กด 'r' เพื่อเริ่ม/หยุดการอัดวิดีโอ, 's' เพื่อบันทึก, 'q' เพื่อออก")
+            is_recording = False
+
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    print("ไม่สามารถอ่านข้อมูลจากกล้องได้")
+                    break
+
+                cv2.imshow("Camera", frame)
+
+                if is_recording:
+                    print("กำลังบันทึกเฟรม...")
+                    out.write(frame)
+
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('r'):
+                    is_recording = not is_recording
+                    print("เริ่มการอัดวิดีโอ" if is_recording else "หยุดการอัดวิดีโอ")
+                elif key == ord('s'):
+                    if not is_recording:
+                        print("บันทึกวิดีโอ")
+                        messagebox.showinfo("บันทึกสำเร็จ", f"วิดีโอถูกบันทึกที่ {video_path}")
+                    else:
+                        print("กรุณาหยุดการอัดวิดีโอก่อนบันทึก")
+                elif key == ord('q'):
+                    break
+
+            cap.release()
+            out.release()
+            cv2.destroyAllWindows()
+            cv2.waitKey(1)  # เพิ่มเวลาหน่วงเล็กน้อยเพื่อให้หน้าต่างปิดอย่างสมบูรณ์
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Error opening camera: {e}")
+
 
     def toggle_play(self):
         if self.playing:
